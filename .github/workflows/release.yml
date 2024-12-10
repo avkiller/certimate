@@ -1,4 +1,4 @@
-name: basebuild
+name: build certimate self
 
 on:
   push:
@@ -31,7 +31,7 @@ jobs:
         run: npm --prefix=./ui ci && npm --prefix=./ui run build
 
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v3
+        uses: goreleaser/goreleaser-action@v6.1.0
         with:
           distribution: goreleaser
           version: "~> v2"
