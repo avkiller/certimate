@@ -21,7 +21,6 @@ builds:
     goarch:
       - amd64
       - arm64
-      - arm
     goarm:
       - 7
     ignore:
@@ -44,10 +43,7 @@ archives:
 
 checksum:
   name_template: "checksums.txt"
-
-snapshot:
-  name_template: "{{ incpatch .Version }}-next"
-
+  
 changelog:
   sort: asc
   filters:
