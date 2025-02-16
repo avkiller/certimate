@@ -2,10 +2,10 @@ package scheduler
 
 import "context"
 
-type CertificateService interface {
+type certificateService interface {
 	InitSchedule(ctx context.Context) error
 }
 
-func NewCertificateScheduler(service CertificateService) error {
+func InitCertificateScheduler(service certificateService) error {
 	return service.InitSchedule(context.Background())
 }

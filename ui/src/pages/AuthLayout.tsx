@@ -1,11 +1,11 @@
 import { Navigate, Outlet } from "react-router-dom";
 
-import Version from "@/components/certimate/Version";
-import { getPocketBase } from "@/repository/pocketbase";
+import Version from "@/components/Version";
+import { getAuthStore } from "@/repository/admin";
 
 const AuthLayout = () => {
-  const auth = getPocketBase().authStore;
-  if (auth.isValid && auth.isAdmin) {
+  const auth = getAuthStore();
+  if (auth.isValid && auth.isSuperuser) {
     return <Navigate to="/" />;
   }
 
@@ -13,7 +13,7 @@ const AuthLayout = () => {
     <div className="container">
       <Outlet />
 
-      <Version className="fixed right-8 bottom-4" />
+      <Version className="fixed bottom-4 right-8" />
     </div>
   );
 };

@@ -38,7 +38,7 @@ func init() {
 /*
 Shell command to run this test:
 
-	go test -v ssh_test.go -args \
+	go test -v ./ssh_test.go -args \
 	--CERTIMATE_DEPLOYER_SSH_INPUTCERTPATH="/path/to/your-input-cert.pem" \
 	--CERTIMATE_DEPLOYER_SSH_INPUTKEYPATH="/path/to/your-input-key.pem" \
 	--CERTIMATE_DEPLOYER_SSH_SSHHOST="localhost" \
@@ -69,12 +69,12 @@ func TestDeploy(t *testing.T) {
 			SshPort:        int32(fSshPort),
 			SshUsername:    fSshUsername,
 			SshPassword:    fSshPassword,
+			OutputFormat:   provider.OUTPUT_FORMAT_PEM,
 			OutputCertPath: fOutputCertPath,
 			OutputKeyPath:  fOutputKeyPath,
 		})
 		if err != nil {
 			t.Errorf("err: %+v", err)
-			panic(err)
 		}
 
 		fInputCertData, _ := os.ReadFile(fInputCertPath)
@@ -82,7 +82,6 @@ func TestDeploy(t *testing.T) {
 		res, err := deployer.Deploy(context.Background(), string(fInputCertData), string(fInputKeyData))
 		if err != nil {
 			t.Errorf("err: %+v", err)
-			panic(err)
 		}
 
 		t.Logf("ok: %v", res)

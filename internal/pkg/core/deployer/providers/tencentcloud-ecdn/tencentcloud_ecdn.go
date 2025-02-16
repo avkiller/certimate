@@ -12,8 +12,9 @@ import (
 	tcSsl "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/ssl/v20191205"
 
 	"github.com/usual2970/certimate/internal/pkg/core/deployer"
+	"github.com/usual2970/certimate/internal/pkg/core/logger"
 	"github.com/usual2970/certimate/internal/pkg/core/uploader"
-	providerSsl "github.com/usual2970/certimate/internal/pkg/core/uploader/providers/tencentcloud-ssl"
+	uploaderp "github.com/usual2970/certimate/internal/pkg/core/uploader/providers/tencentcloud-ssl"
 )
 
 type TencentCloudECDNDeployerConfig struct {
@@ -27,7 +28,7 @@ type TencentCloudECDNDeployerConfig struct {
 
 type TencentCloudECDNDeployer struct {
 	config      *TencentCloudECDNDeployerConfig
-	logger      deployer.Logger
+	logger      logger.Logger
 	sdkClients  *wSdkClients
 	sslUploader uploader.Uploader
 }
@@ -40,10 +41,10 @@ type wSdkClients struct {
 }
 
 func New(config *TencentCloudECDNDeployerConfig) (*TencentCloudECDNDeployer, error) {
-	return NewWithLogger(config, deployer.NewNilLogger())
+	return NewWithLogger(config, logger.NewNilLogger())
 }
 
-func NewWithLogger(config *TencentCloudECDNDeployerConfig, logger deployer.Logger) (*TencentCloudECDNDeployer, error) {
+func NewWithLogger(config *TencentCloudECDNDeployerConfig, logger logger.Logger) (*TencentCloudECDNDeployer, error) {
 	if config == nil {
 		return nil, errors.New("config is nil")
 	}
@@ -57,7 +58,7 @@ func NewWithLogger(config *TencentCloudECDNDeployerConfig, logger deployer.Logge
 		return nil, xerrors.Wrap(err, "failed to create sdk clients")
 	}
 
-	uploader, err := providerSsl.New(&providerSsl.TencentCloudSSLUploaderConfig{
+	uploader, err := uploaderp.New(&uploaderp.TencentCloudSSLUploaderConfig{
 		SecretId:  config.SecretId,
 		SecretKey: config.SecretKey,
 	})
@@ -129,7 +130,7 @@ func (d *TencentCloudECDNDeployer) getDomainsByCertificateId(cloudCertId string)
 	}
 
 	domains := make([]string, 0)
-	if describeCertDomainsResp.Response.Domains == nil {
+	if describeCertDomainsResp.Response.Domains != nil {
 		for _, domain := range describeCertDomainsResp.Response.Domains {
 			domains = append(domains, *domain)
 		}

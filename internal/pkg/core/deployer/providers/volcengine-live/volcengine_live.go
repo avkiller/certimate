@@ -8,25 +8,26 @@ import (
 
 	xerrors "github.com/pkg/errors"
 	veLive "github.com/volcengine/volc-sdk-golang/service/live/v20230101"
+	ve "github.com/volcengine/volcengine-go-sdk/volcengine"
 
 	"github.com/usual2970/certimate/internal/pkg/core/deployer"
+	"github.com/usual2970/certimate/internal/pkg/core/logger"
 	"github.com/usual2970/certimate/internal/pkg/core/uploader"
-	providerLive "github.com/usual2970/certimate/internal/pkg/core/uploader/providers/volcengine-live"
-	"github.com/usual2970/certimate/internal/pkg/utils/cast"
+	uploaderp "github.com/usual2970/certimate/internal/pkg/core/uploader/providers/volcengine-live"
 )
 
 type VolcEngineLiveDeployerConfig struct {
-	// 火山引擎 AccessKey。
-	AccessKey string `json:"accessKey"`
-	// 火山引擎 SecretKey。
-	SecretKey string `json:"secretKey"`
-	// 加速域名（支持泛域名）。
+	// 火山引擎 AccessKeyId。
+	AccessKeyId string `json:"accessKeyId"`
+	// 火山引擎 AccessKeySecret。
+	AccessKeySecret string `json:"accessKeySecret"`
+	// 直播流域名（支持泛域名）。
 	Domain string `json:"domain"`
 }
 
 type VolcEngineLiveDeployer struct {
 	config      *VolcEngineLiveDeployerConfig
-	logger      deployer.Logger
+	logger      logger.Logger
 	sdkClient   *veLive.Live
 	sslUploader uploader.Uploader
 }
@@ -34,10 +35,10 @@ type VolcEngineLiveDeployer struct {
 var _ deployer.Deployer = (*VolcEngineLiveDeployer)(nil)
 
 func New(config *VolcEngineLiveDeployerConfig) (*VolcEngineLiveDeployer, error) {
-	return NewWithLogger(config, deployer.NewNilLogger())
+	return NewWithLogger(config, logger.NewNilLogger())
 }
 
-func NewWithLogger(config *VolcEngineLiveDeployerConfig, logger deployer.Logger) (*VolcEngineLiveDeployer, error) {
+func NewWithLogger(config *VolcEngineLiveDeployerConfig, logger logger.Logger) (*VolcEngineLiveDeployer, error) {
 	if config == nil {
 		return nil, errors.New("config is nil")
 	}
@@ -47,12 +48,12 @@ func NewWithLogger(config *VolcEngineLiveDeployerConfig, logger deployer.Logger)
 	}
 
 	client := veLive.NewInstance()
-	client.SetAccessKey(config.AccessKey)
-	client.SetSecretKey(config.SecretKey)
+	client.SetAccessKey(config.AccessKeyId)
+	client.SetSecretKey(config.AccessKeySecret)
 
-	uploader, err := providerLive.New(&providerLive.VolcEngineLiveUploaderConfig{
-		AccessKeyId:     config.AccessKey,
-		AccessKeySecret: config.SecretKey,
+	uploader, err := uploaderp.New(&uploaderp.VolcEngineLiveUploaderConfig{
+		AccessKeyId:     config.AccessKeyId,
+		AccessKeySecret: config.AccessKeySecret,
 	})
 	if err != nil {
 		return nil, xerrors.Wrap(err, "failed to create ssl uploader")
@@ -127,7 +128,7 @@ func (d *VolcEngineLiveDeployer) Deploy(ctx context.Context, certPem string, pri
 			bindCertReq := &veLive.BindCertBody{
 				ChainID: upres.CertId,
 				Domain:  domain,
-				HTTPS:   cast.BoolPtr(true),
+				HTTPS:   ve.Bool(true),
 			}
 			bindCertResp, err := d.sdkClient.BindCert(ctx, bindCertReq)
 			if err != nil {

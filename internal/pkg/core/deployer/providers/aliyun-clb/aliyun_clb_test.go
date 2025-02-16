@@ -19,6 +19,7 @@ var (
 	fRegion          string
 	fLoadbalancerId  string
 	fListenerPort    int
+	fDomain          string
 )
 
 func init() {
@@ -31,19 +32,21 @@ func init() {
 	flag.StringVar(&fRegion, argsPrefix+"REGION", "", "")
 	flag.StringVar(&fLoadbalancerId, argsPrefix+"LOADBALANCERID", "", "")
 	flag.IntVar(&fListenerPort, argsPrefix+"LISTENERPORT", 443, "")
+	flag.StringVar(&fDomain, argsPrefix+"DOMAIN", "", "")
 }
 
 /*
 Shell command to run this test:
 
-	go test -v aliyun_clb_test.go -args \
+	go test -v ./aliyun_clb_test.go -args \
 	--CERTIMATE_DEPLOYER_ALIYUNCLB_INPUTCERTPATH="/path/to/your-input-cert.pem" \
 	--CERTIMATE_DEPLOYER_ALIYUNCLB_INPUTKEYPATH="/path/to/your-input-key.pem" \
 	--CERTIMATE_DEPLOYER_ALIYUNCLB_ACCESSKEYID="your-access-key-id" \
 	--CERTIMATE_DEPLOYER_ALIYUNCLB_ACCESSKEYSECRET="your-access-key-secret" \
 	--CERTIMATE_DEPLOYER_ALIYUNCLB_REGION="cn-hangzhou" \
 	--CERTIMATE_DEPLOYER_ALIYUNCLB_LOADBALANCERID="your-clb-instance-id" \
-	--CERTIMATE_DEPLOYER_ALIYUNCLB_LISTENERPORT=443
+	--CERTIMATE_DEPLOYER_ALIYUNCLB_LISTENERPORT=443 \
+	--CERTIMATE_DEPLOYER_ALIYUNCLB_DOMAIN="your-alb-sni-domain"
 */
 func TestDeploy(t *testing.T) {
 	flag.Parse()
@@ -57,6 +60,7 @@ func TestDeploy(t *testing.T) {
 			fmt.Sprintf("ACCESSKEYSECRET: %v", fAccessKeySecret),
 			fmt.Sprintf("REGION: %v", fRegion),
 			fmt.Sprintf("LOADBALANCERID: %v", fLoadbalancerId),
+			fmt.Sprintf("DOMAIN: %v", fDomain),
 		}, "\n"))
 
 		deployer, err := provider.New(&provider.AliyunCLBDeployerConfig{
@@ -65,6 +69,7 @@ func TestDeploy(t *testing.T) {
 			Region:          fRegion,
 			ResourceType:    provider.DEPLOY_RESOURCE_LOADBALANCER,
 			LoadbalancerId:  fLoadbalancerId,
+			Domain:          fDomain,
 		})
 		if err != nil {
 			t.Errorf("err: %+v", err)
@@ -101,6 +106,7 @@ func TestDeploy(t *testing.T) {
 			ResourceType:    provider.DEPLOY_RESOURCE_LISTENER,
 			LoadbalancerId:  fLoadbalancerId,
 			ListenerPort:    int32(fListenerPort),
+			Domain:          fDomain,
 		})
 		if err != nil {
 			t.Errorf("err: %+v", err)

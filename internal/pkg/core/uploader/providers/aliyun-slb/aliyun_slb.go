@@ -16,7 +16,7 @@ import (
 	xerrors "github.com/pkg/errors"
 
 	"github.com/usual2970/certimate/internal/pkg/core/uploader"
-	"github.com/usual2970/certimate/internal/pkg/utils/x509"
+	"github.com/usual2970/certimate/internal/pkg/utils/certs"
 )
 
 type AliyunSLBUploaderConfig struct {
@@ -57,7 +57,7 @@ func New(config *AliyunSLBUploaderConfig) (*AliyunSLBUploader, error) {
 
 func (u *AliyunSLBUploader) Upload(ctx context.Context, certPem string, privkeyPem string) (res *uploader.UploadResult, err error) {
 	// 解析证书内容
-	certX509, err := x509.ParseCertificateFromPEM(certPem)
+	certX509, err := certs.ParseCertificateFromPEM(certPem)
 	if err != nil {
 		return nil, err
 	}
@@ -120,10 +120,6 @@ func (u *AliyunSLBUploader) Upload(ctx context.Context, certPem string, privkeyP
 }
 
 func createSdkClient(accessKeyId, accessKeySecret, region string) (*aliyunSlb.Client, error) {
-	if region == "" {
-		region = "cn-hangzhou" // SLB 服务默认区域：华东一杭州
-	}
-
 	// 接入点一览 https://help.aliyun.com/zh/slb/classic-load-balancer/developer-reference/api-slb-2014-05-15-endpoint
 	var endpoint string
 	switch region {

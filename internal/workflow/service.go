@@ -2,102 +2,123 @@ package workflow
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"time"
 
+	"github.com/usual2970/certimate/internal/app"
 	"github.com/usual2970/certimate/internal/domain"
-	"github.com/usual2970/certimate/internal/utils/app"
-	nodeprocessor "github.com/usual2970/certimate/internal/workflow/node-processor"
+	"github.com/usual2970/certimate/internal/domain/dtos"
+	"github.com/usual2970/certimate/internal/workflow/dispatcher"
 )
 
-type WorkflowRepository interface {
-	Get(ctx context.Context, id string) (*domain.Workflow, error)
-	SaveRunLog(ctx context.Context, log *domain.WorkflowRunLog) error
-	ListEnabledAuto(ctx context.Context) ([]domain.Workflow, error)
+type workflowRepository interface {
+	ListEnabledAuto(ctx context.Context) ([]*domain.Workflow, error)
+	GetById(ctx context.Context, id string) (*domain.Workflow, error)
+	Save(ctx context.Context, workflow *domain.Workflow) (*domain.Workflow, error)
+}
+
+type workflowRunRepository interface {
+	GetById(ctx context.Context, id string) (*domain.WorkflowRun, error)
+	Save(ctx context.Context, workflowRun *domain.WorkflowRun) (*domain.WorkflowRun, error)
 }
 
 type WorkflowService struct {
-	repo WorkflowRepository
+	dispatcher *dispatcher.WorkflowDispatcher
+
+	workflowRepo    workflowRepository
+	workflowRunRepo workflowRunRepository
 }
 
-func NewWorkflowService(repo WorkflowRepository) *WorkflowService {
-	return &WorkflowService{
-		repo: repo,
+func NewWorkflowService(workflowRepo workflowRepository, workflowRunRepo workflowRunRepository) *WorkflowService {
+	srv := &WorkflowService{
+		dispatcher: dispatcher.GetSingletonDispatcher(workflowRepo, workflowRunRepo),
+
+		workflowRepo:    workflowRepo,
+		workflowRunRepo: workflowRunRepo,
 	}
+	return srv
 }
 
 func (s *WorkflowService) InitSchedule(ctx context.Context) error {
-	// 查询所有的 enabled auto workflow
-	workflows, err := s.repo.ListEnabledAuto(ctx)
+	workflows, err := s.workflowRepo.ListEnabledAuto(ctx)
 	if err != nil {
 		return err
 	}
+
 	scheduler := app.GetScheduler()
 	for _, workflow := range workflows {
-		err := scheduler.Add(workflow.Id, workflow.Crontab, func() {
-			s.Run(ctx, &domain.WorkflowRunReq{
-				Id: workflow.Id,
+		var errs []error
+
+		err := scheduler.Add(fmt.Sprintf("workflow#%s", workflow.Id), workflow.TriggerCron, func() {
+			s.StartRun(ctx, &dtos.WorkflowStartRunReq{
+				WorkflowId: workflow.Id,
+				RunTrigger: domain.WorkflowTriggerTypeAuto,
 			})
 		})
 		if err != nil {
-			app.GetApp().Logger().Error("failed to add schedule", "err", err)
-			return err
+			errs = append(errs, err)
+		}
+
+		if len(errs) > 0 {
+			return errors.Join(errs...)
 		}
 	}
-	scheduler.Start()
-	app.GetApp().Logger().Info("workflow schedule started")
+
 	return nil
 }
 
-func (s *WorkflowService) Run(ctx context.Context, req *domain.WorkflowRunReq) error {
-	// 查询
-	if req.Id == "" {
-		return domain.ErrInvalidParams
-	}
-
-	workflow, err := s.repo.Get(ctx, req.Id)
+func (s *WorkflowService) StartRun(ctx context.Context, req *dtos.WorkflowStartRunReq) error {
+	workflow, err := s.workflowRepo.GetById(ctx, req.WorkflowId)
 	if err != nil {
-		app.GetApp().Logger().Error("failed to get workflow", "id", req.Id, "err", err)
 		return err
 	}
 
-	// 执行
-	if !workflow.Enabled {
-		app.GetApp().Logger().Error("workflow is disabled", "id", req.Id)
-		return fmt.Errorf("workflow is disabled")
+	if workflow.LastRunStatus == domain.WorkflowRunStatusTypePending || workflow.LastRunStatus == domain.WorkflowRunStatusTypeRunning {
+		return errors.New("workflow is already pending or running")
 	}
 
-	processor := nodeprocessor.NewWorkflowProcessor(workflow)
-	if err := processor.Run(ctx); err != nil {
-		log := &domain.WorkflowRunLog{
-			Workflow: workflow.Id,
-			Log:      processor.Log(ctx),
-			Succeed:  false,
-			Error:    err.Error(),
-		}
-		if err := s.repo.SaveRunLog(ctx, log); err != nil {
-			app.GetApp().Logger().Error("failed to save run log", "err", err)
-		}
-		return fmt.Errorf("failed to run workflow: %w", err)
+	run := &domain.WorkflowRun{
+		WorkflowId: workflow.Id,
+		Status:     domain.WorkflowRunStatusTypePending,
+		Trigger:    req.RunTrigger,
+		StartedAt:  time.Now(),
 	}
-
-	// 保存执行日志
-	logs := processor.Log(ctx)
-	runLogs := domain.RunLogs(logs)
-	runErr := runLogs.Error()
-	succeed := true
-	if runErr != "" {
-		succeed = false
-	}
-	log := &domain.WorkflowRunLog{
-		Workflow: workflow.Id,
-		Log:      processor.Log(ctx),
-		Error:    runErr,
-		Succeed:  succeed,
-	}
-	if err := s.repo.SaveRunLog(ctx, log); err != nil {
-		app.GetApp().Logger().Error("failed to save run log", "err", err)
+	if resp, err := s.workflowRunRepo.Save(ctx, run); err != nil {
 		return err
+	} else {
+		run = resp
 	}
+
+	s.dispatcher.Dispatch(&dispatcher.WorkflowWorkerData{
+		WorkflowId:      workflow.Id,
+		WorkflowContent: workflow.Content,
+		RunId:           run.Id,
+	})
 
 	return nil
+}
+
+func (s *WorkflowService) CancelRun(ctx context.Context, req *dtos.WorkflowCancelRunReq) error {
+	workflow, err := s.workflowRepo.GetById(ctx, req.WorkflowId)
+	if err != nil {
+		return err
+	}
+
+	workflowRun, err := s.workflowRunRepo.GetById(ctx, req.RunId)
+	if err != nil {
+		return err
+	} else if workflowRun.WorkflowId != workflow.Id {
+		return errors.New("workflow run not found")
+	} else if workflowRun.Status != domain.WorkflowRunStatusTypePending && workflowRun.Status != domain.WorkflowRunStatusTypeRunning {
+		return errors.New("workflow run is not pending or running")
+	}
+
+	s.dispatcher.Cancel(workflowRun.Id)
+
+	return nil
+}
+
+func (s *WorkflowService) Shutdown(ctx context.Context) {
+	s.dispatcher.Shutdown()
 }

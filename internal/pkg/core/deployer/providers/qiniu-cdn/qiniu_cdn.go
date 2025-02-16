@@ -9,8 +9,9 @@ import (
 	"github.com/qiniu/go-sdk/v7/auth"
 
 	"github.com/usual2970/certimate/internal/pkg/core/deployer"
+	"github.com/usual2970/certimate/internal/pkg/core/logger"
 	"github.com/usual2970/certimate/internal/pkg/core/uploader"
-	providerQiniu "github.com/usual2970/certimate/internal/pkg/core/uploader/providers/qiniu-sslcert"
+	uploaderp "github.com/usual2970/certimate/internal/pkg/core/uploader/providers/qiniu-sslcert"
 	qiniusdk "github.com/usual2970/certimate/internal/pkg/vendors/qiniu-sdk"
 )
 
@@ -25,7 +26,7 @@ type QiniuCDNDeployerConfig struct {
 
 type QiniuCDNDeployer struct {
 	config      *QiniuCDNDeployerConfig
-	logger      deployer.Logger
+	logger      logger.Logger
 	sdkClient   *qiniusdk.Client
 	sslUploader uploader.Uploader
 }
@@ -33,10 +34,10 @@ type QiniuCDNDeployer struct {
 var _ deployer.Deployer = (*QiniuCDNDeployer)(nil)
 
 func New(config *QiniuCDNDeployerConfig) (*QiniuCDNDeployer, error) {
-	return NewWithLogger(config, deployer.NewNilLogger())
+	return NewWithLogger(config, logger.NewNilLogger())
 }
 
-func NewWithLogger(config *QiniuCDNDeployerConfig, logger deployer.Logger) (*QiniuCDNDeployer, error) {
+func NewWithLogger(config *QiniuCDNDeployerConfig, logger logger.Logger) (*QiniuCDNDeployer, error) {
 	if config == nil {
 		return nil, errors.New("config is nil")
 	}
@@ -47,7 +48,7 @@ func NewWithLogger(config *QiniuCDNDeployerConfig, logger deployer.Logger) (*Qin
 
 	client := qiniusdk.NewClient(auth.New(config.AccessKey, config.SecretKey))
 
-	uploader, err := providerQiniu.New(&providerQiniu.QiniuSSLCertUploaderConfig{
+	uploader, err := uploaderp.New(&uploaderp.QiniuSSLCertUploaderConfig{
 		AccessKey: config.AccessKey,
 		SecretKey: config.SecretKey,
 	})
@@ -77,7 +78,7 @@ func (d *QiniuCDNDeployer) Deploy(ctx context.Context, certPem string, privkeyPe
 
 	// 获取域名信息
 	// REF: https://developer.qiniu.com/fusion/4246/the-domain-name
-	getDomainInfoResp, err := d.sdkClient.GetDomainInfo(domain)
+	getDomainInfoResp, err := d.sdkClient.GetDomainInfo(context.TODO(), domain)
 	if err != nil {
 		return nil, xerrors.Wrap(err, "failed to execute sdk request 'cdn.GetDomainInfo'")
 	}
@@ -87,14 +88,14 @@ func (d *QiniuCDNDeployer) Deploy(ctx context.Context, certPem string, privkeyPe
 	// 判断域名是否已启用 HTTPS。如果已启用，修改域名证书；否则，启用 HTTPS
 	// REF: https://developer.qiniu.com/fusion/4246/the-domain-name
 	if getDomainInfoResp.Https != nil && getDomainInfoResp.Https.CertID != "" {
-		modifyDomainHttpsConfResp, err := d.sdkClient.ModifyDomainHttpsConf(domain, upres.CertId, getDomainInfoResp.Https.ForceHttps, getDomainInfoResp.Https.Http2Enable)
+		modifyDomainHttpsConfResp, err := d.sdkClient.ModifyDomainHttpsConf(context.TODO(), domain, upres.CertId, getDomainInfoResp.Https.ForceHttps, getDomainInfoResp.Https.Http2Enable)
 		if err != nil {
 			return nil, xerrors.Wrap(err, "failed to execute sdk request 'cdn.ModifyDomainHttpsConf'")
 		}
 
 		d.logger.Logt("已修改域名证书", modifyDomainHttpsConfResp)
 	} else {
-		enableDomainHttpsResp, err := d.sdkClient.EnableDomainHttps(domain, upres.CertId, true, true)
+		enableDomainHttpsResp, err := d.sdkClient.EnableDomainHttps(context.TODO(), domain, upres.CertId, true, true)
 		if err != nil {
 			return nil, xerrors.Wrap(err, "failed to execute sdk request 'cdn.EnableDomainHttps'")
 		}

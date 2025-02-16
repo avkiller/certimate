@@ -1,12 +1,13 @@
 package domain
 
-const WorkflowOutputCertificate = "certificate"
+const CollectionNameWorkflowOutput = "workflow_output"
 
 type WorkflowOutput struct {
 	Meta
-	Workflow string           `json:"workflow"`
-	NodeId   string           `json:"nodeId"`
-	Node     *WorkflowNode    `json:"node"`
-	Output   []WorkflowNodeIo `json:"output"`
-	Succeed  bool             `json:"succeed"`
+	WorkflowId string           `json:"workflowId" db:"workflow"`
+	RunId      string           `json:"runId" db:"runId"`
+	NodeId     string           `json:"nodeId" db:"nodeId"`
+	Node       *WorkflowNode    `json:"node" db:"node"`
+	Outputs    []WorkflowNodeIO `json:"outputs" db:"outputs"`
+	Succeeded  bool             `json:"succeeded" db:"succeeded"`
 }

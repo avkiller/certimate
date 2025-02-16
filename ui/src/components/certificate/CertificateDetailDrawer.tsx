@@ -1,25 +1,48 @@
-import { useEffect, useState } from "react";
+import { useControllableValue } from "ahooks";
 import { Drawer } from "antd";
 
+import Show from "@/components/Show";
 import { type CertificateModel } from "@/domain/certificate";
+import { useTriggerElement } from "@/hooks";
 import CertificateDetail from "./CertificateDetail";
 
-type CertificateDetailDrawerProps = {
+export type CertificateDetailDrawerProps = {
   data?: CertificateModel;
+  loading?: boolean;
   open?: boolean;
-  onClose?: () => void;
+  trigger?: React.ReactNode;
+  onOpenChange?: (open: boolean) => void;
 };
 
-const CertificateDetailDrawer = ({ data, open, onClose }: CertificateDetailDrawerProps) => {
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    setLoading(data == null);
-  }, [data]);
+const CertificateDetailDrawer = ({ data, loading, trigger, ...props }: CertificateDetailDrawerProps) => {
+  const [open, setOpen] = useControllableValue<boolean>(props, {
+    valuePropName: "open",
+    defaultValuePropName: "defaultOpen",
+    trigger: "onOpenChange",
+  });
+
+  const triggerEl = useTriggerElement(trigger, { onClick: () => setOpen(true) });
 
   return (
-    <Drawer closable destroyOnClose open={open} loading={loading} placement="right" width={480} onClose={onClose}>
-      {data ? <CertificateDetail data={data} /> : <></>}
-    </Drawer>
+    <>
+      {triggerEl}
+
+      <Drawer
+        afterOpenChange={setOpen}
+        closable
+        destroyOnClose
+        open={open}
+        loading={loading}
+        placement="right"
+        title={`Certificate #${data?.id}`}
+        width={720}
+        onClose={() => setOpen(false)}
+      >
+        <Show when={!!data}>
+          <CertificateDetail data={data!} />
+        </Show>
+      </Drawer>
+    </>
   );
 };
 

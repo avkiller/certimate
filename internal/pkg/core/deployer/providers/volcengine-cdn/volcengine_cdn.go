@@ -10,22 +10,23 @@ import (
 	veCdn "github.com/volcengine/volc-sdk-golang/service/cdn"
 
 	"github.com/usual2970/certimate/internal/pkg/core/deployer"
+	"github.com/usual2970/certimate/internal/pkg/core/logger"
 	"github.com/usual2970/certimate/internal/pkg/core/uploader"
-	providerCdn "github.com/usual2970/certimate/internal/pkg/core/uploader/providers/volcengine-cdn"
+	uploaderp "github.com/usual2970/certimate/internal/pkg/core/uploader/providers/volcengine-cdn"
 )
 
 type VolcEngineCDNDeployerConfig struct {
-	// 火山引擎 AccessKey。
-	AccessKey string `json:"accessKey"`
-	// 火山引擎 SecretKey。
-	SecretKey string `json:"secretKey"`
+	// 火山引擎 AccessKeyId。
+	AccessKeyId string `json:"accessKeyId"`
+	// 火山引擎 AccessKeySecret。
+	AccessKeySecret string `json:"accessKeySecret"`
 	// 加速域名（支持泛域名）。
 	Domain string `json:"domain"`
 }
 
 type VolcEngineCDNDeployer struct {
 	config      *VolcEngineCDNDeployerConfig
-	logger      deployer.Logger
+	logger      logger.Logger
 	sdkClient   *veCdn.CDN
 	sslUploader uploader.Uploader
 }
@@ -33,10 +34,10 @@ type VolcEngineCDNDeployer struct {
 var _ deployer.Deployer = (*VolcEngineCDNDeployer)(nil)
 
 func New(config *VolcEngineCDNDeployerConfig) (*VolcEngineCDNDeployer, error) {
-	return NewWithLogger(config, deployer.NewNilLogger())
+	return NewWithLogger(config, logger.NewNilLogger())
 }
 
-func NewWithLogger(config *VolcEngineCDNDeployerConfig, logger deployer.Logger) (*VolcEngineCDNDeployer, error) {
+func NewWithLogger(config *VolcEngineCDNDeployerConfig, logger logger.Logger) (*VolcEngineCDNDeployer, error) {
 	if config == nil {
 		return nil, errors.New("config is nil")
 	}
@@ -46,12 +47,12 @@ func NewWithLogger(config *VolcEngineCDNDeployerConfig, logger deployer.Logger) 
 	}
 
 	client := veCdn.NewInstance()
-	client.Client.SetAccessKey(config.AccessKey)
-	client.Client.SetSecretKey(config.SecretKey)
+	client.Client.SetAccessKey(config.AccessKeyId)
+	client.Client.SetSecretKey(config.AccessKeySecret)
 
-	uploader, err := providerCdn.New(&providerCdn.VolcEngineCDNUploaderConfig{
-		AccessKeyId:     config.AccessKey,
-		AccessKeySecret: config.SecretKey,
+	uploader, err := uploaderp.New(&uploaderp.VolcEngineCDNUploaderConfig{
+		AccessKeyId:     config.AccessKeyId,
+		AccessKeySecret: config.AccessKeySecret,
 	})
 	if err != nil {
 		return nil, xerrors.Wrap(err, "failed to create ssl uploader")
@@ -102,7 +103,7 @@ func (d *VolcEngineCDNDeployer) Deploy(ctx context.Context, certPem string, priv
 			if len(describeCertConfigResp.Result.SpecifiedCertConfig) > 0 {
 				// 所有可关联的域名都配置了该证书，跳过部署
 			} else {
-				return nil, xerrors.New("domain not found")
+				return nil, errors.New("domain not found")
 			}
 		}
 	} else {

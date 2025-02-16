@@ -10,10 +10,12 @@ import (
 
 	xerrors "github.com/pkg/errors"
 	"github.com/pkg/sftp"
+	"github.com/povsister/scp"
 	"golang.org/x/crypto/ssh"
 
 	"github.com/usual2970/certimate/internal/pkg/core/deployer"
-	"github.com/usual2970/certimate/internal/pkg/utils/x509"
+	"github.com/usual2970/certimate/internal/pkg/core/logger"
+	"github.com/usual2970/certimate/internal/pkg/utils/certs"
 )
 
 type SshDeployerConfig struct {
@@ -31,6 +33,8 @@ type SshDeployerConfig struct {
 	SshKey string `json:"sshKey,omitempty"`
 	// SSH 登录私钥口令。
 	SshKeyPassphrase string `json:"sshKeyPassphrase,omitempty"`
+	// 是否回退使用 SCP。
+	UseSCP bool `json:"useSCP,omitempty"`
 	// 前置命令。
 	PreCommand string `json:"preCommand,omitempty"`
 	// 后置命令。
@@ -57,16 +61,16 @@ type SshDeployerConfig struct {
 
 type SshDeployer struct {
 	config *SshDeployerConfig
-	logger deployer.Logger
+	logger logger.Logger
 }
 
 var _ deployer.Deployer = (*SshDeployer)(nil)
 
 func New(config *SshDeployerConfig) (*SshDeployer, error) {
-	return NewWithLogger(config, deployer.NewNilLogger())
+	return NewWithLogger(config, logger.NewNilLogger())
 }
 
-func NewWithLogger(config *SshDeployerConfig, logger deployer.Logger) (*SshDeployer, error) {
+func NewWithLogger(config *SshDeployerConfig, logger logger.Logger) (*SshDeployer, error) {
 	if config == nil {
 		return nil, errors.New("config is nil")
 	}
@@ -102,7 +106,7 @@ func (d *SshDeployer) Deploy(ctx context.Context, certPem string, privkeyPem str
 	if d.config.PreCommand != "" {
 		stdout, stderr, err := execSshCommand(client, d.config.PreCommand)
 		if err != nil {
-			return nil, xerrors.Wrapf(err, "failed to run pre-command: stdout: %s, stderr: %s", stdout, stderr)
+			return nil, xerrors.Wrapf(err, "failed to execute pre-command: stdout: %s, stderr: %s", stdout, stderr)
 		}
 
 		d.logger.Logt("SSH pre-command executed", stdout)
@@ -111,41 +115,41 @@ func (d *SshDeployer) Deploy(ctx context.Context, certPem string, privkeyPem str
 	// 上传证书和私钥文件
 	switch d.config.OutputFormat {
 	case OUTPUT_FORMAT_PEM:
-		if err := writeSftpFileString(client, d.config.OutputCertPath, certPem); err != nil {
+		if err := writeFileString(client, d.config.UseSCP, d.config.OutputCertPath, certPem); err != nil {
 			return nil, xerrors.Wrap(err, "failed to upload certificate file")
 		}
 
 		d.logger.Logt("certificate file uploaded")
 
-		if err := writeSftpFileString(client, d.config.OutputKeyPath, privkeyPem); err != nil {
+		if err := writeFileString(client, d.config.UseSCP, d.config.OutputKeyPath, privkeyPem); err != nil {
 			return nil, xerrors.Wrap(err, "failed to upload private key file")
 		}
 
 		d.logger.Logt("private key file uploaded")
 
 	case OUTPUT_FORMAT_PFX:
-		pfxData, err := x509.TransformCertificateFromPEMToPFX(certPem, privkeyPem, d.config.PfxPassword)
+		pfxData, err := certs.TransformCertificateFromPEMToPFX(certPem, privkeyPem, d.config.PfxPassword)
 		if err != nil {
 			return nil, xerrors.Wrap(err, "failed to transform certificate to PFX")
 		}
 
 		d.logger.Logt("certificate transformed to PFX")
 
-		if err := writeSftpFile(client, d.config.OutputCertPath, pfxData); err != nil {
+		if err := writeFile(client, d.config.UseSCP, d.config.OutputCertPath, pfxData); err != nil {
 			return nil, xerrors.Wrap(err, "failed to upload certificate file")
 		}
 
 		d.logger.Logt("certificate file uploaded")
 
 	case OUTPUT_FORMAT_JKS:
-		jksData, err := x509.TransformCertificateFromPEMToJKS(certPem, privkeyPem, d.config.JksAlias, d.config.JksKeypass, d.config.JksStorepass)
+		jksData, err := certs.TransformCertificateFromPEMToJKS(certPem, privkeyPem, d.config.JksAlias, d.config.JksKeypass, d.config.JksStorepass)
 		if err != nil {
 			return nil, xerrors.Wrap(err, "failed to transform certificate to JKS")
 		}
 
 		d.logger.Logt("certificate transformed to JKS")
 
-		if err := writeSftpFile(client, d.config.OutputCertPath, jksData); err != nil {
+		if err := writeFile(client, d.config.UseSCP, d.config.OutputCertPath, jksData); err != nil {
 			return nil, xerrors.Wrap(err, "failed to upload certificate file")
 		}
 
@@ -159,7 +163,7 @@ func (d *SshDeployer) Deploy(ctx context.Context, certPem string, privkeyPem str
 	if d.config.PostCommand != "" {
 		stdout, stderr, err := execSshCommand(client, d.config.PostCommand)
 		if err != nil {
-			return nil, xerrors.Wrapf(err, "failed to run command, stdout: %s, stderr: %s", stdout, stderr)
+			return nil, xerrors.Wrapf(err, "failed to execute post-command, stdout: %s, stderr: %s", stdout, stderr)
 		}
 
 		d.logger.Logt("SSH post-command executed", stdout)
@@ -208,25 +212,61 @@ func execSshCommand(sshCli *ssh.Client, command string) (string, string, error) 
 	if err != nil {
 		return "", "", err
 	}
-
 	defer session.Close()
-	var stdoutBuf bytes.Buffer
-	session.Stdout = &stdoutBuf
-	var stderrBuf bytes.Buffer
-	session.Stderr = &stderrBuf
+
+	stdoutBuf := bytes.NewBuffer(nil)
+	session.Stdout = stdoutBuf
+	stderrBuf := bytes.NewBuffer(nil)
+	session.Stderr = stderrBuf
 	err = session.Run(command)
 	if err != nil {
-		return "", "", err
+		return stdoutBuf.String(), stderrBuf.String(), xerrors.Wrap(err, "failed to execute ssh command")
 	}
 
 	return stdoutBuf.String(), stderrBuf.String(), nil
 }
 
-func writeSftpFileString(sshCli *ssh.Client, path string, content string) error {
-	return writeSftpFile(sshCli, path, []byte(content))
+func writeFileString(sshCli *ssh.Client, useSCP bool, path string, content string) error {
+	if useSCP {
+		return writeFileStringWithSCP(sshCli, path, content)
+	}
+
+	return writeFileStringWithSFTP(sshCli, path, content)
 }
 
-func writeSftpFile(sshCli *ssh.Client, path string, data []byte) error {
+func writeFile(sshCli *ssh.Client, useSCP bool, path string, data []byte) error {
+	if useSCP {
+		return writeFileWithSCP(sshCli, path, data)
+	}
+
+	return writeFileWithSFTP(sshCli, path, data)
+}
+
+func writeFileStringWithSCP(sshCli *ssh.Client, path string, content string) error {
+	return writeFileWithSCP(sshCli, path, []byte(content))
+}
+
+func writeFileWithSCP(sshCli *ssh.Client, path string, data []byte) error {
+	scpCli, err := scp.NewClientFromExistingSSH(sshCli, &scp.ClientOption{})
+	if err != nil {
+		return xerrors.Wrap(err, "failed to create scp client")
+	}
+	defer scpCli.Close()
+
+	reader := bytes.NewReader(data)
+	err = scpCli.CopyToRemote(reader, path, &scp.FileTransferOption{})
+	if err != nil {
+		return xerrors.Wrap(err, "failed to write to remote file")
+	}
+
+	return nil
+}
+
+func writeFileStringWithSFTP(sshCli *ssh.Client, path string, content string) error {
+	return writeFileWithSFTP(sshCli, path, []byte(content))
+}
+
+func writeFileWithSFTP(sshCli *ssh.Client, path string, data []byte) error {
 	sftpCli, err := sftp.NewClient(sshCli)
 	if err != nil {
 		return xerrors.Wrap(err, "failed to create sftp client")

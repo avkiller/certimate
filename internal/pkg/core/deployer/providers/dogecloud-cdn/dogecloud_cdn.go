@@ -8,8 +8,9 @@ import (
 	xerrors "github.com/pkg/errors"
 
 	"github.com/usual2970/certimate/internal/pkg/core/deployer"
+	"github.com/usual2970/certimate/internal/pkg/core/logger"
 	"github.com/usual2970/certimate/internal/pkg/core/uploader"
-	providerDoge "github.com/usual2970/certimate/internal/pkg/core/uploader/providers/dogecloud"
+	uploaderp "github.com/usual2970/certimate/internal/pkg/core/uploader/providers/dogecloud"
 	dogesdk "github.com/usual2970/certimate/internal/pkg/vendors/dogecloud-sdk"
 )
 
@@ -24,7 +25,7 @@ type DogeCloudCDNDeployerConfig struct {
 
 type DogeCloudCDNDeployer struct {
 	config      *DogeCloudCDNDeployerConfig
-	logger      deployer.Logger
+	logger      logger.Logger
 	sdkClient   *dogesdk.Client
 	sslUploader uploader.Uploader
 }
@@ -32,10 +33,10 @@ type DogeCloudCDNDeployer struct {
 var _ deployer.Deployer = (*DogeCloudCDNDeployer)(nil)
 
 func New(config *DogeCloudCDNDeployerConfig) (*DogeCloudCDNDeployer, error) {
-	return NewWithLogger(config, deployer.NewNilLogger())
+	return NewWithLogger(config, logger.NewNilLogger())
 }
 
-func NewWithLogger(config *DogeCloudCDNDeployerConfig, logger deployer.Logger) (*DogeCloudCDNDeployer, error) {
+func NewWithLogger(config *DogeCloudCDNDeployerConfig, logger logger.Logger) (*DogeCloudCDNDeployer, error) {
 	if config == nil {
 		return nil, errors.New("config is nil")
 	}
@@ -46,7 +47,7 @@ func NewWithLogger(config *DogeCloudCDNDeployerConfig, logger deployer.Logger) (
 
 	client := dogesdk.NewClient(config.AccessKey, config.SecretKey)
 
-	uploader, err := providerDoge.New(&providerDoge.DogeCloudUploaderConfig{
+	uploader, err := uploaderp.New(&uploaderp.DogeCloudUploaderConfig{
 		AccessKey: config.AccessKey,
 		SecretKey: config.SecretKey,
 	})

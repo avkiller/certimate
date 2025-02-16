@@ -1,39 +1,40 @@
 package webhook
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
-	"net/http"
 	"strings"
+	"time"
 
+	"github.com/go-resty/resty/v2"
 	xerrors "github.com/pkg/errors"
 
 	"github.com/usual2970/certimate/internal/pkg/core/deployer"
-	"github.com/usual2970/certimate/internal/pkg/utils/x509"
-	xhttp "github.com/usual2970/certimate/internal/utils/http"
+	"github.com/usual2970/certimate/internal/pkg/core/logger"
+	"github.com/usual2970/certimate/internal/pkg/utils/certs"
 )
 
 type WebhookDeployerConfig struct {
 	// Webhook URL。
-	Url string `json:"url"`
-	// Webhook 变量字典。
-	Variables map[string]string `json:"variables,omitempty"`
+	WebhookUrl string `json:"webhookUrl"`
+	// Webhook 回调数据（JSON 格式）。
+	WebhookData string `json:"webhookData,omitempty"`
 }
 
 type WebhookDeployer struct {
-	config *WebhookDeployerConfig
-	logger deployer.Logger
+	config     *WebhookDeployerConfig
+	logger     logger.Logger
+	httpClient *resty.Client
 }
 
 var _ deployer.Deployer = (*WebhookDeployer)(nil)
 
 func New(config *WebhookDeployerConfig) (*WebhookDeployer, error) {
-	return NewWithLogger(config, deployer.NewNilLogger())
+	return NewWithLogger(config, logger.NewNilLogger())
 }
 
-func NewWithLogger(config *WebhookDeployerConfig, logger deployer.Logger) (*WebhookDeployer, error) {
+func NewWithLogger(config *WebhookDeployerConfig, logger logger.Logger) (*WebhookDeployer, error) {
 	if config == nil {
 		return nil, errors.New("config is nil")
 	}
@@ -42,44 +43,64 @@ func NewWithLogger(config *WebhookDeployerConfig, logger deployer.Logger) (*Webh
 		return nil, errors.New("logger is nil")
 	}
 
+	client := resty.New().
+		SetTimeout(30 * time.Second).
+		SetRetryCount(3).
+		SetRetryWaitTime(5 * time.Second)
+
 	return &WebhookDeployer{
-		config: config,
-		logger: logger,
+		config:     config,
+		logger:     logger,
+		httpClient: client,
 	}, nil
 }
 
-type webhookData struct {
-	SubjectAltNames string            `json:"subjectAltNames"`
-	Certificate     string            `json:"certificate"`
-	PrivateKey      string            `json:"privateKey"`
-	Variables       map[string]string `json:"variables"`
-}
-
 func (d *WebhookDeployer) Deploy(ctx context.Context, certPem string, privkeyPem string) (*deployer.DeployResult, error) {
-	certX509, err := x509.ParseCertificateFromPEM(certPem)
+	certX509, err := certs.ParseCertificateFromPEM(certPem)
 	if err != nil {
 		return nil, xerrors.Wrap(err, "failed to parse x509")
 	}
 
-	data := &webhookData{
-		SubjectAltNames: strings.Join(certX509.DNSNames, ","),
-		Certificate:     certPem,
-		PrivateKey:      privkeyPem,
-		Variables:       d.config.Variables,
+	var webhookData interface{}
+	err = json.Unmarshal([]byte(d.config.WebhookData), &webhookData)
+	if err != nil {
+		return nil, xerrors.Wrap(err, "failed to unmarshall webhook data")
 	}
-	body, _ := json.Marshal(data)
-	resp, err := xhttp.Req(d.config.Url, http.MethodPost, bytes.NewReader(body), map[string]string{
-		"Content-Type": "application/json",
-	})
+
+	replaceJsonValueRecursively(webhookData, "${DOMAIN}", certX509.Subject.CommonName)
+	replaceJsonValueRecursively(webhookData, "${DOMAINS}", strings.Join(certX509.DNSNames, ";"))
+	replaceJsonValueRecursively(webhookData, "${SUBJECT_ALT_NAMES}", strings.Join(certX509.DNSNames, ";"))
+	replaceJsonValueRecursively(webhookData, "${CERTIFICATE}", certPem)
+	replaceJsonValueRecursively(webhookData, "${PRIVATE_KEY}", privkeyPem)
+
+	resp, err := d.httpClient.R().
+		SetContext(ctx).
+		SetHeader("Content-Type", "application/json").
+		SetBody(webhookData).
+		Post(d.config.WebhookUrl)
 	if err != nil {
 		return nil, xerrors.Wrap(err, "failed to send webhook request")
+	} else if resp.StatusCode() != 200 {
+		return nil, xerrors.Errorf("unexpected webhook response status code: %d", resp.StatusCode())
 	}
 
-	d.logger.Logt("Webhook Response", string(resp))
+	d.logger.Logt("Webhook request sent", resp.String())
 
-	return &deployer.DeployResult{
-		DeploymentData: map[string]any{
-			"responseText": string(resp),
-		},
-	}, nil
+	return &deployer.DeployResult{}, nil
+}
+
+func replaceJsonValueRecursively(data interface{}, oldStr, newStr string) interface{} {
+	switch v := data.(type) {
+	case map[string]interface{}:
+		for k, val := range v {
+			v[k] = replaceJsonValueRecursively(val, oldStr, newStr)
+		}
+	case []interface{}:
+		for i, val := range v {
+			v[i] = replaceJsonValueRecursively(val, oldStr, newStr)
+		}
+	case string:
+		return strings.ReplaceAll(v, oldStr, newStr)
+	}
+	return data
 }

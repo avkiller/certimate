@@ -10,8 +10,9 @@ import (
 	xerrors "github.com/pkg/errors"
 
 	"github.com/usual2970/certimate/internal/pkg/core/deployer"
+	"github.com/usual2970/certimate/internal/pkg/core/logger"
 	"github.com/usual2970/certimate/internal/pkg/core/uploader"
-	providerCdn "github.com/usual2970/certimate/internal/pkg/core/uploader/providers/byteplus-cdn"
+	uploaderp "github.com/usual2970/certimate/internal/pkg/core/uploader/providers/byteplus-cdn"
 )
 
 type BytePlusCDNDeployerConfig struct {
@@ -25,7 +26,7 @@ type BytePlusCDNDeployerConfig struct {
 
 type BytePlusCDNDeployer struct {
 	config      *BytePlusCDNDeployerConfig
-	logger      deployer.Logger
+	logger      logger.Logger
 	sdkClient   *bpCdn.CDN
 	sslUploader uploader.Uploader
 }
@@ -33,10 +34,10 @@ type BytePlusCDNDeployer struct {
 var _ deployer.Deployer = (*BytePlusCDNDeployer)(nil)
 
 func New(config *BytePlusCDNDeployerConfig) (*BytePlusCDNDeployer, error) {
-	return NewWithLogger(config, deployer.NewNilLogger())
+	return NewWithLogger(config, logger.NewNilLogger())
 }
 
-func NewWithLogger(config *BytePlusCDNDeployerConfig, logger deployer.Logger) (*BytePlusCDNDeployer, error) {
+func NewWithLogger(config *BytePlusCDNDeployerConfig, logger logger.Logger) (*BytePlusCDNDeployer, error) {
 	if config == nil {
 		return nil, errors.New("config is nil")
 	}
@@ -49,7 +50,7 @@ func NewWithLogger(config *BytePlusCDNDeployerConfig, logger deployer.Logger) (*
 	client.Client.SetAccessKey(config.AccessKey)
 	client.Client.SetSecretKey(config.SecretKey)
 
-	uploader, err := providerCdn.New(&providerCdn.ByteplusCDNUploaderConfig{
+	uploader, err := uploaderp.New(&uploaderp.ByteplusCDNUploaderConfig{
 		AccessKey: config.AccessKey,
 		SecretKey: config.SecretKey,
 	})
@@ -102,7 +103,7 @@ func (d *BytePlusCDNDeployer) Deploy(ctx context.Context, certPem string, privke
 			if len(describeCertConfigResp.Result.SpecifiedCertConfig) > 0 {
 				// 所有可关联的域名都配置了该证书，跳过部署
 			} else {
-				return nil, xerrors.New("domain not found")
+				return nil, errors.New("domain not found")
 			}
 		}
 	} else {

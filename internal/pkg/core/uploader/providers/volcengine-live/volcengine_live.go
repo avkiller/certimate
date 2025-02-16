@@ -9,10 +9,10 @@ import (
 
 	xerrors "github.com/pkg/errors"
 	veLive "github.com/volcengine/volc-sdk-golang/service/live/v20230101"
+	ve "github.com/volcengine/volcengine-go-sdk/volcengine"
 
 	"github.com/usual2970/certimate/internal/pkg/core/uploader"
-	"github.com/usual2970/certimate/internal/pkg/utils/cast"
-	"github.com/usual2970/certimate/internal/pkg/utils/x509"
+	"github.com/usual2970/certimate/internal/pkg/utils/certs"
 )
 
 type VolcEngineLiveUploaderConfig struct {
@@ -46,7 +46,7 @@ func New(config *VolcEngineLiveUploaderConfig) (*VolcEngineLiveUploader, error) 
 
 func (u *VolcEngineLiveUploader) Upload(ctx context.Context, certPem string, privkeyPem string) (res *uploader.UploadResult, err error) {
 	// 解析证书内容
-	certX509, err := x509.ParseCertificateFromPEM(certPem)
+	certX509, err := certs.ParseCertificateFromPEM(certPem)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func (u *VolcEngineLiveUploader) Upload(ctx context.Context, certPem string, pri
 			// 查询证书详细信息
 			// REF: https://www.volcengine.com/docs/6469/1186278#%E6%9F%A5%E7%9C%8B%E8%AF%81%E4%B9%A6%E8%AF%A6%E6%83%85
 			describeCertDetailSecretReq := &veLive.DescribeCertDetailSecretV2Body{
-				ChainID: cast.StringPtr(certDetail.ChainID),
+				ChainID: ve.String(certDetail.ChainID),
 			}
 			describeCertDetailSecretResp, err := u.sdkClient.DescribeCertDetailSecretV2(ctx, describeCertDetailSecretReq)
 			if err != nil {
@@ -75,12 +75,12 @@ func (u *VolcEngineLiveUploader) Upload(ctx context.Context, certPem string, pri
 			if certificate == certPem {
 				isSameCert = true
 			} else {
-				oldCertX509, err := x509.ParseCertificateFromPEM(certificate)
+				oldCertX509, err := certs.ParseCertificateFromPEM(certificate)
 				if err != nil {
 					continue
 				}
 
-				isSameCert = x509.EqualCertificate(certX509, oldCertX509)
+				isSameCert = certs.EqualCertificate(certX509, oldCertX509)
 			}
 
 			// 如果已存在相同证书，直接返回已有的证书信息
@@ -100,9 +100,9 @@ func (u *VolcEngineLiveUploader) Upload(ctx context.Context, certPem string, pri
 	// 上传新证书
 	// REF: https://www.volcengine.com/docs/6469/1186278#%E6%B7%BB%E5%8A%A0%E8%AF%81%E4%B9%A6
 	createCertReq := &veLive.CreateCertBody{
-		CertName:    &certName,
+		CertName:    ve.String(certName),
 		UseWay:      "https",
-		ProjectName: cast.StringPtr("default"),
+		ProjectName: ve.String("default"),
 		Rsa: veLive.CreateCertBodyRsa{
 			Prikey: privkeyPem,
 			Pubkey: certPem,

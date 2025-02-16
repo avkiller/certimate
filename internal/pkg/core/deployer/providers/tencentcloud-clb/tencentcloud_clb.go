@@ -12,8 +12,9 @@ import (
 	tcSsl "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/ssl/v20191205"
 
 	"github.com/usual2970/certimate/internal/pkg/core/deployer"
+	"github.com/usual2970/certimate/internal/pkg/core/logger"
 	"github.com/usual2970/certimate/internal/pkg/core/uploader"
-	providerSsl "github.com/usual2970/certimate/internal/pkg/core/uploader/providers/tencentcloud-ssl"
+	uploaderp "github.com/usual2970/certimate/internal/pkg/core/uploader/providers/tencentcloud-ssl"
 )
 
 type TencentCloudCLBDeployerConfig struct {
@@ -38,7 +39,7 @@ type TencentCloudCLBDeployerConfig struct {
 
 type TencentCloudCLBDeployer struct {
 	config      *TencentCloudCLBDeployerConfig
-	logger      deployer.Logger
+	logger      logger.Logger
 	sdkClients  *wSdkClients
 	sslUploader uploader.Uploader
 }
@@ -51,10 +52,10 @@ type wSdkClients struct {
 }
 
 func New(config *TencentCloudCLBDeployerConfig) (*TencentCloudCLBDeployer, error) {
-	return NewWithLogger(config, deployer.NewNilLogger())
+	return NewWithLogger(config, logger.NewNilLogger())
 }
 
-func NewWithLogger(config *TencentCloudCLBDeployerConfig, logger deployer.Logger) (*TencentCloudCLBDeployer, error) {
+func NewWithLogger(config *TencentCloudCLBDeployerConfig, logger logger.Logger) (*TencentCloudCLBDeployer, error) {
 	if config == nil {
 		return nil, errors.New("config is nil")
 	}
@@ -68,7 +69,7 @@ func NewWithLogger(config *TencentCloudCLBDeployerConfig, logger deployer.Logger
 		return nil, xerrors.Wrap(err, "failed to create sdk clients")
 	}
 
-	uploader, err := providerSsl.New(&providerSsl.TencentCloudSSLUploaderConfig{
+	uploader, err := uploaderp.New(&uploaderp.TencentCloudSSLUploaderConfig{
 		SecretId:  config.SecretId,
 		SecretKey: config.SecretKey,
 	})
@@ -95,8 +96,8 @@ func (d *TencentCloudCLBDeployer) Deploy(ctx context.Context, certPem string, pr
 
 	// 根据部署资源类型决定部署方式
 	switch d.config.ResourceType {
-	case DEPLOY_RESOURCE_USE_SSLDEPLOY:
-		if err := d.deployToInstanceUseSsl(ctx, upres.CertId); err != nil {
+	case DEPLOY_RESOURCE_VIA_SSLDEPLOY:
+		if err := d.deployViaSslService(ctx, upres.CertId); err != nil {
 			return nil, err
 		}
 
@@ -122,7 +123,7 @@ func (d *TencentCloudCLBDeployer) Deploy(ctx context.Context, certPem string, pr
 	return &deployer.DeployResult{}, nil
 }
 
-func (d *TencentCloudCLBDeployer) deployToInstanceUseSsl(ctx context.Context, cloudCertId string) error {
+func (d *TencentCloudCLBDeployer) deployViaSslService(ctx context.Context, cloudCertId string) error {
 	if d.config.LoadbalancerId == "" {
 		return errors.New("config `loadbalancerId` is required")
 	}
@@ -137,10 +138,10 @@ func (d *TencentCloudCLBDeployer) deployToInstanceUseSsl(ctx context.Context, cl
 	deployCertificateInstanceReq.ResourceType = common.StringPtr("clb")
 	deployCertificateInstanceReq.Status = common.Int64Ptr(1)
 	if d.config.Domain == "" {
-		// 未开启 SNI，只需指定到监听器
+		// 未指定 SNI，只需部署到监听器
 		deployCertificateInstanceReq.InstanceIdList = common.StringPtrs([]string{fmt.Sprintf("%s|%s", d.config.LoadbalancerId, d.config.ListenerId)})
 	} else {
-		// 开启 SNI，需指定到域名（支持泛域名）
+		// 指定 SNI，需部署到域名（支持泛域名）
 		deployCertificateInstanceReq.InstanceIdList = common.StringPtrs([]string{fmt.Sprintf("%s|%s|%s", d.config.LoadbalancerId, d.config.ListenerId, d.config.Domain)})
 	}
 	deployCertificateInstanceResp, err := d.sdkClients.ssl.DeployCertificateInstance(deployCertificateInstanceReq)
@@ -158,10 +159,9 @@ func (d *TencentCloudCLBDeployer) deployToLoadbalancer(ctx context.Context, clou
 		return errors.New("config `loadbalancerId` is required")
 	}
 
-	listenerIds := make([]string, 0)
-
 	// 查询监听器列表
 	// REF: https://cloud.tencent.com/document/api/214/30686
+	listenerIds := make([]string, 0)
 	describeListenersReq := tcClb.NewDescribeListenersRequest()
 	describeListenersReq.LoadBalancerId = common.StringPtr(d.config.LoadbalancerId)
 	describeListenersResp, err := d.sdkClients.clb.DescribeListeners(describeListenersReq)
@@ -181,8 +181,10 @@ func (d *TencentCloudCLBDeployer) deployToLoadbalancer(ctx context.Context, clou
 
 	d.logger.Logt("已查询到负载均衡器下的监听器", listenerIds)
 
-	// 批量更新监听器证书
-	if len(listenerIds) > 0 {
+	// 遍历更新监听器证书
+	if len(listenerIds) == 0 {
+		return errors.New("listener not found")
+	} else {
 		var errs []error
 
 		for _, listenerId := range listenerIds {

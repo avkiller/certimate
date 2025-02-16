@@ -3,21 +3,29 @@
 
   "certificate.nodata": "No certificates. Please create a workflow to generate certificates! 😀",
 
-  "certificate.action.view": "View Certificate",
-  "certificate.action.download": "Download Certificate",
+  "certificate.search.placeholder": "Search by certificate name or serial number ...",
 
-  "certificate.props.domain": "Name",
-  "certificate.props.expiry": "Expiry",
-  "certificate.props.expiry.left_days": "{{left}} / {{total}} days left",
-  "certificate.props.expiry.expired": "Expired",
-  "certificate.props.expiry.expiration": "Expire on {{date}}",
-  "certificate.props.expiry.filter.expire_soon": "Expire Soon",
-  "certificate.props.expiry.filter.expired": "Expired",
-  "certificate.props.workflow": "Workflow",
+  "certificate.action.view": "View certificate",
+  "certificate.action.delete": "Delete certificate",
+  "certificate.action.delete.confirm": "Are you sure to delete this certificate?",
+  "certificate.action.download": "Download certificate",
+
+  "certificate.props.subject_alt_names": "Name",
+  "certificate.props.validity": "Expiry",
+  "certificate.props.validity.left_days": "{{left}} / {{total}} days left",
+  "certificate.props.validity.expired": "Expired",
+  "certificate.props.validity.expiration": "Expire on {{date}}",
+  "certificate.props.validity.filter.expire_soon": "Expire soon",
+  "certificate.props.validity.filter.expired": "Expired",
+  "certificate.props.brand": "Brand",
   "certificate.props.source": "Source",
   "certificate.props.source.workflow": "Workflow",
-  "certificate.props.certificate_chain": "Certificate Chain",
-  "certificate.props.private_key": "Private Key",
-  "certificate.props.created_at": "Created At",
-  "certificate.props.updated_at": "Updated At"
+  "certificate.props.source.upload": "Upload",
+  "certificate.props.certificate": "Certificate chain",
+  "certificate.props.private_key": "Private key",
+  "certificate.props.serial_number": "Serial number",
+  "certificate.props.key_algorithm": "Key algorithm",
+  "certificate.props.issuer": "Issuer",
+  "certificate.props.created_at": "Created at",
+  "certificate.props.updated_at": "Updated at"
 }

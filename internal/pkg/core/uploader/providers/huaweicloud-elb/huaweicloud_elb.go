@@ -17,8 +17,8 @@ import (
 	xerrors "github.com/pkg/errors"
 
 	"github.com/usual2970/certimate/internal/pkg/core/uploader"
-	"github.com/usual2970/certimate/internal/pkg/utils/cast"
-	"github.com/usual2970/certimate/internal/pkg/utils/x509"
+	"github.com/usual2970/certimate/internal/pkg/utils/certs"
+	hwsdk "github.com/usual2970/certimate/internal/pkg/vendors/huaweicloud-sdk"
 )
 
 type HuaweiCloudELBUploaderConfig struct {
@@ -26,7 +26,7 @@ type HuaweiCloudELBUploaderConfig struct {
 	AccessKeyId string `json:"accessKeyId"`
 	// 华为云 SecretAccessKey。
 	SecretAccessKey string `json:"secretAccessKey"`
-	// 华为云地域。
+	// 华为云区域。
 	Region string `json:"region"`
 }
 
@@ -48,7 +48,7 @@ func New(config *HuaweiCloudELBUploaderConfig) (*HuaweiCloudELBUploader, error) 
 		config.Region,
 	)
 	if err != nil {
-		return nil, xerrors.Wrap(err, "failed to create sdk client: %w")
+		return nil, xerrors.Wrap(err, "failed to create sdk client")
 	}
 
 	return &HuaweiCloudELBUploader{
@@ -59,19 +59,18 @@ func New(config *HuaweiCloudELBUploaderConfig) (*HuaweiCloudELBUploader, error) 
 
 func (u *HuaweiCloudELBUploader) Upload(ctx context.Context, certPem string, privkeyPem string) (res *uploader.UploadResult, err error) {
 	// 解析证书内容
-	certX509, err := x509.ParseCertificateFromPEM(certPem)
+	certX509, err := certs.ParseCertificateFromPEM(certPem)
 	if err != nil {
 		return nil, err
 	}
 
 	// 遍历查询已有证书，避免重复上传
 	// REF: https://support.huaweicloud.com/api-elb/ListCertificates.html
-	listCertificatesPage := 1
 	listCertificatesLimit := int32(2000)
 	var listCertificatesMarker *string = nil
 	for {
 		listCertificatesReq := &hcElbModel.ListCertificatesRequest{
-			Limit:  cast.Int32Ptr(listCertificatesLimit),
+			Limit:  hwsdk.Int32Ptr(listCertificatesLimit),
 			Marker: listCertificatesMarker,
 			Type:   &[]string{"server"},
 		}
@@ -86,12 +85,12 @@ func (u *HuaweiCloudELBUploader) Upload(ctx context.Context, certPem string, pri
 				if certDetail.Certificate == certPem {
 					isSameCert = true
 				} else {
-					oldCertX509, err := x509.ParseCertificateFromPEM(certDetail.Certificate)
+					oldCertX509, err := certs.ParseCertificateFromPEM(certDetail.Certificate)
 					if err != nil {
 						continue
 					}
 
-					isSameCert = x509.EqualCertificate(certX509, oldCertX509)
+					isSameCert = certs.EqualCertificate(certX509, oldCertX509)
 				}
 
 				// 如果已存在相同证书，直接返回已有的证书信息
@@ -108,10 +107,6 @@ func (u *HuaweiCloudELBUploader) Upload(ctx context.Context, certPem string, pri
 			break
 		} else {
 			listCertificatesMarker = listCertificatesResp.PageInfo.NextMarker
-			listCertificatesPage++
-			if listCertificatesPage >= 9 { // 避免死循环
-				break
-			}
 		}
 	}
 
@@ -131,10 +126,10 @@ func (u *HuaweiCloudELBUploader) Upload(ctx context.Context, certPem string, pri
 	createCertificateReq := &hcElbModel.CreateCertificateRequest{
 		Body: &hcElbModel.CreateCertificateRequestBody{
 			Certificate: &hcElbModel.CreateCertificateOption{
-				ProjectId:   cast.StringPtr(projectId),
-				Name:        cast.StringPtr(certName),
-				Certificate: cast.StringPtr(certPem),
-				PrivateKey:  cast.StringPtr(privkeyPem),
+				ProjectId:   hwsdk.StringPtr(projectId),
+				Name:        hwsdk.StringPtr(certName),
+				Certificate: hwsdk.StringPtr(certPem),
+				PrivateKey:  hwsdk.StringPtr(privkeyPem),
 			},
 		},
 	}

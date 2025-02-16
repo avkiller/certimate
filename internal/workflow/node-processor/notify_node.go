@@ -8,48 +8,47 @@ import (
 	"github.com/usual2970/certimate/internal/repository"
 )
 
-type SettingRepository interface {
-	GetByName(ctx context.Context, name string) (*domain.Setting, error)
-}
 type notifyNode struct {
-	node        *domain.WorkflowNode
-	settingRepo SettingRepository
-	*Logger
+	node *domain.WorkflowNode
+	*nodeLogger
+
+	settingsRepo settingsRepository
 }
 
 func NewNotifyNode(node *domain.WorkflowNode) *notifyNode {
 	return &notifyNode{
-		node:        node,
-		Logger:      NewLogger(node),
-		settingRepo: repository.NewSettingRepository(),
+		node:       node,
+		nodeLogger: newNodeLogger(node),
+
+		settingsRepo: repository.NewSettingsRepository(),
 	}
 }
 
-func (n *notifyNode) Run(ctx context.Context) error {
-	n.AddOutput(ctx, n.node.Name, "开始执行")
+func (n *notifyNode) Process(ctx context.Context) error {
+	n.AppendLogRecord(ctx, domain.WorkflowRunLogLevelInfo, "进入推送通知节点")
+
+	nodeConfig := n.node.GetConfigForNotify()
 
 	// 获取通知配置
-	setting, err := n.settingRepo.GetByName(ctx, "notifyChannels")
+	settings, err := n.settingsRepo.GetByName(ctx, "notifyChannels")
 	if err != nil {
-		n.AddOutput(ctx, n.node.Name, "获取通知配置失败", err.Error())
+		n.AppendLogRecord(ctx, domain.WorkflowRunLogLevelError, "获取通知配置失败", err.Error())
 		return err
 	}
 
-	channelConfig, err := setting.GetChannelContent(n.node.GetConfigString("channel"))
+	// 获取通知渠道
+	channelConfig, err := settings.GetNotifyChannelConfig(nodeConfig.Channel)
 	if err != nil {
-		n.AddOutput(ctx, n.node.Name, "获取通知渠道配置失败", err.Error())
+		n.AppendLogRecord(ctx, domain.WorkflowRunLogLevelError, "获取通知渠道配置失败", err.Error())
 		return err
 	}
 
-	if err := notify.SendToChannel(n.node.GetConfigString("title"),
-		n.node.GetConfigString("content"),
-		n.node.GetConfigString("channel"),
-		channelConfig,
-	); err != nil {
-		n.AddOutput(ctx, n.node.Name, "发送通知失败", err.Error())
+	// 发送通知
+	if err := notify.SendToChannel(nodeConfig.Subject, nodeConfig.Message, nodeConfig.Channel, channelConfig); err != nil {
+		n.AppendLogRecord(ctx, domain.WorkflowRunLogLevelError, "发送通知失败", err.Error())
 		return err
 	}
+	n.AppendLogRecord(ctx, domain.WorkflowRunLogLevelInfo, "发送通知成功")
 
-	n.AddOutput(ctx, n.node.Name, "发送通知成功")
 	return nil
 }

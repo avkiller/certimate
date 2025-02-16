@@ -13,8 +13,8 @@ import (
 	xerrors "github.com/pkg/errors"
 
 	"github.com/usual2970/certimate/internal/pkg/core/uploader"
-	"github.com/usual2970/certimate/internal/pkg/utils/cast"
-	"github.com/usual2970/certimate/internal/pkg/utils/x509"
+	"github.com/usual2970/certimate/internal/pkg/utils/certs"
+	hwsdk "github.com/usual2970/certimate/internal/pkg/vendors/huaweicloud-sdk"
 )
 
 type HuaweiCloudSCMUploaderConfig struct {
@@ -22,7 +22,7 @@ type HuaweiCloudSCMUploaderConfig struct {
 	AccessKeyId string `json:"accessKeyId"`
 	// 华为云 SecretAccessKey。
 	SecretAccessKey string `json:"secretAccessKey"`
-	// 华为云地域。
+	// 华为云区域。
 	Region string `json:"region"`
 }
 
@@ -55,7 +55,7 @@ func New(config *HuaweiCloudSCMUploaderConfig) (*HuaweiCloudSCMUploader, error) 
 
 func (u *HuaweiCloudSCMUploader) Upload(ctx context.Context, certPem string, privkeyPem string) (res *uploader.UploadResult, err error) {
 	// 解析证书内容
-	certX509, err := x509.ParseCertificateFromPEM(certPem)
+	certX509, err := certs.ParseCertificateFromPEM(certPem)
 	if err != nil {
 		return nil, err
 	}
@@ -63,15 +63,14 @@ func (u *HuaweiCloudSCMUploader) Upload(ctx context.Context, certPem string, pri
 	// 遍历查询已有证书，避免重复上传
 	// REF: https://support.huaweicloud.com/api-ccm/ListCertificates.html
 	// REF: https://support.huaweicloud.com/api-ccm/ExportCertificate_0.html
-	listCertificatesPage := 1
 	listCertificatesLimit := int32(50)
 	listCertificatesOffset := int32(0)
 	for {
 		listCertificatesReq := &hcScmModel.ListCertificatesRequest{
-			Limit:   cast.Int32Ptr(listCertificatesLimit),
-			Offset:  cast.Int32Ptr(listCertificatesOffset),
-			SortDir: cast.StringPtr("DESC"),
-			SortKey: cast.StringPtr("certExpiredTime"),
+			Limit:   hwsdk.Int32Ptr(listCertificatesLimit),
+			Offset:  hwsdk.Int32Ptr(listCertificatesOffset),
+			SortDir: hwsdk.StringPtr("DESC"),
+			SortKey: hwsdk.StringPtr("certExpiredTime"),
 		}
 		listCertificatesResp, err := u.sdkClient.ListCertificates(listCertificatesReq)
 		if err != nil {
@@ -95,12 +94,12 @@ func (u *HuaweiCloudSCMUploader) Upload(ctx context.Context, certPem string, pri
 				if *exportCertificateResp.Certificate == certPem {
 					isSameCert = true
 				} else {
-					oldCertX509, err := x509.ParseCertificateFromPEM(*exportCertificateResp.Certificate)
+					oldCertX509, err := certs.ParseCertificateFromPEM(*exportCertificateResp.Certificate)
 					if err != nil {
 						continue
 					}
 
-					isSameCert = x509.EqualCertificate(certX509, oldCertX509)
+					isSameCert = certs.EqualCertificate(certX509, oldCertX509)
 				}
 
 				// 如果已存在相同证书，直接返回已有的证书信息
@@ -117,10 +116,6 @@ func (u *HuaweiCloudSCMUploader) Upload(ctx context.Context, certPem string, pri
 			break
 		} else {
 			listCertificatesOffset += listCertificatesLimit
-			listCertificatesPage += 1
-			if listCertificatesPage > 99 { // 避免死循环
-				break
-			}
 		}
 	}
 

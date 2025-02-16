@@ -1,30 +1,48 @@
-import { useCallback, useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import {
+  CheckCircleOutlined as CheckCircleOutlinedIcon,
+  ClockCircleOutlined as ClockCircleOutlinedIcon,
+  CloseCircleOutlined as CloseCircleOutlinedIcon,
+  DeleteOutlined as DeleteOutlinedIcon,
+  EditOutlined as EditOutlinedIcon,
+  PlusOutlined as PlusOutlinedIcon,
+  ReloadOutlined as ReloadOutlinedIcon,
+  StopOutlined as StopOutlinedIcon,
+  SyncOutlined as SyncOutlinedIcon,
+} from "@ant-design/icons";
+
+import { PageHeader } from "@ant-design/pro-components";
+import { useRequest } from "ahooks";
 import {
   Button,
+  Card,
   Divider,
   Empty,
+  Flex,
+  Input,
   Menu,
+  type MenuProps,
   Modal,
-  notification,
   Radio,
   Space,
   Switch,
   Table,
-  theme,
+  type TableProps,
   Tooltip,
   Typography,
-  type MenuProps,
-  type TableProps,
+  message,
+  notification,
+  theme,
 } from "antd";
-import { PageHeader } from "@ant-design/pro-components";
-import { Filter as FilterIcon, Pencil as PencilIcon, Plus as PlusIcon, Trash2 as Trash2Icon } from "lucide-react";
 import dayjs from "dayjs";
 import { ClientResponseError } from "pocketbase";
 
-import { WorkflowModel } from "@/domain/workflow";
+import { WORKFLOW_TRIGGERS, type WorkflowModel, isAllNodesValidated } from "@/domain/workflow";
+import { WORKFLOW_RUN_STATUSES } from "@/domain/workflowRun";
 import { list as listWorkflow, remove as removeWorkflow, save as saveWorkflow } from "@/repository/workflow";
+import { getErrMsg } from "@/utils/error";
 
 const WorkflowList = () => {
   const navigate = useNavigate();
@@ -34,10 +52,9 @@ const WorkflowList = () => {
 
   const { token: themeToken } = theme.useToken();
 
+  const [messageApi, MessageContextHolder] = message.useMessage();
   const [modalApi, ModelContextHolder] = Modal.useModal();
   const [notificationApi, NotificationContextHolder] = notification.useNotification();
-
-  const [loading, setLoading] = useState<boolean>(false);
 
   const tableColumns: TableProps<WorkflowModel>["columns"] = [
     {
@@ -61,20 +78,20 @@ const WorkflowList = () => {
       ),
     },
     {
-      key: "type",
-      title: t("workflow.props.execution_method"),
+      key: "trigger",
+      title: t("workflow.props.trigger"),
       ellipsis: true,
       render: (_, record) => {
-        const method = record.type;
-        if (!method) {
+        const trigger = record.trigger;
+        if (!trigger) {
           return "-";
-        } else if (method === "manual") {
-          return <Typography.Text>{t("workflow.node.start.form.executionMethod.options.manual")}</Typography.Text>;
-        } else if (method === "auto") {
+        } else if (trigger === WORKFLOW_TRIGGERS.MANUAL) {
+          return <Typography.Text>{t("workflow.props.trigger.manual")}</Typography.Text>;
+        } else if (trigger === WORKFLOW_TRIGGERS.AUTO) {
           return (
             <Space className="max-w-full" direction="vertical" size={4}>
-              <Typography.Text>{t("workflow.node.start.form.executionMethod.options.auto")}</Typography.Text>
-              <Typography.Text type="secondary">{record.crontab ?? ""}</Typography.Text>
+              <Typography.Text>{t("workflow.props.trigger.auto")}</Typography.Text>
+              <Typography.Text type="secondary">{record.triggerCron ?? ""}</Typography.Text>
             </Space>
           );
         }
@@ -94,6 +111,7 @@ const WorkflowList = () => {
             label: <Radio checked={filters["state"] === key}>{t(label)}</Radio>,
             onClick: () => {
               if (filters["state"] !== key) {
+                setPage(1);
                 setFilters((prev) => ({ ...prev, state: key }));
                 setSelectedKeys([key]);
               }
@@ -104,6 +122,7 @@ const WorkflowList = () => {
         });
 
         const handleResetClick = () => {
+          setPage(1);
           setFilters((prev) => ({ ...prev, state: undefined }));
           setSelectedKeys([]);
           clearFilters?.();
@@ -118,7 +137,7 @@ const WorkflowList = () => {
           <div style={{ padding: 0 }}>
             <Menu items={items} selectable={false} />
             <Divider style={{ margin: 0 }} />
-            <Space className="justify-end w-full" style={{ padding: themeToken.paddingSM }}>
+            <Space className="w-full justify-end" style={{ padding: themeToken.paddingSM }}>
               <Button size="small" disabled={!filters.state} onClick={handleResetClick}>
                 {t("common.button.reset")}
               </Button>
@@ -129,7 +148,6 @@ const WorkflowList = () => {
           </div>
         );
       },
-      filterIcon: () => <FilterIcon size={14} />,
       render: (_, record) => {
         const enabled = record.enabled;
         return (
@@ -143,11 +161,28 @@ const WorkflowList = () => {
       },
     },
     {
-      key: "lastExecutedAt",
-      title: "最近执行状态",
-      render: () => {
-        // TODO: 最近执行状态
-        return <>TODO</>;
+      key: "lastRun",
+      title: t("workflow.props.last_run_at"),
+      render: (_, record) => {
+        let icon = <></>;
+        if (record.lastRunStatus === WORKFLOW_RUN_STATUSES.PENDING) {
+          icon = <ClockCircleOutlinedIcon style={{ color: themeToken.colorTextSecondary }} />;
+        } else if (record.lastRunStatus === WORKFLOW_RUN_STATUSES.RUNNING) {
+          icon = <SyncOutlinedIcon style={{ color: themeToken.colorInfo }} spin />;
+        } else if (record.lastRunStatus === WORKFLOW_RUN_STATUSES.SUCCEEDED) {
+          icon = <CheckCircleOutlinedIcon style={{ color: themeToken.colorSuccess }} />;
+        } else if (record.lastRunStatus === WORKFLOW_RUN_STATUSES.FAILED) {
+          icon = <CloseCircleOutlinedIcon style={{ color: themeToken.colorError }} />;
+        } else if (record.lastRunStatus === WORKFLOW_RUN_STATUSES.CANCELED) {
+          icon = <StopOutlinedIcon style={{ color: themeToken.colorWarning }} />;
+        }
+
+        return (
+          <Space>
+            {icon}
+            <Typography.Text>{record.lastRunTime ? dayjs(record.lastRunTime!).format("YYYY-MM-DD HH:mm:ss") : ""}</Typography.Text>
+          </Space>
+        );
       },
     },
     {
@@ -172,27 +207,30 @@ const WorkflowList = () => {
       fixed: "right",
       width: 120,
       render: (_, record) => (
-        <Space size={0}>
+        <Space.Compact>
           <Tooltip title={t("workflow.action.edit")}>
             <Button
-              type="link"
-              icon={<PencilIcon size={16} />}
+              color="primary"
+              icon={<EditOutlinedIcon />}
+              variant="text"
               onClick={() => {
-                navigate(`/workflows/detail?id=${record.id}`);
+                navigate(`/workflows/${record.id}`);
               }}
             />
           </Tooltip>
+
           <Tooltip title={t("workflow.action.delete")}>
             <Button
-              type="link"
-              danger={true}
-              icon={<Trash2Icon size={16} />}
+              color="danger"
+              danger
+              icon={<DeleteOutlinedIcon />}
+              variant="text"
               onClick={() => {
                 handleDeleteClick(record);
               }}
             />
           </Tooltip>
-        </Space>
+        </Space.Compact>
       ),
     },
   ];
@@ -201,6 +239,7 @@ const WorkflowList = () => {
 
   const [filters, setFilters] = useState<Record<string, unknown>>(() => {
     return {
+      keyword: searchParams.get("keyword"),
       state: searchParams.get("state"),
     };
   });
@@ -208,37 +247,59 @@ const WorkflowList = () => {
   const [page, setPage] = useState<number>(() => parseInt(+searchParams.get("page")! + "") || 1);
   const [pageSize, setPageSize] = useState<number>(() => parseInt(+searchParams.get("perPage")! + "") || 10);
 
-  const fetchTableData = useCallback(async () => {
-    if (loading) return;
-    setLoading(true);
-
-    try {
-      const resp = await listWorkflow({
+  const {
+    loading,
+    error: loadedError,
+    run: refreshData,
+  } = useRequest(
+    () => {
+      return listWorkflow({
+        keyword: filters["keyword"] as string,
+        enabled: (filters["state"] as string) === "enabled" ? true : (filters["state"] as string) === "disabled" ? false : undefined,
         page: page,
         perPage: pageSize,
-        enabled: (filters["state"] as string) === "enabled" ? true : (filters["state"] as string) === "disabled" ? false : undefined,
       });
+    },
+    {
+      refreshDeps: [filters, page, pageSize],
+      onSuccess: (res) => {
+        setTableData(res.items);
+        setTableTotal(res.totalItems);
+      },
+      onError: (err) => {
+        if (err instanceof ClientResponseError && err.isAbort) {
+          return;
+        }
 
-      setTableData(resp.items);
-      setTableTotal(resp.totalItems);
-    } catch (err) {
-      if (err instanceof ClientResponseError && err.isAbort) {
-        return;
-      }
+        console.error(err);
+        notificationApi.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
 
-      console.error(err);
-      notificationApi.error({ message: t("common.text.request_error"), description: <>{String(err)}</> });
-    } finally {
-      setLoading(false);
+        throw err;
+      },
     }
-  }, [filters, page, pageSize]);
+  );
 
-  useEffect(() => {
-    fetchTableData();
-  }, [fetchTableData]);
+  const handleSearch = (value: string) => {
+    setFilters((prev) => ({ ...prev, keyword: value.trim() }));
+  };
+
+  const handleCreateClick = () => {
+    navigate("/workflows/new");
+  };
+
+  const handleReloadClick = () => {
+    if (loading) return;
+
+    refreshData();
+  };
 
   const handleEnabledChange = async (workflow: WorkflowModel) => {
     try {
+      if (!workflow.enabled && (!workflow.content || !isAllNodesValidated(workflow.content))) {
+        messageApi.warning(t("workflow.action.enable.failed.uncompleted"));
+        return;
+      }
+
       const resp = await saveWorkflow({
         id: workflow.id,
         enabled: !tableData.find((item) => item.id === workflow.id)?.enabled,
@@ -255,7 +316,7 @@ const WorkflowList = () => {
       }
     } catch (err) {
       console.error(err);
-      notificationApi.error({ message: t("common.text.request_error"), description: <>{String(err)}</> });
+      notificationApi.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
     }
   };
 
@@ -265,24 +326,22 @@ const WorkflowList = () => {
       content: t("workflow.action.delete.confirm"),
       onOk: async () => {
         try {
-          const resp: boolean = await removeWorkflow(workflow);
+          const resp = await removeWorkflow(workflow);
           if (resp) {
             setTableData((prev) => prev.filter((item) => item.id !== workflow.id));
+            refreshData();
           }
         } catch (err) {
           console.error(err);
-          notificationApi.error({ message: t("common.text.request_error"), description: <>{String(err)}</> });
+          notificationApi.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
         }
       },
     });
   };
 
-  const handleCreateClick = () => {
-    navigate("/workflows/detail");
-  };
-
   return (
-    <>
+    <div className="p-4">
+      {MessageContextHolder}
       {ModelContextHolder}
       {NotificationContextHolder}
 
@@ -292,7 +351,7 @@ const WorkflowList = () => {
           <Button
             key="create"
             type="primary"
-            icon={<PlusIcon size={16} />}
+            icon={<PlusOutlinedIcon />}
             onClick={() => {
               handleCreateClick();
             }}
@@ -302,30 +361,44 @@ const WorkflowList = () => {
         ]}
       />
 
-      <Table<WorkflowModel>
-        columns={tableColumns}
-        dataSource={tableData}
-        loading={loading}
-        locale={{
-          emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={t("workflow.nodata")} />,
-        }}
-        pagination={{
-          current: page,
-          pageSize: pageSize,
-          total: tableTotal,
-          onChange: (page: number, pageSize: number) => {
-            setPage(page);
-            setPageSize(pageSize);
-          },
-          onShowSizeChange: (page: number, pageSize: number) => {
-            setPage(page);
-            setPageSize(pageSize);
-          },
-        }}
-        rowKey={(record: WorkflowModel) => record.id}
-        scroll={{ x: "max(100%, 960px)" }}
-      />
-    </>
+      <Card size="small">
+        <div className="mb-4">
+          <Flex gap="small">
+            <div className="flex-1">
+              <Input.Search allowClear defaultValue={filters["keyword"] as string} placeholder={t("workflow.search.placeholder")} onSearch={handleSearch} />
+            </div>
+            <div>
+              <Button icon={<ReloadOutlinedIcon spin={loading} />} onClick={handleReloadClick} />
+            </div>
+          </Flex>
+        </div>
+
+        <Table<WorkflowModel>
+          columns={tableColumns}
+          dataSource={tableData}
+          loading={loading}
+          locale={{
+            emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={getErrMsg(loadedError ?? t("workflow.nodata"))} />,
+          }}
+          pagination={{
+            current: page,
+            pageSize: pageSize,
+            total: tableTotal,
+            showSizeChanger: true,
+            onChange: (page: number, pageSize: number) => {
+              setPage(page);
+              setPageSize(pageSize);
+            },
+            onShowSizeChange: (page: number, pageSize: number) => {
+              setPage(page);
+              setPageSize(pageSize);
+            },
+          }}
+          rowKey={(record) => record.id}
+          scroll={{ x: "max(100%, 960px)" }}
+        />
+      </Card>
+    </div>
   );
 };
 

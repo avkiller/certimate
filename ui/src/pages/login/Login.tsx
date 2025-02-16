@@ -1,11 +1,12 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 import { Button, Card, Form, Input, notification } from "antd";
 import { createSchemaFieldRule } from "antd-zod";
 import { z } from "zod";
 
-import { getPocketBase } from "@/repository/pocketbase";
+import { useAntdForm } from "@/hooks";
+import { authWithPassword } from "@/repository/admin";
+import { getErrMsg } from "@/utils/error";
 
 const Login = () => {
   const navigage = useNavigate();
@@ -19,33 +20,33 @@ const Login = () => {
     password: z.string().min(10, t("login.password.errmsg.invalid")),
   });
   const formRule = createSchemaFieldRule(formSchema);
-  const [form] = Form.useForm();
+  const {
+    form: formInst,
+    formPending,
+    formProps,
+  } = useAntdForm<z.infer<typeof formSchema>>({
+    onSubmit: async (values) => {
+      try {
+        await authWithPassword(values.username, values.password);
+        await navigage("/");
+      } catch (err) {
+        notificationApi.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
 
-  const [isPending, setIsPending] = useState(false);
-
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    setIsPending(true);
-
-    try {
-      await getPocketBase().admins.authWithPassword(values.username, values.password);
-      navigage("/");
-    } catch (err) {
-      notificationApi.error({ message: t("common.text.request_error"), description: <>{String(err)}</> });
-    } finally {
-      setIsPending(false);
-    }
-  };
+        throw err;
+      }
+    },
+  });
 
   return (
     <>
       {NotificationContextHolder}
 
-      <Card className="mx-auto mt-32 p-10 max-w-[35em] border dark:border-stone-500 rounded-md shadow-md">
-        <div className="flex items-center justify-center mb-10">
+      <Card className="mx-auto mt-32 max-w-[35em] rounded-md border p-10 shadow-md dark:border-stone-500">
+        <div className="mb-10 flex items-center justify-center">
           <img src="/logo.svg" className="w-16" />
         </div>
 
-        <Form form={form} disabled={isPending} layout="vertical" onFinish={onSubmit}>
+        <Form {...formProps} form={formInst} disabled={formPending} layout="vertical">
           <Form.Item name="username" label={t("login.username.label")} rules={[formRule]}>
             <Input placeholder={t("login.username.placeholder")} />
           </Form.Item>
@@ -55,7 +56,7 @@ const Login = () => {
           </Form.Item>
 
           <Form.Item>
-            <Button type="primary" htmlType="submit" block loading={isPending}>
+            <Button type="primary" htmlType="submit" block loading={formPending}>
               {t("login.submit")}
             </Button>
           </Form.Item>

@@ -1,119 +1,165 @@
 package domain
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
+
+const CollectionNameAccess = "access"
 
 type Access struct {
 	Meta
-	Name       string    `json:"name"`
-	Config     string    `json:"config"`
-	ConfigType string    `json:"configType"`
-	Deleted    time.Time `json:"deleted"`
-	Usage      string    `json:"usage"`
+	Name      string     `json:"name" db:"name"`
+	Provider  string     `json:"provider" db:"provider"`
+	Config    string     `json:"config" db:"config"`
+	DeletedAt *time.Time `json:"deleted" db:"deleted"`
 }
 
-// 兼容一下原 pocketbase 的 record
-func (a *Access) GetString(key string) string {
-	switch key {
-	case "name":
-		return a.Name
-	default:
-		return ""
+func (a *Access) UnmarshalConfigToMap() (map[string]any, error) {
+	config := make(map[string]any)
+	if err := json.Unmarshal([]byte(a.Config), &config); err != nil {
+		return nil, err
 	}
+
+	return config, nil
 }
 
-type AliyunAccess struct {
+type AccessConfigForACMEHttpReq struct {
+	Endpoint string `json:"endpoint"`
+	Mode     string `json:"mode,omitempty"`
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
+}
+
+type AccessConfigForAliyun struct {
 	AccessKeyId     string `json:"accessKeyId"`
 	AccessKeySecret string `json:"accessKeySecret"`
 }
 
-type ByteplusAccess struct {
-	AccessKey string `json:"accessKey"`
-	SecretKey string `json:"secretKey"`
-}
-
-type TencentAccess struct {
-	SecretId  string `json:"secretId"`
-	SecretKey string `json:"secretKey"`
-}
-
-type HuaweiCloudAccess struct {
-	AccessKeyId     string `json:"accessKeyId"`
-	SecretAccessKey string `json:"secretAccessKey"`
-	Region          string `json:"region"`
-}
-
-type BaiduCloudAccess struct {
+type AccessConfigForAWS struct {
 	AccessKeyId     string `json:"accessKeyId"`
 	SecretAccessKey string `json:"secretAccessKey"`
 }
 
-type AwsAccess struct {
+type AccessConfigForAzure struct {
+	TenantId     string `json:"tenantId"`
+	ClientId     string `json:"clientId"`
+	ClientSecret string `json:"clientSecret"`
+	CloudName    string `json:"cloudName,omitempty"`
+}
+
+type AccessConfigForBaiduCloud struct {
 	AccessKeyId     string `json:"accessKeyId"`
 	SecretAccessKey string `json:"secretAccessKey"`
-	Region          string `json:"region"`
-	HostedZoneId    string `json:"hostedZoneId"`
 }
 
-type CloudflareAccess struct {
-	DnsApiToken string `json:"dnsApiToken"`
-}
-
-type QiniuAccess struct {
-	AccessKey string `json:"accessKey"`
-	SecretKey string `json:"secretKey"`
-}
-
-type DogeCloudAccess struct {
-	AccessKey string `json:"accessKey"`
-	SecretKey string `json:"secretKey"`
-}
-
-type NameSiloAccess struct {
-	ApiKey string `json:"apiKey"`
-}
-
-type GodaddyAccess struct {
-	ApiKey    string `json:"apiKey"`
-	ApiSecret string `json:"apiSecret"`
-}
-
-type PdnsAccess struct {
+type AccessConfigForBaotaPanel struct {
 	ApiUrl string `json:"apiUrl"`
 	ApiKey string `json:"apiKey"`
 }
 
-type VolcEngineAccess struct {
+type AccessConfigForBytePlus struct {
 	AccessKey string `json:"accessKey"`
 	SecretKey string `json:"secretKey"`
+}
 
-	// Deprecated: Use [AccessKey] and [SecretKey] instead in the future
-	AccessKeyId string `json:"accessKeyId"`
-	// Deprecated: Use [AccessKey] and [SecretKey] instead in the future
+type AccessConfigForCloudflare struct {
+	DnsApiToken string `json:"dnsApiToken"`
+}
+
+type AccessConfigForClouDNS struct {
+	AuthId       string `json:"authId"`
+	AuthPassword string `json:"authPassword"`
+}
+
+type AccessConfigForDogeCloud struct {
+	AccessKey string `json:"accessKey"`
+	SecretKey string `json:"secretKey"`
+}
+
+type AccessConfigForEdgio struct {
+	ClientId     string `json:"clientId"`
+	ClientSecret string `json:"clientSecret"`
+}
+
+type AccessConfigForGname struct {
+	AppId  string `json:"appId"`
+	AppKey string `json:"appKey"`
+}
+
+type AccessConfigForGoDaddy struct {
+	ApiKey    string `json:"apiKey"`
+	ApiSecret string `json:"apiSecret"`
+}
+
+type AccessConfigForHuaweiCloud struct {
+	AccessKeyId     string `json:"accessKeyId"`
 	SecretAccessKey string `json:"secretAccessKey"`
 }
 
-type HttpreqAccess struct {
-	Endpoint string `json:"endpoint"`
-	Mode     string `json:"mode"`
+type AccessConfigForLocal struct{}
+
+type AccessConfigForKubernetes struct {
+	KubeConfig string `json:"kubeConfig,omitempty"`
+}
+
+type AccessConfigForNameDotCom struct {
 	Username string `json:"username"`
-	Password string `json:"password"`
+	ApiToken string `json:"apiToken"`
 }
 
-type LocalAccess struct{}
+type AccessConfigForNameSilo struct {
+	ApiKey string `json:"apiKey"`
+}
 
-type SSHAccess struct {
+type AccessConfigForNS1 struct {
+	ApiKey string `json:"apiKey"`
+}
+
+type AccessConfigForPowerDNS struct {
+	ApiUrl string `json:"apiUrl"`
+	ApiKey string `json:"apiKey"`
+}
+
+type AccessConfigForQiniu struct {
+	AccessKey string `json:"accessKey"`
+	SecretKey string `json:"secretKey"`
+}
+
+type AccessConfigForRainYun struct {
+	ApiKey string `json:"apiKey"`
+}
+
+type AccessConfigForSSH struct {
 	Host          string `json:"host"`
-	Port          string `json:"port"`
+	Port          int32  `json:"port"`
 	Username      string `json:"username"`
-	Password      string `json:"password"`
-	Key           string `json:"key"`
-	KeyPassphrase string `json:"keyPassphrase"`
+	Password      string `json:"password,omitempty"`
+	Key           string `json:"key,omitempty"`
+	KeyPassphrase string `json:"keyPassphrase,omitempty"`
 }
 
-type WebhookAccess struct {
+type AccessConfigForTencentCloud struct {
+	SecretId  string `json:"secretId"`
+	SecretKey string `json:"secretKey"`
+}
+
+type AccessConfigForUCloud struct {
+	PrivateKey string `json:"privateKey"`
+	PublicKey  string `json:"publicKey"`
+	ProjectId  string `json:"projectId,omitempty"`
+}
+
+type AccessConfigForVolcEngine struct {
+	AccessKeyId     string `json:"accessKeyId"`
+	SecretAccessKey string `json:"secretAccessKey"`
+}
+
+type AccessConfigForWebhook struct {
 	Url string `json:"url"`
 }
 
-type KubernetesAccess struct {
-	KubeConfig string `json:"kubeConfig"`
+type AccessConfigForWestcn struct {
+	Username    string `json:"username"`
+	ApiPassword string `json:"password"`
 }

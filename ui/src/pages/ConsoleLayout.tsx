@@ -1,23 +1,23 @@
-import React, { useEffect, useState } from "react";
-import { Link, Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { memo, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Drawer, Dropdown, Layout, Menu, Tooltip, theme, type ButtonProps, type MenuProps } from "antd";
+import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
-  Languages as LanguagesIcon,
-  LogOut as LogOutIcon,
-  Home as HomeIcon,
-  Menu as MenuIcon,
-  Moon as MoonIcon,
-  Server as ServerIcon,
-  Settings as SettingsIcon,
-  ShieldCheck as ShieldCheckIcon,
-  Sun as SunIcon,
-  Workflow as WorkflowIcon,
-} from "lucide-react";
+  CloudServerOutlined as CloudServerOutlinedIcon,
+  GlobalOutlined as GlobalOutlinedIcon,
+  HomeOutlined as HomeOutlinedIcon,
+  LogoutOutlined as LogoutOutlinedIcon,
+  MenuOutlined as MenuOutlinedIcon,
+  MoonOutlined as MoonOutlinedIcon,
+  NodeIndexOutlined as NodeIndexOutlinedIcon,
+  SafetyOutlined as SafetyOutlinedIcon,
+  SettingOutlined as SettingOutlinedIcon,
+  SunOutlined as SunOutlinedIcon,
+} from "@ant-design/icons";
+import { Button, type ButtonProps, Drawer, Dropdown, Layout, Menu, type MenuProps, Tooltip, theme } from "antd";
 
-import Version from "@/components/certimate/Version";
-import { useTheme } from "@/hooks";
-import { getPocketBase } from "@/repository/pocketbase";
+import Version from "@/components/Version";
+import { useBrowserTheme, useTriggerElement } from "@/hooks";
+import { getAuthStore } from "@/repository/admin";
 
 const ConsoleLayout = () => {
   const navigate = useNavigate();
@@ -25,16 +25,6 @@ const ConsoleLayout = () => {
   const { t } = useTranslation();
 
   const { token: themeToken } = theme.useToken();
-
-  const [siderOpen, setSiderOpen] = useState(false);
-
-  const handleSiderOpen = () => {
-    setSiderOpen(true);
-  };
-
-  const handleSiderClose = () => {
-    setSiderOpen(false);
-  };
 
   const handleLogoutClick = () => {
     auth.clear();
@@ -45,15 +35,15 @@ const ConsoleLayout = () => {
     navigate("/settings/account");
   };
 
-  const auth = getPocketBase().authStore;
-  if (!auth.isValid || !auth.isAdmin) {
+  const auth = getAuthStore();
+  if (!auth.isValid || !auth.isSuperuser) {
     return <Navigate to="/login" />;
   }
 
   return (
-    <Layout className="w-full min-h-screen">
-      <Layout.Sider className="max-md:hidden" theme="light" width={256}>
-        <div className="flex flex-col items-center justify-between w-full h-full overflow-hidden">
+    <Layout className="h-screen" hasSider>
+      <Layout.Sider className="fixed left-0 top-0 z-20 h-full max-md:static max-md:hidden" width="256px" theme="light">
+        <div className="flex size-full flex-col items-center justify-between overflow-hidden">
           <div className="w-full">
             <SiderMenu />
           </div>
@@ -63,26 +53,13 @@ const ConsoleLayout = () => {
         </div>
       </Layout.Sider>
 
-      <Layout>
-        <Layout.Header style={{ padding: 0, background: themeToken.colorBgContainer }}>
-          <div className="flex items-center justify-between size-full px-4 overflow-hidden">
-            <div className="flex items-center gap-4 size-full">
-              <Button className="md:hidden" icon={<MenuIcon />} size="large" onClick={handleSiderOpen} />
-              <Drawer
-                closable={false}
-                destroyOnClose
-                open={siderOpen}
-                placement="left"
-                styles={{
-                  content: { paddingTop: themeToken.paddingSM, paddingBottom: themeToken.paddingSM },
-                  body: { padding: 0 },
-                }}
-                onClose={handleSiderClose}
-              >
-                <SiderMenu onSelect={() => handleSiderClose()} />
-              </Drawer>
+      <Layout className="flex flex-col overflow-hidden pl-[256px] max-md:pl-0">
+        <Layout.Header className="p-0 shadow-sm" style={{ background: themeToken.colorBgContainer }}>
+          <div className="flex size-full items-center justify-between overflow-hidden px-4">
+            <div className="flex items-center gap-4">
+              <SiderMenuDrawer trigger={<Button className="md:hidden" icon={<MenuOutlinedIcon />} size="large" />} />
             </div>
-            <div className="flex-grow flex items-center justify-end gap-4 size-full overflow-hidden">
+            <div className="flex size-full grow items-center justify-end gap-4 overflow-hidden">
               <Tooltip title={t("common.menu.theme")} mouseEnterDelay={2}>
                 <ThemeToggleButton size="large" />
               </Tooltip>
@@ -90,26 +67,24 @@ const ConsoleLayout = () => {
                 <LocaleToggleButton size="large" />
               </Tooltip>
               <Tooltip title={t("common.menu.settings")} mouseEnterDelay={2}>
-                <Button icon={<SettingsIcon size={18} />} size="large" onClick={handleSettingsClick} />
+                <Button icon={<SettingOutlinedIcon />} size="large" onClick={handleSettingsClick} />
               </Tooltip>
               <Tooltip title={t("common.menu.logout")} mouseEnterDelay={2}>
-                <Button danger icon={<LogOutIcon size={18} />} size="large" onClick={handleLogoutClick} />
+                <Button danger icon={<LogoutOutlinedIcon />} size="large" onClick={handleLogoutClick} />
               </Tooltip>
             </div>
           </div>
         </Layout.Header>
 
-        <Layout.Content>
-          <div className="p-4">
-            <Outlet />
-          </div>
+        <Layout.Content className="flex-1 overflow-y-auto overflow-x-hidden">
+          <Outlet />
         </Layout.Content>
       </Layout>
     </Layout>
   );
 };
 
-const SiderMenu = React.memo(({ onSelect }: { onSelect?: (key: string) => void }) => {
+const SiderMenu = memo(({ onSelect }: { onSelect?: (key: string) => void }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -120,43 +95,21 @@ const SiderMenu = React.memo(({ onSelect }: { onSelect?: (key: string) => void }
   const MENU_KEY_CERTIFICATES = "/certificates";
   const MENU_KEY_ACCESSES = "/accesses";
   const menuItems: Required<MenuProps>["items"] = [
-    {
-      key: MENU_KEY_HOME,
-      icon: <HomeIcon size={16} />,
-      label: t("dashboard.page.title"),
+    [MENU_KEY_HOME, <HomeOutlinedIcon />, t("dashboard.page.title")],
+    [MENU_KEY_WORKFLOWS, <NodeIndexOutlinedIcon />, t("workflow.page.title")],
+    [MENU_KEY_CERTIFICATES, <SafetyOutlinedIcon />, t("certificate.page.title")],
+    [MENU_KEY_ACCESSES, <CloudServerOutlinedIcon />, t("access.page.title")],
+  ].map(([key, icon, label]) => {
+    return {
+      key: key as string,
+      icon: icon,
+      label: label,
       onClick: () => {
-        navigate(MENU_KEY_HOME);
-        onSelect?.(MENU_KEY_HOME);
+        navigate(key as string);
+        onSelect?.(key as string);
       },
-    },
-    {
-      key: MENU_KEY_WORKFLOWS,
-      icon: <WorkflowIcon size={16} />,
-      label: t("workflow.page.title"),
-      onClick: () => {
-        navigate(MENU_KEY_WORKFLOWS);
-        onSelect?.(MENU_KEY_WORKFLOWS);
-      },
-    },
-    {
-      key: MENU_KEY_CERTIFICATES,
-      icon: <ShieldCheckIcon size={16} />,
-      label: t("certificate.page.title"),
-      onClick: () => {
-        navigate(MENU_KEY_CERTIFICATES);
-        onSelect?.(MENU_KEY_CERTIFICATES);
-      },
-    },
-    {
-      key: MENU_KEY_ACCESSES,
-      icon: <ServerIcon size={16} />,
-      label: t("access.page.title"),
-      onClick: () => {
-        navigate(MENU_KEY_ACCESSES);
-        onSelect?.(MENU_KEY_ACCESSES);
-      },
-    },
-  ];
+    };
+  });
   const [menuSelectedKey, setMenuSelectedKey] = useState<string>();
 
   const getActiveMenuItem = () => {
@@ -183,11 +136,11 @@ const SiderMenu = React.memo(({ onSelect }: { onSelect?: (key: string) => void }
 
   return (
     <>
-      <Link to="/" className="flex items-center gap-2 w-full px-4 font-semibold overflow-hidden">
-        <img src="/logo.svg" className="w-[36px] h-[36px]" />
-        <span className="w-[74px] h-[64px] leading-[64px] dark:text-white truncate">Certimate</span>
-      </Link>
-      <div className="flex-grow w-full overflow-x-hidden overflow-y-auto">
+      <div className="flex w-full items-center gap-2 overflow-hidden px-4 font-semibold">
+        <img src="/logo.svg" className="size-[36px]" />
+        <span className="h-[64px] w-[74px] truncate leading-[64px] dark:text-white">Certimate</span>
+      </div>
+      <div className="w-full grow overflow-y-auto overflow-x-hidden">
         <Menu
           items={menuItems}
           mode="vertical"
@@ -201,37 +154,64 @@ const SiderMenu = React.memo(({ onSelect }: { onSelect?: (key: string) => void }
   );
 });
 
-const ThemeToggleButton = React.memo(({ size }: { size?: ButtonProps["size"] }) => {
+const SiderMenuDrawer = memo(({ trigger }: { trigger: React.ReactNode }) => {
+  const { token: themeToken } = theme.useToken();
+
+  const [siderOpen, setSiderOpen] = useState(false);
+
+  const triggerEl = useTriggerElement(trigger, { onClick: () => setSiderOpen(true) });
+
+  return (
+    <>
+      {triggerEl}
+
+      <Drawer
+        closable={false}
+        destroyOnClose
+        open={siderOpen}
+        placement="left"
+        styles={{
+          content: { paddingTop: themeToken.paddingSM, paddingBottom: themeToken.paddingSM },
+          body: { padding: 0 },
+        }}
+        onClose={() => setSiderOpen(false)}
+      >
+        <SiderMenu onSelect={() => setSiderOpen(false)} />
+      </Drawer>
+    </>
+  );
+});
+
+const ThemeToggleButton = memo(({ size }: { size?: ButtonProps["size"] }) => {
   const { t } = useTranslation();
 
-  const { theme, setThemeMode } = useTheme();
+  const { theme, themeMode, setThemeMode } = useBrowserTheme();
 
   const items: Required<MenuProps>["items"] = [
-    {
-      key: "light",
-      label: <>{t("common.theme.light")}</>,
-      onClick: () => setThemeMode("light"),
-    },
-    {
-      key: "dark",
-      label: <>{t("common.theme.dark")}</>,
-      onClick: () => setThemeMode("dark"),
-    },
-    {
-      key: "system",
-      label: <>{t("common.theme.system")}</>,
-      onClick: () => setThemeMode("system"),
-    },
-  ];
+    ["light", t("common.theme.light")],
+    ["dark", t("common.theme.dark")],
+    ["system", t("common.theme.system")],
+  ].map(([key, label]) => {
+    return {
+      key: key as string,
+      label: label,
+      onClick: () => {
+        setThemeMode(key as Parameters<typeof setThemeMode>[0]);
+        if (key !== themeMode) {
+          window.location.reload();
+        }
+      },
+    };
+  });
 
   return (
     <Dropdown menu={{ items }} trigger={["click"]}>
-      <Button icon={theme === "dark" ? <MoonIcon size={18} /> : <SunIcon size={18} />} size={size} />
+      <Button icon={theme === "dark" ? <MoonOutlinedIcon /> : <SunOutlinedIcon />} size={size} />
     </Dropdown>
   );
 });
 
-const LocaleToggleButton = React.memo(({ size }: { size?: ButtonProps["size"] }) => {
+const LocaleToggleButton = memo(({ size }: { size?: ButtonProps["size"] }) => {
   const { i18n } = useTranslation();
 
   const items: Required<MenuProps>["items"] = Object.keys(i18n.store.data).map((key) => {
@@ -244,7 +224,7 @@ const LocaleToggleButton = React.memo(({ size }: { size?: ButtonProps["size"] })
 
   return (
     <Dropdown menu={{ items }} trigger={["click"]}>
-      <Button icon={<LanguagesIcon size={18} />} size={size} />
+      <Button icon={<GlobalOutlinedIcon />} size={size} />
     </Dropdown>
   );
 });

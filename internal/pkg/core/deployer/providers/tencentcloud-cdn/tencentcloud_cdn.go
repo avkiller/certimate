@@ -13,8 +13,9 @@ import (
 	"golang.org/x/exp/slices"
 
 	"github.com/usual2970/certimate/internal/pkg/core/deployer"
+	"github.com/usual2970/certimate/internal/pkg/core/logger"
 	"github.com/usual2970/certimate/internal/pkg/core/uploader"
-	providerSsl "github.com/usual2970/certimate/internal/pkg/core/uploader/providers/tencentcloud-ssl"
+	uploaderp "github.com/usual2970/certimate/internal/pkg/core/uploader/providers/tencentcloud-ssl"
 )
 
 type TencentCloudCDNDeployerConfig struct {
@@ -28,23 +29,23 @@ type TencentCloudCDNDeployerConfig struct {
 
 type TencentCloudCDNDeployer struct {
 	config      *TencentCloudCDNDeployerConfig
-	logger      deployer.Logger
-	sdkClients  *tencentCloudCDNDeployerSdkClients
+	logger      logger.Logger
+	sdkClients  *wSdkClients
 	sslUploader uploader.Uploader
 }
 
 var _ deployer.Deployer = (*TencentCloudCDNDeployer)(nil)
 
-type tencentCloudCDNDeployerSdkClients struct {
+type wSdkClients struct {
 	ssl *tcSsl.Client
 	cdn *tcCdn.Client
 }
 
 func New(config *TencentCloudCDNDeployerConfig) (*TencentCloudCDNDeployer, error) {
-	return NewWithLogger(config, deployer.NewNilLogger())
+	return NewWithLogger(config, logger.NewNilLogger())
 }
 
-func NewWithLogger(config *TencentCloudCDNDeployerConfig, logger deployer.Logger) (*TencentCloudCDNDeployer, error) {
+func NewWithLogger(config *TencentCloudCDNDeployerConfig, logger logger.Logger) (*TencentCloudCDNDeployer, error) {
 	if config == nil {
 		return nil, errors.New("config is nil")
 	}
@@ -58,7 +59,7 @@ func NewWithLogger(config *TencentCloudCDNDeployerConfig, logger deployer.Logger
 		return nil, xerrors.Wrap(err, "failed to create sdk clients")
 	}
 
-	uploader, err := providerSsl.New(&providerSsl.TencentCloudSSLUploaderConfig{
+	uploader, err := uploaderp.New(&uploaderp.TencentCloudSSLUploaderConfig{
 		SecretId:  config.SecretId,
 		SecretKey: config.SecretKey,
 	})
@@ -146,7 +147,7 @@ func (d *TencentCloudCDNDeployer) getDomainsByCertificateId(cloudCertId string) 
 	}
 
 	domains := make([]string, 0)
-	if describeCertDomainsResp.Response.Domains == nil {
+	if describeCertDomainsResp.Response.Domains != nil {
 		for _, domain := range describeCertDomainsResp.Response.Domains {
 			domains = append(domains, *domain)
 		}
@@ -178,7 +179,7 @@ func (d *TencentCloudCDNDeployer) getDeployedDomainsByCertificateId(cloudCertId 
 	return domains, nil
 }
 
-func createSdkClients(secretId, secretKey string) (*tencentCloudCDNDeployerSdkClients, error) {
+func createSdkClients(secretId, secretKey string) (*wSdkClients, error) {
 	credential := common.NewCredential(secretId, secretKey)
 
 	sslClient, err := tcSsl.NewClient(credential, "", profile.NewClientProfile())
@@ -191,7 +192,7 @@ func createSdkClients(secretId, secretKey string) (*tencentCloudCDNDeployerSdkCl
 		return nil, err
 	}
 
-	return &tencentCloudCDNDeployerSdkClients{
+	return &wSdkClients{
 		ssl: sslClient,
 		cdn: cdnClient,
 	}, nil

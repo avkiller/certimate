@@ -2,402 +2,232 @@ package applicant
 
 import (
 	"context"
-	"crypto"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
-	"errors"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
-
-	"github.com/usual2970/certimate/internal/domain"
-	"github.com/usual2970/certimate/internal/pkg/utils/x509"
-	"github.com/usual2970/certimate/internal/repository"
-	"github.com/usual2970/certimate/internal/utils/app"
+	"sync"
 
 	"github.com/go-acme/lego/v4/certcrypto"
 	"github.com/go-acme/lego/v4/certificate"
 	"github.com/go-acme/lego/v4/challenge"
 	"github.com/go-acme/lego/v4/challenge/dns01"
 	"github.com/go-acme/lego/v4/lego"
-	"github.com/go-acme/lego/v4/registration"
-	"github.com/pocketbase/pocketbase/models"
+	"golang.org/x/exp/slices"
+	"golang.org/x/time/rate"
+
+	"github.com/usual2970/certimate/internal/domain"
+	uslices "github.com/usual2970/certimate/internal/pkg/utils/slices"
+	"github.com/usual2970/certimate/internal/repository"
 )
 
-const (
-	configTypeAliyun      = "aliyun"
-	configTypeTencent     = "tencent"
-	configTypeHuaweiCloud = "huaweicloud"
-	configTypeAws         = "aws"
-	configTypeCloudflare  = "cloudflare"
-	configTypeNamesilo    = "namesilo"
-	configTypeGodaddy     = "godaddy"
-	configTypePdns        = "pdns"
-	configTypeHttpreq     = "httpreq"
-	configTypeVolcengine  = "volcengine"
-)
-
-const defaultSSLProvider = "letsencrypt"
-const (
-	sslProviderLetsencrypt = "letsencrypt"
-	sslProviderZeroSSL     = "zerossl"
-	sslProviderGts         = "gts"
-)
-
-const (
-	zerosslUrl     = "https://acme.zerossl.com/v2/DV90"
-	letsencryptUrl = "https://acme-v02.api.letsencrypt.org/directory"
-	gtsUrl         = "https://dv.acme-v02.api.pki.goog/directory"
-)
-
-var sslProviderUrls = map[string]string{
-	sslProviderLetsencrypt: letsencryptUrl,
-	sslProviderZeroSSL:     zerosslUrl,
-	sslProviderGts:         gtsUrl,
-}
-
-const defaultEmail = "536464346@qq.com"
-
-const defaultTimeout = 60
-
-type Certificate struct {
-	CertUrl           string `json:"certUrl"`
-	CertStableUrl     string `json:"certStableUrl"`
-	PrivateKey        string `json:"privateKey"`
-	Certificate       string `json:"certificate"`
-	IssuerCertificate string `json:"issuerCertificate"`
-	Csr               string `json:"csr"`
-}
-
-type ApplyOption struct {
-	Email              string `json:"email"`
-	Domain             string `json:"domain"`
-	Access             string `json:"access"`
-	KeyAlgorithm       string `json:"keyAlgorithm"`
-	Nameservers        string `json:"nameservers"`
-	Timeout            int64  `json:"timeout"`
-	DisableFollowCNAME bool   `json:"disableFollowCNAME"`
-}
-
-type ApplyUser struct {
-	Ca           string
-	Email        string
-	Registration *registration.Resource
-	key          string
-}
-
-func newApplyUser(ca, email string) (*ApplyUser, error) {
-	repo := getAcmeAccountRepository()
-	rs := &ApplyUser{
-		Ca:    ca,
-		Email: email,
-	}
-	resp, err := repo.GetByCAAndEmail(ca, email)
-	if err != nil {
-		privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-		if err != nil {
-			return nil, err
-		}
-		keyStr, err := x509.ConvertECPrivateKeyToPEM(privateKey)
-		if err != nil {
-			return nil, err
-		}
-		rs.key = keyStr
-
-		return rs, nil
-	}
-
-	rs.Registration = resp.Resource
-	rs.key = resp.Key
-
-	return rs, nil
-}
-
-func (u *ApplyUser) GetEmail() string {
-	return u.Email
-}
-
-func (u ApplyUser) GetRegistration() *registration.Resource {
-	return u.Registration
-}
-
-func (u *ApplyUser) GetPrivateKey() crypto.PrivateKey {
-	rs, _ := x509.ParseECPrivateKeyFromPEM(u.key)
-	return rs
-}
-
-func (u *ApplyUser) hasRegistration() bool {
-	return u.Registration != nil
-}
-
-func (u *ApplyUser) getPrivateKeyString() string {
-	return u.key
+type ApplyCertResult struct {
+	CertificateFullChain string
+	IssuerCertificate    string
+	PrivateKey           string
+	ACMEAccountUrl       string
+	ACMECertUrl          string
+	ACMECertStableUrl    string
+	CSR                  string
 }
 
 type Applicant interface {
-	Apply() (*Certificate, error)
+	Apply() (*ApplyCertResult, error)
 }
 
-func Get(record *models.Record) (Applicant, error) {
-	if record.GetString("applyConfig") == "" {
-		return nil, errors.New("applyConfig is empty")
-	}
-
-	applyConfig := &domain.ApplyConfig{}
-	record.UnmarshalJSONField("applyConfig", applyConfig)
-
-	access, err := app.GetApp().Dao().FindRecordById("access", applyConfig.Access)
-	if err != nil {
-		return nil, fmt.Errorf("access record not found: %w", err)
-	}
-
-	if applyConfig.Email == "" {
-		applyConfig.Email = defaultEmail
-	}
-
-	if applyConfig.Timeout == 0 {
-		applyConfig.Timeout = defaultTimeout
-	}
-
-	option := &ApplyOption{
-		Email:              applyConfig.Email,
-		Domain:             record.GetString("domain"),
-		Access:             access.GetString("config"),
-		KeyAlgorithm:       applyConfig.KeyAlgorithm,
-		Nameservers:        applyConfig.Nameservers,
-		Timeout:            applyConfig.Timeout,
-		DisableFollowCNAME: applyConfig.DisableFollowCNAME,
-	}
-
-	return GetWithTypeOption(access.GetString("configType"), option)
+type applicantOptions struct {
+	Domains               []string
+	ContactEmail          string
+	Provider              domain.ApplyDNSProviderType
+	ProviderAccessConfig  map[string]any
+	ProviderApplyConfig   map[string]any
+	KeyAlgorithm          string
+	Nameservers           []string
+	DnsPropagationTimeout int32
+	DnsTTL                int32
+	DisableFollowCNAME    bool
+	ReplacedARIAcctId     string
+	ReplacedARICertId     string
 }
 
-func GetWithApplyNode(node *domain.WorkflowNode) (Applicant, error) {
-	// 获取授权配置
+func NewWithApplyNode(node *domain.WorkflowNode) (Applicant, error) {
+	if node.Type != domain.WorkflowNodeTypeApply {
+		return nil, fmt.Errorf("node type is not apply")
+	}
+
+	nodeConfig := node.GetConfigForApply()
+	options := &applicantOptions{
+		Domains:               uslices.Filter(strings.Split(nodeConfig.Domains, ";"), func(s string) bool { return s != "" }),
+		ContactEmail:          nodeConfig.ContactEmail,
+		Provider:              domain.ApplyDNSProviderType(nodeConfig.Provider),
+		ProviderApplyConfig:   nodeConfig.ProviderConfig,
+		KeyAlgorithm:          nodeConfig.KeyAlgorithm,
+		Nameservers:           uslices.Filter(strings.Split(nodeConfig.Nameservers, ";"), func(s string) bool { return s != "" }),
+		DnsPropagationTimeout: nodeConfig.DnsPropagationTimeout,
+		DnsTTL:                nodeConfig.DnsTTL,
+		DisableFollowCNAME:    nodeConfig.DisableFollowCNAME,
+	}
+
 	accessRepo := repository.NewAccessRepository()
+	if access, err := accessRepo.GetById(context.Background(), nodeConfig.ProviderAccessId); err != nil {
+		return nil, fmt.Errorf("failed to get access #%s record: %w", nodeConfig.ProviderAccessId, err)
+	} else {
+		accessConfig, err := access.UnmarshalConfigToMap()
+		if err != nil {
+			return nil, fmt.Errorf("failed to unmarshal access config: %w", err)
+		}
 
-	access, err := accessRepo.GetById(context.Background(), node.GetConfigString("access"))
-	if err != nil {
-		return nil, fmt.Errorf("access record not found: %w", err)
+		options.ProviderAccessConfig = accessConfig
 	}
 
-	timeout := node.GetConfigInt64("timeout")
-	if timeout == 0 {
-		timeout = defaultTimeout
-	}
+	certRepo := repository.NewCertificateRepository()
+	lastCertificate, _ := certRepo.GetByWorkflowNodeId(context.Background(), node.Id)
+	if lastCertificate != nil {
+		newCertSan := slices.Clone(options.Domains)
+		oldCertSan := strings.Split(lastCertificate.SubjectAltNames, ";")
+		slices.Sort(newCertSan)
+		slices.Sort(oldCertSan)
 
-	applyConfig := &ApplyOption{
-		Email:              node.GetConfigString("email"),
-		Domain:             node.GetConfigString("domain"),
-		Access:             access.Config,
-		KeyAlgorithm:       node.GetConfigString("keyAlgorithm"),
-		Nameservers:        node.GetConfigString("nameservers"),
-		Timeout:            timeout,
-		DisableFollowCNAME: node.GetConfigBool("disableFollowCNAME"),
-	}
-
-	return GetWithTypeOption(access.ConfigType, applyConfig)
-}
-
-func GetWithTypeOption(t string, option *ApplyOption) (Applicant, error) {
-	switch t {
-	case configTypeAliyun:
-		return NewAliyun(option), nil
-	case configTypeTencent:
-		return NewTencent(option), nil
-	case configTypeHuaweiCloud:
-		return NewHuaweiCloud(option), nil
-	case configTypeAws:
-		return NewAws(option), nil
-	case configTypeCloudflare:
-		return NewCloudflare(option), nil
-	case configTypeNamesilo:
-		return NewNamesilo(option), nil
-	case configTypeGodaddy:
-		return NewGodaddy(option), nil
-	case configTypePdns:
-		return NewPdns(option), nil
-	case configTypeHttpreq:
-		return NewHttpreq(option), nil
-	case configTypeVolcengine:
-		return NewVolcengine(option), nil
-	default:
-		return nil, errors.New("unknown config type")
-	}
-}
-
-type SSLProviderConfig struct {
-	Config   SSLProviderConfigContent `json:"config"`
-	Provider string                   `json:"provider"`
-}
-
-type SSLProviderConfigContent struct {
-	Zerossl SSLProviderEab `json:"zerossl"`
-	Gts     SSLProviderEab `json:"gts"`
-}
-
-type SSLProviderEab struct {
-	EabHmacKey string `json:"eabHmacKey"`
-	EabKid     string `json:"eabKid"`
-}
-
-func apply(option *ApplyOption, provider challenge.Provider) (*Certificate, error) {
-	record, _ := app.GetApp().Dao().FindFirstRecordByFilter("settings", "name='ssl-provider'")
-
-	sslProvider := &SSLProviderConfig{
-		Config:   SSLProviderConfigContent{},
-		Provider: defaultSSLProvider,
-	}
-	if record != nil {
-		if err := record.UnmarshalJSONField("content", sslProvider); err != nil {
-			return nil, err
+		if slices.Equal(newCertSan, oldCertSan) {
+			lastCertX509, _ := certcrypto.ParsePEMCertificate([]byte(lastCertificate.Certificate))
+			if lastCertX509 != nil {
+				replacedARICertId, _ := certificate.MakeARICertID(lastCertX509)
+				options.ReplacedARIAcctId = lastCertificate.ACMEAccountUrl
+				options.ReplacedARICertId = replacedARICertId
+			}
 		}
 	}
 
-	// Some unified lego environment variables are configured here.
-	// link: https://github.com/go-acme/lego/issues/1867
-	os.Setenv("LEGO_DISABLE_CNAME_SUPPORT", strconv.FormatBool(option.DisableFollowCNAME))
-
-	myUser, err := newApplyUser(sslProvider.Provider, option.Email)
+	applicant, err := createApplicant(options)
 	if err != nil {
 		return nil, err
 	}
 
-	config := lego.NewConfig(myUser)
+	return &proxyApplicant{
+		applicant: applicant,
+		options:   options,
+	}, nil
+}
 
-	// This CA URL is configured for a local dev instance of Boulder running in Docker in a VM.
-	config.CADirURL = sslProviderUrls[sslProvider.Provider]
-	config.Certificate.KeyType = parseKeyAlgorithm(option.KeyAlgorithm)
+func apply(challengeProvider challenge.Provider, options *applicantOptions) (*ApplyCertResult, error) {
+	settingsRepo := repository.NewSettingsRepository()
+	settings, _ := settingsRepo.GetByName(context.Background(), "sslProvider")
 
-	// A client facilitates communication with the CA server.
+	sslProviderConfig := &acmeSSLProviderConfig{
+		Config:   acmeSSLProviderConfigContent{},
+		Provider: defaultSSLProvider,
+	}
+	if settings != nil {
+		if err := json.Unmarshal([]byte(settings.Content), sslProviderConfig); err != nil {
+			return nil, err
+		}
+	}
+
+	if sslProviderConfig.Provider == "" {
+		sslProviderConfig.Provider = defaultSSLProvider
+	}
+
+	acmeUser, err := newAcmeUser(sslProviderConfig.Provider, options.ContactEmail)
+	if err != nil {
+		return nil, err
+	}
+
+	// Some unified lego environment variables are configured here.
+	// link: https://github.com/go-acme/lego/issues/1867
+	os.Setenv("LEGO_DISABLE_CNAME_SUPPORT", strconv.FormatBool(options.DisableFollowCNAME))
+
+	// Create an ACME client config
+	config := lego.NewConfig(acmeUser)
+	config.CADirURL = sslProviderUrls[sslProviderConfig.Provider]
+	config.Certificate.KeyType = parseKeyAlgorithm(domain.CertificateKeyAlgorithmType(options.KeyAlgorithm))
+
+	// Create an ACME client
 	client, err := lego.NewClient(config)
 	if err != nil {
 		return nil, err
 	}
 
+	// Set the DNS01 challenge provider
 	challengeOptions := make([]dns01.ChallengeOption, 0)
-	nameservers := parseNameservers(option.Nameservers)
-	if len(nameservers) > 0 {
-		challengeOptions = append(challengeOptions, dns01.AddRecursiveNameservers(nameservers))
+	if len(options.Nameservers) > 0 {
+		challengeOptions = append(challengeOptions, dns01.AddRecursiveNameservers(dns01.ParseNameservers(options.Nameservers)))
+		challengeOptions = append(challengeOptions, dns01.DisableAuthoritativeNssPropagationRequirement())
 	}
+	client.Challenge.SetDNS01Provider(challengeProvider, challengeOptions...)
 
-	client.Challenge.SetDNS01Provider(provider, challengeOptions...)
-
-	// New users will need to register
-	if !myUser.hasRegistration() {
-		reg, err := getReg(client, sslProvider, myUser)
+	// New users need to register first
+	if !acmeUser.hasRegistration() {
+		reg, err := registerAcmeUserWithSingleFlight(client, sslProviderConfig, acmeUser)
 		if err != nil {
 			return nil, fmt.Errorf("failed to register: %w", err)
 		}
-		myUser.Registration = reg
+		acmeUser.Registration = reg
 	}
 
-	domains := strings.Split(option.Domain, ";")
-	request := certificate.ObtainRequest{
-		Domains: domains,
+	// Obtain a certificate
+	certRequest := certificate.ObtainRequest{
+		Domains: options.Domains,
 		Bundle:  true,
 	}
-	certificates, err := client.Certificate.Obtain(request)
+	if options.ReplacedARICertId != "" && options.ReplacedARIAcctId != acmeUser.Registration.URI {
+		certRequest.ReplacesCertID = options.ReplacedARICertId
+	}
+	certResource, err := client.Certificate.Obtain(certRequest)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Certificate{
-		CertUrl:           certificates.CertURL,
-		CertStableUrl:     certificates.CertStableURL,
-		PrivateKey:        string(certificates.PrivateKey),
-		Certificate:       string(certificates.Certificate),
-		IssuerCertificate: string(certificates.IssuerCertificate),
-		Csr:               string(certificates.CSR),
+	return &ApplyCertResult{
+		CertificateFullChain: strings.TrimSpace(string(certResource.Certificate)),
+		IssuerCertificate:    strings.TrimSpace(string(certResource.IssuerCertificate)),
+		PrivateKey:           strings.TrimSpace(string(certResource.PrivateKey)),
+		ACMEAccountUrl:       acmeUser.Registration.URI,
+		ACMECertUrl:          certResource.CertURL,
+		ACMECertStableUrl:    certResource.CertStableURL,
+		CSR:                  strings.TrimSpace(string(certResource.CSR)),
 	}, nil
 }
 
-type AcmeAccountRepository interface {
-	GetByCAAndEmail(ca, email string) (*domain.AcmeAccount, error)
-	Save(ca, email, key string, resource *registration.Resource) error
-}
-
-func getAcmeAccountRepository() AcmeAccountRepository {
-	return repository.NewAcmeAccountRepository()
-}
-
-func getReg(client *lego.Client, sslProvider *SSLProviderConfig, user *ApplyUser) (*registration.Resource, error) {
-	var reg *registration.Resource
-	var err error
-	switch sslProvider.Provider {
-	case sslProviderZeroSSL:
-		reg, err = client.Registration.RegisterWithExternalAccountBinding(registration.RegisterEABOptions{
-			TermsOfServiceAgreed: true,
-			Kid:                  sslProvider.Config.Zerossl.EabKid,
-			HmacEncoded:          sslProvider.Config.Zerossl.EabHmacKey,
-		})
-	case sslProviderGts:
-		reg, err = client.Registration.RegisterWithExternalAccountBinding(registration.RegisterEABOptions{
-			TermsOfServiceAgreed: true,
-			Kid:                  sslProvider.Config.Gts.EabKid,
-			HmacEncoded:          sslProvider.Config.Gts.EabHmacKey,
-		})
-
-	case sslProviderLetsencrypt:
-		reg, err = client.Registration.Register(registration.RegisterOptions{TermsOfServiceAgreed: true})
-
-	default:
-		err = errors.New("unknown ssl provider")
-	}
-
-	if err != nil {
-		return nil, err
-	}
-
-	repo := getAcmeAccountRepository()
-
-	resp, err := repo.GetByCAAndEmail(sslProvider.Provider, user.GetEmail())
-	if err == nil {
-		user.key = resp.Key
-		return resp.Resource, nil
-	}
-
-	if err := repo.Save(sslProvider.Provider, user.GetEmail(), user.getPrivateKeyString(), reg); err != nil {
-		return nil, fmt.Errorf("failed to save registration: %w", err)
-	}
-
-	return reg, nil
-}
-
-func parseNameservers(ns string) []string {
-	nameservers := make([]string, 0)
-
-	lines := strings.Split(ns, ";")
-
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-
-		nameservers = append(nameservers, line)
-	}
-
-	return nameservers
-}
-
-func parseKeyAlgorithm(algo string) certcrypto.KeyType {
+func parseKeyAlgorithm(algo domain.CertificateKeyAlgorithmType) certcrypto.KeyType {
 	switch algo {
-	case "RSA2048":
+	case domain.CertificateKeyAlgorithmTypeRSA2048:
 		return certcrypto.RSA2048
-	case "RSA3072":
+	case domain.CertificateKeyAlgorithmTypeRSA3072:
 		return certcrypto.RSA3072
-	case "RSA4096":
+	case domain.CertificateKeyAlgorithmTypeRSA4096:
 		return certcrypto.RSA4096
-	case "RSA8192":
+	case domain.CertificateKeyAlgorithmTypeRSA8192:
 		return certcrypto.RSA8192
-	case "EC256":
+	case domain.CertificateKeyAlgorithmTypeEC256:
 		return certcrypto.EC256
-	case "EC384":
+	case domain.CertificateKeyAlgorithmTypeEC384:
 		return certcrypto.EC384
-	default:
-		return certcrypto.RSA2048
 	}
+
+	return certcrypto.RSA2048
+}
+
+// TODO: 暂时使用代理模式以兼容之前版本代码，后续重新实现此处逻辑
+type proxyApplicant struct {
+	applicant challenge.Provider
+	options   *applicantOptions
+}
+
+var limiters sync.Map
+
+const (
+	limitBurst         = 300
+	limitRate  float64 = float64(1) / float64(36)
+)
+
+func getLimiter(key string) *rate.Limiter {
+	limiter, _ := limiters.LoadOrStore(key, rate.NewLimiter(rate.Limit(limitRate), 300))
+	return limiter.(*rate.Limiter)
+}
+
+func (d *proxyApplicant) Apply() (*ApplyCertResult, error) {
+	limiter := getLimiter(fmt.Sprintf("apply_%s", d.options.ContactEmail))
+	limiter.Wait(context.Background())
+	return apply(d.applicant, d.options)
 }

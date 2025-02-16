@@ -10,7 +10,7 @@ import (
 	"github.com/qiniu/go-sdk/v7/auth"
 
 	"github.com/usual2970/certimate/internal/pkg/core/uploader"
-	"github.com/usual2970/certimate/internal/pkg/utils/x509"
+	"github.com/usual2970/certimate/internal/pkg/utils/certs"
 	qiniuEx "github.com/usual2970/certimate/internal/pkg/vendors/qiniu-sdk"
 )
 
@@ -49,7 +49,7 @@ func New(config *QiniuSSLCertUploaderConfig) (*QiniuSSLCertUploader, error) {
 
 func (u *QiniuSSLCertUploader) Upload(ctx context.Context, certPem string, privkeyPem string) (res *uploader.UploadResult, err error) {
 	// 解析证书内容
-	certX509, err := x509.ParseCertificateFromPEM(certPem)
+	certX509, err := certs.ParseCertificateFromPEM(certPem)
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +60,7 @@ func (u *QiniuSSLCertUploader) Upload(ctx context.Context, certPem string, privk
 
 	// 上传新证书
 	// REF: https://developer.qiniu.com/fusion/8593/interface-related-certificate
-	uploadSslCertResp, err := u.sdkClient.UploadSslCert(certName, certX509.Subject.CommonName, certPem, privkeyPem)
+	uploadSslCertResp, err := u.sdkClient.UploadSslCert(context.TODO(), certName, certX509.Subject.CommonName, certPem, privkeyPem)
 	if err != nil {
 		return nil, xerrors.Wrap(err, "failed to execute sdk request 'cdn.UploadSslCert'")
 	}

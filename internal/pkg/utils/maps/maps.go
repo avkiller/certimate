@@ -1,6 +1,10 @@
 ﻿package maps
 
-import "strconv"
+import (
+	"strconv"
+
+	mapstructure "github.com/go-viper/mapstructure/v2"
+)
 
 // 以字符串形式从字典中获取指定键的值。
 //
@@ -118,6 +122,12 @@ func GetValueOrDefaultAsInt64(dict map[string]any, key string, defaultValue int6
 			}
 		}
 
+		if result, ok := value.(int32); ok {
+			if result != 0 {
+				return int64(result)
+			}
+		}
+
 		// 兼容字符串类型的值
 		if str, ok := value.(string); ok {
 			if result, err := strconv.ParseInt(str, 10, 64); err == nil {
@@ -171,4 +181,34 @@ func GetValueOrDefaultAsBool(dict map[string]any, key string, defaultValue bool)
 	}
 
 	return defaultValue
+}
+
+// 将字典填充到指定类型的结构体。
+// 与 [json.Unmarshal] 类似，但传入的是一个 [map[string]interface{}] 对象而非 JSON 格式的字符串。
+//
+// 入参：
+//   - dict: 字典。
+//   - output: 结构体指针。
+//
+// 出参：
+//   - 错误信息。如果填充失败，则返回错误信息。
+func Populate(dict map[string]any, output any) error {
+	config := &mapstructure.DecoderConfig{
+		Metadata:         nil,
+		Result:           output,
+		WeaklyTypedInput: true,
+		TagName:          "json",
+	}
+
+	decoder, err := mapstructure.NewDecoder(config)
+	if err != nil {
+		return err
+	}
+
+	return decoder.Decode(dict)
+}
+
+// Deprecated: Use [Populate] instead.
+func Decode(dict map[string]any, output any) error {
+	return Populate(dict, output)
 }

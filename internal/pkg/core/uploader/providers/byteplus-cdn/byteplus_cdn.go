@@ -14,8 +14,7 @@ import (
 	xerrors "github.com/pkg/errors"
 
 	"github.com/usual2970/certimate/internal/pkg/core/uploader"
-	"github.com/usual2970/certimate/internal/pkg/utils/cast"
-	"github.com/usual2970/certimate/internal/pkg/utils/x509"
+	"github.com/usual2970/certimate/internal/pkg/utils/certs"
 )
 
 type ByteplusCDNUploaderConfig struct {
@@ -49,7 +48,7 @@ func New(config *ByteplusCDNUploaderConfig) (*ByteplusCDNUploader, error) {
 
 func (u *ByteplusCDNUploader) Upload(ctx context.Context, certPem string, privkeyPem string) (res *uploader.UploadResult, err error) {
 	// 解析证书内容
-	certX509, err := x509.ParseCertificateFromPEM(certPem)
+	certX509, err := certs.ParseCertificateFromPEM(certPem)
 	if err != nil {
 		return nil, err
 	}
@@ -60,9 +59,9 @@ func (u *ByteplusCDNUploader) Upload(ctx context.Context, certPem string, privke
 	listCertInfoPageSize := int64(100)
 	listCertInfoTotal := 0
 	listCertInfoReq := &bpCdn.ListCertInfoRequest{
-		PageNum:  cast.Int64Ptr(listCertInfoPageNum),
-		PageSize: cast.Int64Ptr(listCertInfoPageSize),
-		Source:   cast.StringPtr("cert_center"),
+		PageNum:  bpCdn.GetInt64Ptr(listCertInfoPageNum),
+		PageSize: bpCdn.GetInt64Ptr(listCertInfoPageSize),
+		Source:   bpCdn.GetStrPtr("cert_center"),
 	}
 	for {
 		listCertInfoResp, err := u.sdkClient.ListCertInfo(listCertInfoReq)
@@ -104,8 +103,8 @@ func (u *ByteplusCDNUploader) Upload(ctx context.Context, certPem string, privke
 	addCertificateReq := &bpCdn.AddCertificateRequest{
 		Certificate: certPem,
 		PrivateKey:  privkeyPem,
-		Source:      cast.StringPtr("cert_center"),
-		Desc:        cast.StringPtr(certName),
+		Source:      bpCdn.GetStrPtr("cert_center"),
+		Desc:        bpCdn.GetStrPtr(certName),
 	}
 	addCertificateResp, err := u.sdkClient.AddCertificate(addCertificateReq)
 	if err != nil {

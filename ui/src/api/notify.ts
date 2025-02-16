@@ -1,9 +1,11 @@
-import { getPocketBase } from "@/repository/pocketbase";
+import { ClientResponseError } from "pocketbase";
+
+import { getPocketBase } from "@/repository/_pocketbase";
 
 export const notifyTest = async (channel: string) => {
   const pb = getPocketBase();
 
-  const resp = await pb.send("/api/notify/test", {
+  const resp = await pb.send<BaseResponse>("/api/notify/test", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -14,7 +16,7 @@ export const notifyTest = async (channel: string) => {
   });
 
   if (resp.code != 0) {
-    throw new Error(resp.msg);
+    throw new ClientResponseError({ status: resp.code, response: resp, data: {} });
   }
 
   return resp;

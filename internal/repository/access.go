@@ -4,9 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
+	"github.com/pocketbase/pocketbase/core"
+
+	"github.com/usual2970/certimate/internal/app"
 	"github.com/usual2970/certimate/internal/domain"
-	"github.com/usual2970/certimate/internal/utils/app"
 )
 
 type AccessRepository struct{}
@@ -15,8 +18,8 @@ func NewAccessRepository() *AccessRepository {
 	return &AccessRepository{}
 }
 
-func (a *AccessRepository) GetById(ctx context.Context, id string) (*domain.Access, error) {
-	record, err := app.GetApp().Dao().FindRecordById("access", id)
+func (r *AccessRepository) GetById(ctx context.Context, id string) (*domain.Access, error) {
+	record, err := app.GetApp().FindRecordById(domain.CollectionNameAccess, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, domain.ErrRecordNotFound
@@ -24,16 +27,27 @@ func (a *AccessRepository) GetById(ctx context.Context, id string) (*domain.Acce
 		return nil, err
 	}
 
-	rs := &domain.Access{
-		Meta: domain.Meta{
-			Id:      record.GetId(),
-			Created: record.GetTime("created"),
-			Updated: record.GetTime("updated"),
-		},
-		Name:       record.GetString("name"),
-		Config:     record.GetString("config"),
-		ConfigType: record.GetString("configType"),
-		Usage:      record.GetString("usage"),
+	if !record.GetDateTime("deleted").Time().IsZero() {
+		return nil, domain.ErrRecordNotFound
 	}
-	return rs, nil
+
+	return r.castRecordToModel(record)
+}
+
+func (r *AccessRepository) castRecordToModel(record *core.Record) (*domain.Access, error) {
+	if record == nil {
+		return nil, fmt.Errorf("record is nil")
+	}
+
+	access := &domain.Access{
+		Meta: domain.Meta{
+			Id:        record.Id,
+			CreatedAt: record.GetDateTime("created").Time(),
+			UpdatedAt: record.GetDateTime("updated").Time(),
+		},
+		Name:     record.GetString("name"),
+		Provider: record.GetString("provider"),
+		Config:   record.GetString("config"),
+	}
+	return access, nil
 }

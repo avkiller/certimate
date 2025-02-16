@@ -1,18 +1,19 @@
 import { createHashRouter } from "react-router-dom";
 
-import AuthLayout from "./pages/AuthLayout";
-import ConsoleLayout from "./pages/ConsoleLayout";
-import SettingsLayout from "./pages/SettingsLayout";
-import Login from "./pages/login/Login";
-import Account from "./pages/settings/Account";
-import Password from "./pages/settings/Password";
-import Notify from "./pages/settings/Notify";
-import SSLProvider from "./pages/settings/SSLProvider";
-import Dashboard from "./pages/dashboard/Dashboard";
 import AccessList from "./pages/accesses/AccessList";
-import WorkflowList from "./pages/workflows/WorkflowList";
-import WorkflowDetail from "./pages/workflows/WorkflowDetail";
+import AuthLayout from "./pages/AuthLayout";
 import CertificateList from "./pages/certificates/CertificateList";
+import ConsoleLayout from "./pages/ConsoleLayout";
+import Dashboard from "./pages/dashboard/Dashboard";
+import Login from "./pages/login/Login";
+import Settings from "./pages/settings/Settings";
+import SettingsAccount from "./pages/settings/SettingsAccount";
+import SettingsNotification from "./pages/settings/SettingsNotification";
+import SettingsPassword from "./pages/settings/SettingsPassword";
+import SettingsSSLProvider from "./pages/settings/SettingsSSLProvider";
+import WorkflowDetail from "./pages/workflows/WorkflowDetail";
+import WorkflowList from "./pages/workflows/WorkflowList";
+import WorkflowNew from "./pages/workflows/WorkflowNew";
 
 export const router = createHashRouter([
   {
@@ -36,28 +37,32 @@ export const router = createHashRouter([
         element: <WorkflowList />,
       },
       {
-        path: "/workflows/detail",
+        path: "/workflows/new",
+        element: <WorkflowNew />,
+      },
+      {
+        path: "/workflows/:id",
         element: <WorkflowDetail />,
       },
       {
         path: "/settings",
-        element: <SettingsLayout />,
+        element: <Settings />,
         children: [
           {
-            path: "/settings/password",
-            element: <Password />,
-          },
-          {
             path: "/settings/account",
-            element: <Account />,
+            element: <SettingsAccount />,
           },
           {
-            path: "/settings/notify",
-            element: <Notify />,
+            path: "/settings/password",
+            element: <SettingsPassword />,
+          },
+          {
+            path: "/settings/notification",
+            element: <SettingsNotification />,
           },
           {
             path: "/settings/ssl-provider",
-            element: <SSLProvider />,
+            element: <SettingsSSLProvider />,
           },
         ],
       },

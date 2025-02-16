@@ -11,8 +11,9 @@ import (
 	xerrors "github.com/pkg/errors"
 
 	"github.com/usual2970/certimate/internal/pkg/core/deployer"
-	"github.com/usual2970/certimate/internal/pkg/utils/fs"
-	"github.com/usual2970/certimate/internal/pkg/utils/x509"
+	"github.com/usual2970/certimate/internal/pkg/core/logger"
+	"github.com/usual2970/certimate/internal/pkg/utils/certs"
+	"github.com/usual2970/certimate/internal/pkg/utils/files"
 )
 
 type LocalDeployerConfig struct {
@@ -45,16 +46,16 @@ type LocalDeployerConfig struct {
 
 type LocalDeployer struct {
 	config *LocalDeployerConfig
-	logger deployer.Logger
+	logger logger.Logger
 }
 
 var _ deployer.Deployer = (*LocalDeployer)(nil)
 
 func New(config *LocalDeployerConfig) (*LocalDeployer, error) {
-	return NewWithLogger(config, deployer.NewNilLogger())
+	return NewWithLogger(config, logger.NewNilLogger())
 }
 
-func NewWithLogger(config *LocalDeployerConfig, logger deployer.Logger) (*LocalDeployer, error) {
+func NewWithLogger(config *LocalDeployerConfig, logger logger.Logger) (*LocalDeployer, error) {
 	if config == nil {
 		return nil, errors.New("config is nil")
 	}
@@ -74,7 +75,7 @@ func (d *LocalDeployer) Deploy(ctx context.Context, certPem string, privkeyPem s
 	if d.config.PreCommand != "" {
 		stdout, stderr, err := execCommand(d.config.ShellEnv, d.config.PreCommand)
 		if err != nil {
-			return nil, xerrors.Wrapf(err, "failed to run pre-command, stdout: %s, stderr: %s", stdout, stderr)
+			return nil, xerrors.Wrapf(err, "failed to execute pre-command, stdout: %s, stderr: %s", stdout, stderr)
 		}
 
 		d.logger.Logt("pre-command executed", stdout)
@@ -83,41 +84,41 @@ func (d *LocalDeployer) Deploy(ctx context.Context, certPem string, privkeyPem s
 	// 写入证书和私钥文件
 	switch d.config.OutputFormat {
 	case OUTPUT_FORMAT_PEM:
-		if err := fs.WriteFileString(d.config.OutputCertPath, certPem); err != nil {
+		if err := files.WriteString(d.config.OutputCertPath, certPem); err != nil {
 			return nil, xerrors.Wrap(err, "failed to save certificate file")
 		}
 
 		d.logger.Logt("certificate file saved")
 
-		if err := fs.WriteFileString(d.config.OutputKeyPath, privkeyPem); err != nil {
+		if err := files.WriteString(d.config.OutputKeyPath, privkeyPem); err != nil {
 			return nil, xerrors.Wrap(err, "failed to save private key file")
 		}
 
 		d.logger.Logt("private key file saved")
 
 	case OUTPUT_FORMAT_PFX:
-		pfxData, err := x509.TransformCertificateFromPEMToPFX(certPem, privkeyPem, d.config.PfxPassword)
+		pfxData, err := certs.TransformCertificateFromPEMToPFX(certPem, privkeyPem, d.config.PfxPassword)
 		if err != nil {
 			return nil, xerrors.Wrap(err, "failed to transform certificate to PFX")
 		}
 
 		d.logger.Logt("certificate transformed to PFX")
 
-		if err := fs.WriteFile(d.config.OutputCertPath, pfxData); err != nil {
+		if err := files.Write(d.config.OutputCertPath, pfxData); err != nil {
 			return nil, xerrors.Wrap(err, "failed to save certificate file")
 		}
 
 		d.logger.Logt("certificate file saved")
 
 	case OUTPUT_FORMAT_JKS:
-		jksData, err := x509.TransformCertificateFromPEMToJKS(certPem, privkeyPem, d.config.JksAlias, d.config.JksKeypass, d.config.JksStorepass)
+		jksData, err := certs.TransformCertificateFromPEMToJKS(certPem, privkeyPem, d.config.JksAlias, d.config.JksKeypass, d.config.JksStorepass)
 		if err != nil {
 			return nil, xerrors.Wrap(err, "failed to transform certificate to JKS")
 		}
 
 		d.logger.Logt("certificate transformed to JKS")
 
-		if err := fs.WriteFile(d.config.OutputCertPath, jksData); err != nil {
+		if err := files.Write(d.config.OutputCertPath, jksData); err != nil {
 			return nil, xerrors.Wrap(err, "failed to save certificate file")
 		}
 
@@ -131,7 +132,7 @@ func (d *LocalDeployer) Deploy(ctx context.Context, certPem string, privkeyPem s
 	if d.config.PostCommand != "" {
 		stdout, stderr, err := execCommand(d.config.ShellEnv, d.config.PostCommand)
 		if err != nil {
-			return nil, xerrors.Wrapf(err, "failed to run command, stdout: %s, stderr: %s", stdout, stderr)
+			return nil, xerrors.Wrapf(err, "failed to execute post-command, stdout: %s, stderr: %s", stdout, stderr)
 		}
 
 		d.logger.Logt("post-command executed", stdout)
@@ -153,7 +154,7 @@ func execCommand(shellEnv ShellEnvType, command string) (string, string, error) 
 	case SHELL_ENV_POWERSHELL:
 		cmd = exec.Command("powershell", "-Command", command)
 
-	case "":
+	case ShellEnvType(""):
 		if runtime.GOOS == "windows" {
 			cmd = exec.Command("cmd", "/C", command)
 		} else {
@@ -164,14 +165,13 @@ func execCommand(shellEnv ShellEnvType, command string) (string, string, error) 
 		return "", "", fmt.Errorf("unsupported shell env: %s", shellEnv)
 	}
 
-	var stdoutBuf bytes.Buffer
-	cmd.Stdout = &stdoutBuf
-	var stderrBuf bytes.Buffer
-	cmd.Stderr = &stderrBuf
-
+	stdoutBuf := bytes.NewBuffer(nil)
+	cmd.Stdout = stdoutBuf
+	stderrBuf := bytes.NewBuffer(nil)
+	cmd.Stderr = stderrBuf
 	err := cmd.Run()
 	if err != nil {
-		return "", "", xerrors.Wrap(err, "failed to execute shell command")
+		return stdoutBuf.String(), stderrBuf.String(), xerrors.Wrap(err, "failed to execute command")
 	}
 
 	return stdoutBuf.String(), stderrBuf.String(), nil
