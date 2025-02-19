@@ -23,7 +23,7 @@ func init() {
 		if len(records) == 0 {
 			envUsername := strings.TrimSpace(os.Getenv("CERTIMATE_ADMIN_USERNAME"))
 			if envUsername == "" {
-				envUsername = "admin@certimate.fun"
+				envUsername = "admin"
 			}
 
 			envPassword := strings.TrimSpace(os.Getenv("CERTIMATE_ADMIN_PASSWORD"))
