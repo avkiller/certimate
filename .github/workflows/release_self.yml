@@ -241,6 +241,6 @@ jobs:
           files: |
             dist/*.zip
             dist/checksums.txt
-          draft: true
+          draft: false
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
