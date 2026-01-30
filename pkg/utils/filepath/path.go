@@ -1,4 +1,4 @@
-﻿package filepath
+package filepath
 
 import (
 	stdfilepath "path/filepath"

@@ -1,4 +1,4 @@
-﻿package engine
+package engine
 
 import (
 	"github.com/certimate-go/certimate/internal/domain"
