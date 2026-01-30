@@ -23,7 +23,7 @@ jobs:
           
           if [ "$GITHUB_EVENT_NAME" != "workflow_dispatch" ]; then
             # 使用当前的tags
-            VERSION = "GITHUB_REF#refs/tags/"
+            VERSION="GITHUB_REF#refs/tags/"
             
           fi
           echo "${VERSION}"
@@ -32,8 +32,8 @@ jobs:
           
           if [ "$GITHUB_EVENT_NAME" != "workflow_dispatch" ]; then
             # 使用当前的tags
-            TAG_NAME ="github.ref_name"
+            TAG_NAME="${GITHUB_REF#refs/tags/}"
           else
-            TAG_NAME = ${VERSION}
+            TAG_NAME="${VERSION}"
           fi
           echo "${TAG_NAME}"
