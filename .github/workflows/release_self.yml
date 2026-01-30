@@ -179,7 +179,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
           VERSION: ${{ inputs.version }}
-          TAG_NAME: ${VERSION}
+          TAG_NAME: ${{ inputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
