@@ -3,6 +3,29 @@ import { ClientResponseError } from "pocketbase";
 import { WORKFLOW_TRIGGERS } from "@/domain/workflow";
 import { getPocketBase } from "@/repository/_pocketbase";
 
+export const getStats = async () => {
+  const pb = getPocketBase();
+
+  const resp = await pb.send<
+    BaseResponse<{
+      concurrency: number;
+      pendingRunIds: string[];
+      processingRunIds: string[];
+    }>
+  >(`/api/workflows/stats`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (resp.code != 0) {
+    throw new ClientResponseError({ status: resp.code, response: resp, data: {} });
+  }
+
+  return resp;
+};
+
 export const startRun = async (workflowId: string) => {
   const pb = getPocketBase();
 

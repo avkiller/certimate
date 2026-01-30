@@ -4,12 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 
 	"github.com/pocketbase/pocketbase/core"
 
-	"github.com/usual2970/certimate/internal/app"
-	"github.com/usual2970/certimate/internal/domain"
+	"github.com/certimate-go/certimate/internal/app"
+	"github.com/certimate-go/certimate/internal/domain"
 )
 
 type AccessRepository struct{}
@@ -36,7 +35,12 @@ func (r *AccessRepository) GetById(ctx context.Context, id string) (*domain.Acce
 
 func (r *AccessRepository) castRecordToModel(record *core.Record) (*domain.Access, error) {
 	if record == nil {
-		return nil, fmt.Errorf("record is nil")
+		return nil, errors.New("the record is nil")
+	}
+
+	config := make(map[string]any)
+	if err := record.UnmarshalJSONField("config", &config); err != nil {
+		return nil, errors.New("field 'config' is malformed")
 	}
 
 	access := &domain.Access{
@@ -47,7 +51,8 @@ func (r *AccessRepository) castRecordToModel(record *core.Record) (*domain.Acces
 		},
 		Name:     record.GetString("name"),
 		Provider: record.GetString("provider"),
-		Config:   record.GetString("config"),
+		Config:   config,
+		Reserve:  record.GetString("reserve"),
 	}
 	return access, nil
 }

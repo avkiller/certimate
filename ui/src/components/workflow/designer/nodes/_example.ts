@@ -1,0 +1,63 @@
+﻿import { type FlowNodeRegistry } from "@flowgram.ai/fixed-layout-editor";
+import { nanoid } from "nanoid";
+
+/**
+ * 自定义节点注册
+ */
+export const nodeRegistry: FlowNodeRegistry = {
+  /**
+   * 自定义节点类型
+   */
+  type: "ifElse",
+
+  /**
+   * 自定义节点扩展:
+   *  - loop: 扩展为循环节点
+   *  - start: 扩展为开始节点
+   *  - dynamicSplit: 扩展为分支节点
+   *  - end: 扩展为结束节点
+   *  - tryCatch: 扩展为 tryCatch 节点
+   *  - break: 分支断开
+   *  - default: 扩展为普通节点 (默认)
+   */
+  extend: "dynamicSplit",
+
+  /**
+   * 节点配置信息
+   */
+  meta: {
+    isStart: false, // 是否为开始节点
+    isNodeEnd: false, // 是否为结束节点，结束节点后边无法再添加节点
+    draggable: false, // 是否可拖拽，如开始节点和结束节点无法拖拽
+    selectable: false, // 触发器等开始节点不能被框选
+    deleteDisable: true, // 禁止删除
+    copyDisable: true, // 禁止克隆
+    addDisable: true, // 禁止添加
+  },
+
+  onAdd() {
+    return {
+      id: `IfElse_${nanoid(5)}`,
+      type: "ifElse",
+      data: {
+        title: "IfElse",
+      },
+      blocks: [
+        {
+          id: nanoid(5),
+          type: "block",
+          data: {
+            title: "If",
+          },
+        },
+        {
+          id: nanoid(5),
+          type: "block",
+          data: {
+            title: "Else",
+          },
+        },
+      ],
+    };
+  },
+};

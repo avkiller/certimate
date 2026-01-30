@@ -6,18 +6,18 @@ export interface CertificateModel extends BaseModel {
   serialNumber: string;
   certificate: string;
   privateKey: string;
-  issuer: string;
+  issuerOrg: string;
   keyAlgorithm: string;
-  effectAt: ISO8601String;
-  expireAt: ISO8601String;
-  workflowId: string;
+  validityNotBefore: ISO8601String;
+  validityNotAfter: ISO8601String;
+  workflowRef: string;
   expand?: {
-    workflowId?: WorkflowModel; // TODO: ugly, maybe to use an alias?
+    workflowRef?: Pick<WorkflowModel, "id" | "name" | "description">;
   };
 }
 
 export const CERTIFICATE_SOURCES = Object.freeze({
-  WORKFLOW: "workflow",
+  REQUEST: "request",
   UPLOAD: "upload",
 } as const);
 

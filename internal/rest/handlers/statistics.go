@@ -6,8 +6,8 @@ import (
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/tools/router"
 
-	"github.com/usual2970/certimate/internal/domain"
-	"github.com/usual2970/certimate/internal/rest/resp"
+	"github.com/certimate-go/certimate/internal/domain"
+	"github.com/certimate-go/certimate/internal/rest/resp"
 )
 
 type statisticsService interface {
@@ -28,9 +28,10 @@ func NewStatisticsHandler(router *router.RouterGroup[*core.RequestEvent], servic
 }
 
 func (handler *StatisticsHandler) get(e *core.RequestEvent) error {
-	if statistics, err := handler.service.Get(e.Request.Context()); err != nil {
+	res, err := handler.service.Get(e.Request.Context())
+	if err != nil {
 		return resp.Err(e, err)
-	} else {
-		return resp.Ok(e, statistics)
 	}
+
+	return resp.Ok(e, res)
 }

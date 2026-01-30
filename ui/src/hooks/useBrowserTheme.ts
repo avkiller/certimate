@@ -1,5 +1,10 @@
 ﻿import { useTheme } from "ahooks";
 
+const LOCAL_STORAGE_KEY = "certimate-ui-theme";
+if (!localStorage.getItem(LOCAL_STORAGE_KEY)) {
+  localStorage.setItem(LOCAL_STORAGE_KEY, "dark");
+}
+
 export type UseBrowserThemeReturns = ReturnType<typeof useTheme>;
 
 /**
@@ -7,7 +12,7 @@ export type UseBrowserThemeReturns = ReturnType<typeof useTheme>;
  * @returns {UseBrowserThemeReturns}
  */
 const useBrowserTheme = (): UseBrowserThemeReturns => {
-  return useTheme({ localStorageKey: "certimate-ui-theme" });
+  return useTheme({ localStorageKey: LOCAL_STORAGE_KEY });
 };
 
 export default useBrowserTheme;

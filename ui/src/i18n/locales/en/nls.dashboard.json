@@ -2,17 +2,17 @@
   "dashboard.page.title": "Dashboard",
 
   "dashboard.statistics.all_certificates": "All certificates",
-  "dashboard.statistics.expire_soon_certificates": "Expire soon certificates",
+  "dashboard.statistics.expiring_soon_certificates": "Expiring soon certificates",
   "dashboard.statistics.expired_certificates": "Expired certificates",
   "dashboard.statistics.all_workflows": "All workflows",
-  "dashboard.statistics.enabled_workflows": "Enabled workflows",
-  "dashboard.statistics.unit": "",
+  "dashboard.statistics.enabled_workflows": "Active workflows",
 
-  "dashboard.latest_workflow_run": "Latest workflow run",
+  "dashboard.shortcut": "Shortcuts",
+  "dashboard.shortcut.create_workflow": "Create new workflow",
+  "dashboard.shortcut.change_account": "Change username or password",
+  "dashboard.shortcut.configure_ca": "Configure certificate authorities",
 
-  "dashboard.quick_actions": "Quick actions",
-  "dashboard.quick_actions.create_workflow": "Create workflow",
-  "dashboard.quick_actions.change_login_password": "Change login password",
-  "dashboard.quick_actions.cofigure_notification": "Configure notificaion",
-  "dashboard.quick_actions.configure_ca": "Configure certificate authority"
+  "dashboard.latest_workflow_runs": "Latest workflow runs",
+  "dashboard.latest_workflow_runs.nodata.description": "It looks like you don't have any runs. Get started by running a workflow.",
+  "dashboard.latest_workflow_runs.nodata.button": "Go to workflows"
 }

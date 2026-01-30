@@ -6,7 +6,7 @@ import useAntdFormName from "./useAntdFormName";
 
 export interface UseAntdFormOptions<T extends NonNullable<unknown> = any> {
   form?: FormInstance<T>;
-  initialValues?: Partial<T> | (() => Partial<T> | Promise<Partial<T>>);
+  initialValues?: Partial<T | any> | (() => Partial<T | any> | Promise<Partial<T | any>>);
   name?: string;
   onSubmit?: (values: T) => unknown | Promise<unknown>;
 }

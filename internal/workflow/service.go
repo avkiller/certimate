@@ -4,121 +4,175 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
-	"github.com/usual2970/certimate/internal/app"
-	"github.com/usual2970/certimate/internal/domain"
-	"github.com/usual2970/certimate/internal/domain/dtos"
-	"github.com/usual2970/certimate/internal/workflow/dispatcher"
+	"github.com/pocketbase/dbx"
+
+	"github.com/certimate-go/certimate/internal/app"
+	"github.com/certimate-go/certimate/internal/domain"
+	"github.com/certimate-go/certimate/internal/domain/dtos"
+	"github.com/certimate-go/certimate/internal/workflow/dispatcher"
 )
 
-type workflowRepository interface {
-	ListEnabledAuto(ctx context.Context) ([]*domain.Workflow, error)
-	GetById(ctx context.Context, id string) (*domain.Workflow, error)
-	Save(ctx context.Context, workflow *domain.Workflow) (*domain.Workflow, error)
-}
-
-type workflowRunRepository interface {
-	GetById(ctx context.Context, id string) (*domain.WorkflowRun, error)
-	Save(ctx context.Context, workflowRun *domain.WorkflowRun) (*domain.WorkflowRun, error)
-}
-
 type WorkflowService struct {
-	dispatcher *dispatcher.WorkflowDispatcher
+	dispatcher dispatcher.WorkflowDispatcher
 
 	workflowRepo    workflowRepository
 	workflowRunRepo workflowRunRepository
+	settingsRepo    settingsRepository
 }
 
-func NewWorkflowService(workflowRepo workflowRepository, workflowRunRepo workflowRunRepository) *WorkflowService {
+func NewWorkflowService(workflowRepo workflowRepository, workflowRunRepo workflowRunRepository, settingsRepo settingsRepository) *WorkflowService {
 	srv := &WorkflowService{
-		dispatcher: dispatcher.GetSingletonDispatcher(workflowRepo, workflowRunRepo),
+		dispatcher: dispatcher.GetSingletonDispatcher(),
 
 		workflowRepo:    workflowRepo,
 		workflowRunRepo: workflowRunRepo,
+		settingsRepo:    settingsRepo,
 	}
 	return srv
 }
 
 func (s *WorkflowService) InitSchedule(ctx context.Context) error {
-	workflows, err := s.workflowRepo.ListEnabledAuto(ctx)
-	if err != nil {
-		return err
+	// 每日清理工作流运行历史
+	app.GetScheduler().MustAdd("cleanupWorkflowHistoryRuns", "0 0 * * *", func() {
+		s.cleanupHistoryRuns(context.Background())
+	})
+
+	// 初始化工作流调度器
+	if err := s.dispatcher.Bootup(ctx); err != nil {
+		panic(err)
 	}
 
-	scheduler := app.GetScheduler()
-	for _, workflow := range workflows {
-		var errs []error
-
-		err := scheduler.Add(fmt.Sprintf("workflow#%s", workflow.Id), workflow.TriggerCron, func() {
-			s.StartRun(ctx, &dtos.WorkflowStartRunReq{
-				WorkflowId: workflow.Id,
-				RunTrigger: domain.WorkflowTriggerTypeAuto,
-			})
-		})
+	// 注册工作流后台任务
+	{
+		workflows, err := s.workflowRepo.ListEnabledScheduled(ctx)
 		if err != nil {
-			errs = append(errs, err)
+			return err
 		}
 
-		if len(errs) > 0 {
-			return errors.Join(errs...)
+		for _, workflow := range workflows {
+			var errs []error
+
+			err := app.GetScheduler().Add(fmt.Sprintf("workflow#%s", workflow.Id), workflow.TriggerCron, func() {
+				_, err := s.StartRun(context.Background(), &dtos.WorkflowStartRunReq{
+					WorkflowId: workflow.Id,
+					RunTrigger: domain.WorkflowTriggerTypeScheduled,
+				})
+				if err != nil {
+					app.GetLogger().Error(fmt.Sprintf("failed to start scheduled run for workflow #%s", workflow.Id), slog.Any("error", err))
+				}
+			})
+			if err != nil {
+				app.GetLogger().Error(fmt.Sprintf("failed to register cron job for workflow #%s", workflow.Id), slog.Any("error", err))
+				errs = append(errs, err)
+			} else {
+				app.GetLogger().Info(fmt.Sprintf("registered cron job for workflow #%s", workflow.Id), slog.String("cron", workflow.TriggerCron))
+			}
+
+			if len(errs) > 0 {
+				return errors.Join(errs...)
+			}
 		}
 	}
 
 	return nil
 }
 
-func (s *WorkflowService) StartRun(ctx context.Context, req *dtos.WorkflowStartRunReq) error {
+func (s *WorkflowService) GetStatistics(ctx context.Context) (*dtos.WorkflowStatisticsResp, error) {
+	stats := s.dispatcher.GetStatistics()
+	return &dtos.WorkflowStatisticsResp{
+		Concurrency:      stats.Concurrency,
+		PendingRunIds:    stats.PendingRunIds,
+		ProcessingRunIds: stats.ProcessingRunIds,
+	}, nil
+}
+
+func (s *WorkflowService) StartRun(ctx context.Context, req *dtos.WorkflowStartRunReq) (*dtos.WorkflowStartRunResp, error) {
 	workflow, err := s.workflowRepo.GetById(ctx, req.WorkflowId)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if workflow.LastRunStatus == domain.WorkflowRunStatusTypePending || workflow.LastRunStatus == domain.WorkflowRunStatusTypeRunning {
-		return errors.New("workflow is already pending or running")
+	if req.RunTrigger == domain.WorkflowTriggerTypeManual && (workflow.LastRunStatus == domain.WorkflowRunStatusTypePending || workflow.LastRunStatus == domain.WorkflowRunStatusTypeProcessing) {
+		return nil, errors.New("workflow is already pending or processing")
+	} else if workflow.GraphContent == nil {
+		return nil, errors.New("workflow graph content is empty")
+	} else if err := workflow.GraphContent.Verify(); err != nil {
+		return nil, fmt.Errorf("workflow graph content is invalid: %w", err)
 	}
 
-	run := &domain.WorkflowRun{
+	workflowRun := &domain.WorkflowRun{
 		WorkflowId: workflow.Id,
 		Status:     domain.WorkflowRunStatusTypePending,
 		Trigger:    req.RunTrigger,
 		StartedAt:  time.Now(),
+		Graph:      workflow.GraphContent.Clone(),
 	}
-	if resp, err := s.workflowRunRepo.Save(ctx, run); err != nil {
-		return err
+	if resp, err := s.workflowRunRepo.Save(ctx, workflowRun); err != nil {
+		return nil, err
 	} else {
-		run = resp
+		workflowRun = resp
 	}
 
-	s.dispatcher.Dispatch(&dispatcher.WorkflowWorkerData{
-		WorkflowId:      workflow.Id,
-		WorkflowContent: workflow.Content,
-		RunId:           run.Id,
-	})
+	if err := s.dispatcher.Start(ctx, workflowRun.Id); err != nil {
+		return nil, err
+	}
 
-	return nil
+	return &dtos.WorkflowStartRunResp{RunId: workflowRun.Id}, nil
 }
 
-func (s *WorkflowService) CancelRun(ctx context.Context, req *dtos.WorkflowCancelRunReq) error {
+func (s *WorkflowService) CancelRun(ctx context.Context, req *dtos.WorkflowCancelRunReq) (*dtos.WorkflowCancelRunResp, error) {
 	workflow, err := s.workflowRepo.GetById(ctx, req.WorkflowId)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	workflowRun, err := s.workflowRunRepo.GetById(ctx, req.RunId)
 	if err != nil {
-		return err
+		return nil, err
 	} else if workflowRun.WorkflowId != workflow.Id {
-		return errors.New("workflow run not found")
-	} else if workflowRun.Status != domain.WorkflowRunStatusTypePending && workflowRun.Status != domain.WorkflowRunStatusTypeRunning {
-		return errors.New("workflow run is not pending or running")
+		return nil, errors.New("workflow run not found")
+	} else if workflowRun.Status != domain.WorkflowRunStatusTypePending && workflowRun.Status != domain.WorkflowRunStatusTypeProcessing {
+		return nil, errors.New("workflow run is not pending or processing")
 	}
 
-	s.dispatcher.Cancel(workflowRun.Id)
+	if err := s.dispatcher.Cancel(ctx, workflowRun.Id); err != nil {
+		return nil, err
+	}
 
-	return nil
+	return &dtos.WorkflowCancelRunResp{}, nil
 }
 
 func (s *WorkflowService) Shutdown(ctx context.Context) {
-	s.dispatcher.Shutdown()
+	s.dispatcher.Shutdown(ctx)
+}
+
+func (s *WorkflowService) cleanupHistoryRuns(ctx context.Context) error {
+	settings, err := s.settingsRepo.GetByName(ctx, "persistence")
+	if err != nil {
+		app.GetLogger().Error("failed to get persistence settings", slog.Any("error", err))
+		return err
+	}
+
+	persistenceSettings := settings.Content.AsPersistence()
+	if persistenceSettings.WorkflowRunsMaxDaysRetention != 0 {
+		ret, err := s.workflowRunRepo.DeleteWhere(
+			ctx,
+			dbx.NewExp(fmt.Sprintf("status!='%s'", string(domain.WorkflowRunStatusTypePending))),
+			dbx.NewExp(fmt.Sprintf("status!='%s'", string(domain.WorkflowRunStatusTypeProcessing))),
+			dbx.NewExp(fmt.Sprintf("endedAt<DATETIME('now', '-%d days')", persistenceSettings.WorkflowRunsMaxDaysRetention)),
+		)
+		if err != nil {
+			app.GetLogger().Error("failed to delete workflow history runs", slog.Any("error", err))
+			return err
+		}
+
+		if ret > 0 {
+			app.GetLogger().Info(fmt.Sprintf("cleanup %d workflow history runs", ret))
+		}
+	}
+
+	return nil
 }

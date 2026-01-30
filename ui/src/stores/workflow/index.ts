@@ -1,249 +1,173 @@
 import { produce } from "immer";
+import { isEqual } from "radash";
 import { create } from "zustand";
 
-import {
-  type WorkflowModel,
-  type WorkflowNode,
-  type WorkflowNodeConfigForStart,
-  addBranch,
-  addNode,
-  getWorkflowOutputBeforeId,
-  removeBranch,
-  removeNode,
-  updateNode,
-} from "@/domain/workflow";
-import { get as getWorkflow, save as saveWorkflow } from "@/repository/workflow";
+import { WORKFLOW_NODE_TYPES, type WorkflowModel, type WorkflowNodeConfigForStart } from "@/domain/workflow";
+import { get as getWorkflow, save as saveWorkflow, subscribe as subscribeWorkflow } from "@/repository/workflow";
 
-export type WorkflowState = {
-  workflow: WorkflowModel;
-  initialized: boolean;
+import { type WorkflowStore } from "./types";
 
-  init(id: string): void;
-  setBaseInfo: (name: string, description: string) => void;
-  setEnabled(enabled: boolean): void;
-  release(): void;
-  discard(): void;
-  destroy(): void;
-
-  addNode: (node: WorkflowNode, previousNodeId: string) => void;
-  updateNode: (node: WorkflowNode) => void;
-  removeNode: (nodeId: string) => void;
-
-  addBranch: (branchId: string) => void;
-  removeBranch: (branchId: string, index: number) => void;
-
-  getWorkflowOuptutBeforeId: (nodeId: string, type: string) => WorkflowNode[];
-};
-
-export const useWorkflowStore = create<WorkflowState>((set, get) => ({
-  workflow: {} as WorkflowModel,
-  initialized: false,
-
-  init: async (id: string) => {
-    const data = await getWorkflow(id);
-
-    set({
-      workflow: data,
-      initialized: true,
-    });
-  },
-
-  destroy: () => {
-    set({
-      workflow: {} as WorkflowModel,
-      initialized: false,
-    });
-  },
-
-  setBaseInfo: async (name: string, description: string) => {
+export const useWorkflowStore = create<WorkflowStore>((set, get) => {
+  const ensureInitialized = () => {
     if (!get().initialized) throw "Workflow not initialized yet";
+  };
 
-    const resp = await saveWorkflow({
-      id: get().workflow.id!,
-      name: name || "",
-      description: description || "",
-    });
+  let unsubscriber: (() => void) | undefined;
 
-    set((state: WorkflowState) => {
-      return {
-        workflow: produce(state.workflow, (draft) => {
-          draft.name = resp.name;
-          draft.description = resp.description;
-        }),
-      };
-    });
-  },
+  return {
+    workflow: {} as WorkflowModel,
+    initialized: false,
 
-  setEnabled: async (enabled: boolean) => {
-    if (!get().initialized) throw "Workflow not initialized yet";
+    init: async (id: string) => {
+      const data = await getWorkflow(id);
+      set({
+        workflow: data,
+        initialized: true,
+      });
 
-    const resp = await saveWorkflow({
-      id: get().workflow.id!,
-      enabled: enabled,
-    });
+      unsubscriber ??= await subscribeWorkflow(id, (cb) => {
+        if (cb.record.id !== get().workflow.id) return;
 
-    set((state: WorkflowState) => {
-      return {
-        workflow: produce(state.workflow, (draft) => {
-          draft.enabled = resp.enabled;
-        }),
-      };
-    });
-  },
+        set({
+          workflow: cb.record,
+        });
+      });
+    },
 
-  release: async () => {
-    if (!get().initialized) throw "Workflow not initialized yet";
+    destroy: () => {
+      unsubscriber?.();
+      unsubscriber = void 0;
 
-    const root = get().workflow.draft!;
-    const startConfig = root.config as WorkflowNodeConfigForStart;
-    const resp = await saveWorkflow({
-      id: get().workflow.id!,
-      trigger: startConfig.trigger,
-      triggerCron: startConfig.triggerCron,
-      content: root,
-      hasDraft: false,
-    });
+      set({
+        workflow: {} as WorkflowModel,
+        initialized: false,
+      });
+    },
 
-    set((state: WorkflowState) => {
-      return {
-        workflow: produce(state.workflow, (draft) => {
-          draft.trigger = resp.trigger;
-          draft.triggerCron = resp.triggerCron;
-          draft.content = resp.content;
-          draft.draft = resp.draft;
-          draft.hasDraft = resp.hasDraft;
-        }),
-      };
-    });
-  },
+    setName: async (name) => {
+      ensureInitialized();
 
-  discard: async () => {
-    if (!get().initialized) throw "Workflow not initialized yet";
+      const resp = await saveWorkflow({
+        id: get().workflow.id!,
+        name: name || "",
+      });
 
-    const root = get().workflow.content!;
-    const startConfig = root.config as WorkflowNodeConfigForStart;
-    const resp = await saveWorkflow({
-      id: get().workflow.id!,
-      draft: root,
-      hasDraft: false,
-      trigger: startConfig.trigger,
-      triggerCron: startConfig.triggerCron,
-    });
+      set((state) => {
+        return {
+          workflow: produce(state.workflow, (draft) => {
+            draft.name = resp.name;
+          }),
+        };
+      });
+    },
 
-    set((state: WorkflowState) => {
-      return {
-        workflow: produce(state.workflow, (draft) => {
-          draft.trigger = resp.trigger;
-          draft.triggerCron = resp.triggerCron;
-          draft.content = resp.content;
-          draft.draft = resp.draft;
-          draft.hasDraft = resp.hasDraft;
-        }),
-      };
-    });
-  },
+    setDescription: async (description) => {
+      ensureInitialized();
 
-  addNode: async (node: WorkflowNode, previousNodeId: string) => {
-    if (!get().initialized) throw "Workflow not initialized yet";
+      const resp = await saveWorkflow({
+        id: get().workflow.id!,
+        description: description || "",
+      });
 
-    const root = addNode(get().workflow.draft!, previousNodeId, node);
-    const resp = await saveWorkflow({
-      id: get().workflow.id!,
-      draft: root,
-      hasDraft: true,
-    });
+      set((state) => {
+        return {
+          workflow: produce(state.workflow, (draft) => {
+            draft.description = resp.description;
+          }),
+        };
+      });
+    },
 
-    set((state: WorkflowState) => {
-      return {
-        workflow: produce(state.workflow, (draft) => {
-          draft.draft = resp.draft;
-          draft.hasDraft = resp.hasDraft;
-        }),
-      };
-    });
-  },
+    setEnabled: async (enabled) => {
+      ensureInitialized();
 
-  updateNode: async (node: WorkflowNode) => {
-    if (!get().initialized) throw "Workflow not initialized yet";
+      const resp = await saveWorkflow({
+        id: get().workflow.id!,
+        enabled: enabled,
+      });
 
-    const root = updateNode(get().workflow.draft!, node);
-    const resp = await saveWorkflow({
-      id: get().workflow.id!,
-      draft: root,
-      hasDraft: true,
-    });
+      set((state) => {
+        return {
+          workflow: produce(state.workflow, (draft) => {
+            draft.enabled = resp.enabled;
+          }),
+        };
+      });
+    },
 
-    set((state: WorkflowState) => {
-      return {
-        workflow: produce(state.workflow, (draft) => {
-          draft.draft = resp.draft;
-          draft.hasDraft = resp.hasDraft;
-        }),
-      };
-    });
-  },
+    orchestrate: async (graph) => {
+      ensureInitialized();
 
-  removeNode: async (nodeId: string) => {
-    if (!get().initialized) throw "Workflow not initialized yet";
+      const resp = await saveWorkflow({
+        id: get().workflow.id!,
+        graphDraft: graph,
+        hasDraft: !isEqual(graph, get().workflow.graphContent),
+      });
 
-    const root = removeNode(get().workflow.draft!, nodeId);
-    const resp = await saveWorkflow({
-      id: get().workflow.id!,
-      draft: root,
-      hasDraft: true,
-    });
+      set((state) => {
+        return {
+          workflow: produce(state.workflow, (draft) => {
+            draft.graphDraft = resp.graphDraft;
+            draft.hasDraft = resp.hasDraft;
+          }),
+        };
+      });
+    },
 
-    set((state: WorkflowState) => {
-      return {
-        workflow: produce(state.workflow, (draft) => {
-          draft.draft = resp.draft;
-          draft.hasDraft = resp.hasDraft;
-        }),
-      };
-    });
-  },
+    publish: async () => {
+      ensureInitialized();
 
-  addBranch: async (branchId: string) => {
-    if (!get().initialized) throw "Workflow not initialized yet";
+      const graph = get().workflow.graphDraft!;
+      if (graph?.nodes?.[0]?.type !== WORKFLOW_NODE_TYPES.START) throw "Workflow nodes tree of draft in invalid";
+      const startConfig = graph.nodes[0].data.config as WorkflowNodeConfigForStart;
+      const resp = await saveWorkflow({
+        id: get().workflow.id!,
+        trigger: startConfig.trigger,
+        triggerCron: startConfig.triggerCron,
+        graphContent: graph,
+        hasContent: true,
+        hasDraft: false,
+      });
 
-    const root = addBranch(get().workflow.draft!, branchId);
-    const resp = await saveWorkflow({
-      id: get().workflow.id!,
-      draft: root,
-      hasDraft: true,
-    });
+      set((state) => {
+        return {
+          workflow: produce(state.workflow, (draft) => {
+            draft.trigger = resp.trigger;
+            draft.triggerCron = resp.triggerCron;
+            draft.graphContent = resp.graphContent;
+            draft.hasContent = resp.hasContent;
+            draft.hasDraft = resp.hasDraft;
+          }),
+        };
+      });
+    },
 
-    set((state: WorkflowState) => {
-      return {
-        workflow: produce(state.workflow, (draft) => {
-          draft.draft = resp.draft;
-          draft.hasDraft = resp.hasDraft;
-        }),
-      };
-    });
-  },
+    rollback: async () => {
+      ensureInitialized();
 
-  removeBranch: async (branchId: string, index: number) => {
-    if (!get().initialized) throw "Workflow not initialized yet";
+      const graph = get().workflow.graphContent!;
+      if (graph?.nodes?.[0]?.type !== WORKFLOW_NODE_TYPES.START) throw "Workflow nodes tree of content in invalid";
+      const startConfig = graph.nodes[0].data.config as WorkflowNodeConfigForStart;
+      const resp = await saveWorkflow({
+        id: get().workflow.id!,
+        trigger: startConfig.trigger,
+        triggerCron: startConfig.triggerCron,
+        hasContent: true,
+        graphDraft: graph,
+        hasDraft: false,
+      });
 
-    const root = removeBranch(get().workflow.draft!, branchId, index);
-    const resp = await saveWorkflow({
-      id: get().workflow.id!,
-      draft: root,
-      hasDraft: true,
-    });
-
-    set((state: WorkflowState) => {
-      return {
-        workflow: produce(state.workflow, (draft) => {
-          draft.draft = resp.draft;
-          draft.hasDraft = resp.hasDraft;
-        }),
-      };
-    });
-  },
-
-  getWorkflowOuptutBeforeId: (nodeId: string, type: string) => {
-    return getWorkflowOutputBeforeId(get().workflow.draft as WorkflowNode, nodeId, type);
-  },
-}));
+      set((state) => {
+        return {
+          workflow: produce(state.workflow, (draft) => {
+            draft.trigger = resp.trigger;
+            draft.triggerCron = resp.triggerCron;
+            draft.hasContent = resp.hasContent;
+            draft.graphDraft = resp.graphDraft;
+            draft.hasDraft = resp.hasDraft;
+          }),
+        };
+      });
+    },
+  };
+});

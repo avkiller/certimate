@@ -2,56 +2,138 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import {
-  ApiOutlined as ApiOutlinedIcon,
-  CheckCircleOutlined as CheckCircleOutlinedIcon,
-  ClockCircleOutlined as ClockCircleOutlinedIcon,
-  CloseCircleOutlined as CloseCircleOutlinedIcon,
-  LockOutlined as LockOutlinedIcon,
-  PlusOutlined as PlusOutlinedIcon,
-  SelectOutlined as SelectOutlinedIcon,
-  SendOutlined as SendOutlinedIcon,
-  StopOutlined as StopOutlinedIcon,
-  SyncOutlined as SyncOutlinedIcon,
-} from "@ant-design/icons";
-import { PageHeader } from "@ant-design/pro-components";
+  IconActivity,
+  IconAlertHexagon,
+  IconCirclePlus,
+  IconExternalLink,
+  IconHexagonLetterX,
+  IconHistory,
+  IconLock,
+  IconPlugConnected,
+  IconReload,
+  IconRoute,
+  IconShieldCheckered,
+} from "@tabler/icons-react";
 import { useRequest } from "ahooks";
-import { Button, Card, Col, Divider, Empty, Flex, Grid, Row, Space, Statistic, Table, type TableProps, Tag, Typography, notification, theme } from "antd";
+import { App, Button, Card, Col, Row, Skeleton, Table, type TableProps, Typography } from "antd";
 import dayjs from "dayjs";
-import {
-  CalendarClock as CalendarClockIcon,
-  CalendarX2 as CalendarX2Icon,
-  FolderCheck as FolderCheckIcon,
-  SquareSigma as SquareSigmaIcon,
-  Workflow as WorkflowIcon,
-} from "lucide-react";
 import { ClientResponseError } from "pocketbase";
 
 import { get as getStatistics } from "@/api/statistics";
+import Empty from "@/components/Empty";
 import WorkflowRunDetailDrawer from "@/components/workflow/WorkflowRunDetailDrawer";
+import WorkflowStatus from "@/components/workflow/WorkflowStatus";
 import { type Statistics } from "@/domain/statistics";
-import { WORKFLOW_RUN_STATUSES, type WorkflowRunModel } from "@/domain/workflowRun";
-import { list as listWorkflowRuns } from "@/repository/workflowRun";
+import { type WorkflowRunModel } from "@/domain/workflowRun";
+import { useBrowserTheme } from "@/hooks";
+import { get as getWorkflowRun, list as listWorkflowRuns } from "@/repository/workflowRun";
+import { mergeCls } from "@/utils/css";
 import { getErrMsg } from "@/utils/error";
 
 const Dashboard = () => {
+  const { t } = useTranslation();
+
+  return (
+    <div className="px-6 py-4">
+      <div className="container">
+        <h1>{t("dashboard.page.title")}</h1>
+      </div>
+
+      <div className="container">
+        <div className="my-[6px]">
+          <StatisticCards />
+        </div>
+
+        <div className="mt-8">
+          <h3>{t("dashboard.shortcut")}</h3>
+          <Shortcuts />
+        </div>
+
+        <div className="mt-8">
+          <h3>{t("dashboard.latest_workflow_runs")}</h3>
+          <WorkflowRunHistoryTable />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const StatisticCard = ({
+  className,
+  style,
+  label,
+  loading,
+  icon,
+  value,
+  onClick,
+}: {
+  className?: string;
+  style?: React.CSSProperties;
+  label: React.ReactNode;
+  loading?: boolean;
+  icon: React.ReactNode;
+  value?: string | number | React.ReactNode;
+  onClick?: () => void;
+}) => {
+  return (
+    <Card
+      className={mergeCls("size-full overflow-hidden ", className)}
+      style={style}
+      styles={{ body: { padding: 0 } }}
+      hoverable
+      loading={loading}
+      variant="borderless"
+      onClick={onClick}
+    >
+      <div className="relative overflow-hidden pt-6 pr-4 pb-4 pl-6">
+        <div className="absolute inset-0 z-0 bg-stone-200 opacity-10">
+          <div
+            className="size-full"
+            style={{
+              backgroundImage:
+                "linear-gradient(rgba(255, 255, 255, 0.8) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.8) 1px, transparent 1px)",
+              backgroundSize: "20px 20px",
+            }}
+          />
+        </div>
+        <div className="mb-2">
+          <div className="truncate text-sm font-medium text-white/75">{label}</div>
+        </div>
+        <div className="relative flex items-center justify-between">
+          <div className="truncate text-4xl font-medium text-white">{value}</div>
+          <div className="flex size-12 items-center justify-center rounded-full bg-white/25 p-3 text-white/75">{icon}</div>
+        </div>
+      </div>
+    </Card>
+  );
+};
+
+const StatisticCards = ({ className, style }: { className?: string; style?: React.CSSProperties }) => {
   const navigate = useNavigate();
 
   const { t } = useTranslation();
 
-  const { token: themeToken } = theme.useToken();
-  const breakpoints = Grid.useBreakpoint();
+  const { theme: browserTheme } = useBrowserTheme();
 
-  const [notificationApi, NotificationContextHolder] = notification.useNotification();
+  const { notification } = App.useApp();
 
-  const statisticsGridSpans = {
+  const cardGridSpans = {
     xs: { flex: "50%" },
     md: { flex: "50%" },
     lg: { flex: "33.3333%" },
     xl: { flex: "33.3333%" },
     xxl: { flex: "20%" },
   };
+  const cardStylesFn = (color: string) => ({
+    background:
+      browserTheme === "dark"
+        ? `linear-gradient(135deg, color-mix(in srgb, ${color} 50%, black 20%) 0%, color-mix(in srgb, ${color} 50%, white 20%) 100%)`
+        : `linear-gradient(135deg, color-mix(in srgb, ${color} 80%, black 30%) 0%, color-mix(in srgb, ${color} 80%, white 30%) 100%)`,
+  });
+
   const [statistics, setStatistics] = useState<Statistics>();
-  const { loading: statisticsLoading } = useRequest(
+
+  const { loading } = useRequest(
     () => {
       return getStatistics();
     },
@@ -65,75 +147,159 @@ const Dashboard = () => {
         }
 
         console.error(err);
-        notificationApi.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
+        notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
 
         throw err;
       },
     }
   );
 
+  return (
+    <div className={className} style={style}>
+      <Row className="justify-stretch" gutter={[16, 16]}>
+        <Col className="overflow-hidden" {...cardGridSpans}>
+          <StatisticCard
+            style={cardStylesFn("var(--color-info)")}
+            icon={<IconShieldCheckered size={48} />}
+            label={t("dashboard.statistics.all_certificates")}
+            loading={loading}
+            value={statistics?.certificateTotal ?? "-"}
+            onClick={() => navigate("/certificates")}
+          />
+        </Col>
+        <Col className="overflow-hidden" {...cardGridSpans}>
+          <StatisticCard
+            style={cardStylesFn("var(--color-warning)")}
+            icon={<IconAlertHexagon size={48} />}
+            label={t("dashboard.statistics.expiring_soon_certificates")}
+            loading={loading}
+            value={statistics?.certificateExpiringSoon ?? "-"}
+            onClick={() => navigate("/certificates?state=expiringSoon")}
+          />
+        </Col>
+        <Col className="overflow-hidden" {...cardGridSpans}>
+          <StatisticCard
+            style={cardStylesFn("var(--color-error)")}
+            icon={<IconHexagonLetterX size={48} />}
+            label={t("dashboard.statistics.expired_certificates")}
+            loading={loading}
+            value={statistics?.certificateExpired ?? "-"}
+            onClick={() => navigate("/certificates?state=expired")}
+          />
+        </Col>
+        <Col className="overflow-hidden" {...cardGridSpans}>
+          <StatisticCard
+            style={cardStylesFn("var(--color-info)")}
+            icon={<IconRoute size={48} />}
+            label={t("dashboard.statistics.all_workflows")}
+            loading={loading}
+            value={statistics?.workflowTotal ?? "-"}
+            onClick={() => navigate("/workflows")}
+          />
+        </Col>
+        <Col className="overflow-hidden" {...cardGridSpans}>
+          <StatisticCard
+            style={cardStylesFn("var(--color-success)")}
+            icon={<IconActivity size={48} />}
+            label={t("dashboard.statistics.enabled_workflows")}
+            loading={loading}
+            value={statistics?.workflowEnabled ?? "-"}
+            onClick={() => navigate("/workflows?state=enabled")}
+          />
+        </Col>
+      </Row>
+    </div>
+  );
+};
+
+const Shortcuts = ({ className, style }: { className?: string; style?: React.CSSProperties }) => {
+  const navigate = useNavigate();
+
+  const { t } = useTranslation();
+
+  return (
+    <div className={className} style={style}>
+      <div className="flex items-center gap-4 not-md:flex-wrap">
+        <Button
+          className="shadow"
+          icon={<IconCirclePlus color="var(--color-primary)" size="1.25em" />}
+          shape="round"
+          size="large"
+          onClick={() => navigate("/workflows/new")}
+        >
+          <span className="text-sm">{t("dashboard.shortcut.create_workflow")}</span>
+        </Button>
+        <Button
+          className="shadow"
+          icon={<IconLock color="var(--color-warning)" size="1.25em" />}
+          shape="round"
+          size="large"
+          onClick={() => navigate("/settings/account")}
+        >
+          <span className="text-sm">{t("dashboard.shortcut.change_account")}</span>
+        </Button>
+        <Button
+          className="shadow"
+          icon={<IconPlugConnected color="var(--color-info)" size="1.25em" />}
+          shape="round"
+          size="large"
+          onClick={() => navigate("/settings/ssl-provider")}
+        >
+          <span className="text-sm">{t("dashboard.shortcut.configure_ca")}</span>
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+const WorkflowRunHistoryTable = ({ className, style }: { className?: string; style?: React.CSSProperties }) => {
+  const navigate = useNavigate();
+
+  const { t } = useTranslation();
+
+  const { notification } = App.useApp();
+
+  const [tableData, setTableData] = useState<WorkflowRunModel[]>([]);
   const tableColumns: TableProps<WorkflowRunModel>["columns"] = [
     {
       key: "$index",
       align: "center",
       fixed: "left",
-      width: 50,
+      width: 48,
       render: (_, __, index) => index + 1,
     },
     {
-      key: "name",
-      title: t("workflow.props.name"),
-      ellipsis: true,
+      key: "id",
+      title: "ID",
+      width: 160,
+      render: (_, record) => <span className="font-mono">{record.id}</span>,
+    },
+    {
+      key: "workflow",
+      title: t("workflow_run.props.workflow"),
       render: (_, record) => {
-        const workflow = record.expand?.workflowId;
+        const workflow = record.expand?.workflowRef;
         return (
-          <Typography.Link
-            ellipsis
-            onClick={() => {
-              if (workflow) {
-                navigate(`/workflows/${workflow.id}`);
-              }
-            }}
-          >
-            {workflow?.name ?? <span className="font-mono">{t(`#${record.workflowId}`)}</span>}
-          </Typography.Link>
+          <div className="max-w-full truncate">
+            <Typography.Link
+              ellipsis
+              onClick={() => {
+                if (workflow) {
+                  navigate(`/workflows/${workflow.id}`);
+                }
+              }}
+            >
+              {workflow?.name ?? <span className="font-mono">{t(`#${record.workflowRef}`)}</span>}
+            </Typography.Link>
+          </div>
         );
       },
     },
     {
       key: "status",
       title: t("workflow_run.props.status"),
-      ellipsis: true,
       render: (_, record) => {
-        if (record.status === WORKFLOW_RUN_STATUSES.PENDING) {
-          return <Tag icon={<ClockCircleOutlinedIcon />}>{t("workflow_run.props.status.pending")}</Tag>;
-        } else if (record.status === WORKFLOW_RUN_STATUSES.RUNNING) {
-          return (
-            <Tag icon={<SyncOutlinedIcon spin />} color="processing">
-              {t("workflow_run.props.status.running")}
-            </Tag>
-          );
-        } else if (record.status === WORKFLOW_RUN_STATUSES.SUCCEEDED) {
-          return (
-            <Tag icon={<CheckCircleOutlinedIcon />} color="success">
-              {t("workflow_run.props.status.succeeded")}
-            </Tag>
-          );
-        } else if (record.status === WORKFLOW_RUN_STATUSES.FAILED) {
-          return (
-            <Tag icon={<CloseCircleOutlinedIcon />} color="error">
-              {t("workflow_run.props.status.failed")}
-            </Tag>
-          );
-        } else if (record.status === WORKFLOW_RUN_STATUSES.CANCELED) {
-          return (
-            <Tag icon={<StopOutlinedIcon />} color="warning">
-              {t("workflow_run.props.status.canceled")}
-            </Tag>
-          );
-        }
-
-        return <></>;
+        return <WorkflowStatus type="filled" value={record.status} />;
       },
     },
     {
@@ -160,23 +326,17 @@ const Dashboard = () => {
         return <></>;
       },
     },
-    {
-      key: "$action",
-      align: "end",
-      width: 120,
-      render: (_, record) => (
-        <Space.Compact>
-          <WorkflowRunDetailDrawer data={record} trigger={<Button color="primary" icon={<SelectOutlinedIcon />} variant="text" />} />
-        </Space.Compact>
-      ),
-    },
   ];
-  const [tableData, setTableData] = useState<WorkflowRunModel[]>([]);
-  const { loading: tableLoading } = useRequest(
+
+  const {
+    loading,
+    error: loadError,
+    run: refreshData,
+  } = useRequest(
     () => {
       return listWorkflowRuns({
         page: 1,
-        perPage: 9,
+        perPage: 15,
         expand: true,
       });
     },
@@ -190,138 +350,70 @@ const Dashboard = () => {
         }
 
         console.error(err);
-        notificationApi.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
+        notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
 
         throw err;
       },
     }
   );
 
+  const handleReloadClick = () => {
+    if (loading) return;
+
+    refreshData();
+  };
+
+  const { drawerProps: detailDrawerProps, ...detailDrawer } = WorkflowRunDetailDrawer.useDrawer();
+
+  const handleRecordDetailClick = (workflowRun: WorkflowRunModel) => {
+    const drawer = detailDrawer.open({ data: workflowRun, loading: true });
+    getWorkflowRun(workflowRun.id).then((data) => {
+      drawer.safeUpdate({ data, loading: false });
+    });
+  };
+
   return (
-    <div className="p-4">
-      {NotificationContextHolder}
+    <div className={className} style={style}>
+      <Table<WorkflowRunModel>
+        columns={tableColumns}
+        dataSource={tableData}
+        loading={loading}
+        locale={{
+          emptyText: loading ? (
+            <Skeleton />
+          ) : (
+            <Empty
+              className="py-24"
+              title={t("common.text.nodata")}
+              description={loadError ? getErrMsg(loadError) : t("dashboard.latest_workflow_runs.nodata.description")}
+              icon={<IconHistory size={24} />}
+              extra={
+                loadError ? (
+                  <Button ghost icon={<IconReload size="1.25em" />} type="primary" onClick={handleReloadClick}>
+                    {t("common.button.reload")}
+                  </Button>
+                ) : (
+                  <Button icon={<IconExternalLink size="1.25em" />} type="primary" onClick={() => navigate("/workflows")}>
+                    {t("dashboard.latest_workflow_runs.nodata.button")}
+                  </Button>
+                )
+              }
+            />
+          ),
+        }}
+        pagination={false}
+        rowClassName="cursor-pointer"
+        rowKey={(record) => record.id}
+        scroll={{ x: "max(100%, 720px)" }}
+        onRow={(record) => ({
+          onClick: () => {
+            handleRecordDetailClick(record);
+          },
+        })}
+      />
 
-      <PageHeader title={t("dashboard.page.title")} />
-
-      <Row className="justify-stretch" gutter={[16, 16]}>
-        <Col {...statisticsGridSpans}>
-          <StatisticCard
-            icon={<SquareSigmaIcon size={48} strokeWidth={1} color={themeToken.colorInfo} />}
-            label={t("dashboard.statistics.all_certificates")}
-            loading={statisticsLoading}
-            value={statistics?.certificateTotal ?? "-"}
-            suffix={t("dashboard.statistics.unit")}
-            onClick={() => navigate("/certificates")}
-          />
-        </Col>
-        <Col {...statisticsGridSpans}>
-          <StatisticCard
-            icon={<CalendarClockIcon size={48} strokeWidth={1} color={themeToken.colorWarning} />}
-            label={t("dashboard.statistics.expire_soon_certificates")}
-            loading={statisticsLoading}
-            value={statistics?.certificateExpireSoon ?? "-"}
-            suffix={t("dashboard.statistics.unit")}
-            onClick={() => navigate("/certificates?state=expireSoon")}
-          />
-        </Col>
-        <Col {...statisticsGridSpans}>
-          <StatisticCard
-            icon={<CalendarX2Icon size={48} strokeWidth={1} color={themeToken.colorError} />}
-            label={t("dashboard.statistics.expired_certificates")}
-            loading={statisticsLoading}
-            value={statistics?.certificateExpired ?? "-"}
-            suffix={t("dashboard.statistics.unit")}
-            onClick={() => navigate("/certificates?state=expired")}
-          />
-        </Col>
-        <Col {...statisticsGridSpans}>
-          <StatisticCard
-            icon={<WorkflowIcon size={48} strokeWidth={1} color={themeToken.colorInfo} />}
-            label={t("dashboard.statistics.all_workflows")}
-            loading={statisticsLoading}
-            value={statistics?.workflowTotal ?? "-"}
-            suffix={t("dashboard.statistics.unit")}
-            onClick={() => navigate("/workflows")}
-          />
-        </Col>
-        <Col {...statisticsGridSpans}>
-          <StatisticCard
-            icon={<FolderCheckIcon size={48} strokeWidth={1} color={themeToken.colorSuccess} />}
-            label={t("dashboard.statistics.enabled_workflows")}
-            loading={statisticsLoading}
-            value={statistics?.workflowEnabled ?? "-"}
-            suffix={t("dashboard.statistics.unit")}
-            onClick={() => navigate("/workflows?state=enabled")}
-          />
-        </Col>
-      </Row>
-
-      <Divider />
-
-      <Flex justify="stretch" vertical={!breakpoints.lg} gap={16}>
-        <Card className="max-lg:flex-1 lg:w-[360px]" title={t("dashboard.quick_actions")}>
-          <Space className="w-full" direction="vertical" size="large">
-            <Button block type="primary" size="large" icon={<PlusOutlinedIcon />} onClick={() => navigate("/workflows/new")}>
-              {t("dashboard.quick_actions.create_workflow")}
-            </Button>
-            <Button block size="large" icon={<LockOutlinedIcon />} onClick={() => navigate("/settings/password")}>
-              {t("dashboard.quick_actions.change_login_password")}
-            </Button>
-            <Button block size="large" icon={<SendOutlinedIcon />} onClick={() => navigate("/settings/notification")}>
-              {t("dashboard.quick_actions.cofigure_notification")}
-            </Button>
-            <Button block size="large" icon={<ApiOutlinedIcon />} onClick={() => navigate("/settings/ssl-provider")}>
-              {t("dashboard.quick_actions.configure_ca")}
-            </Button>
-          </Space>
-        </Card>
-        <Card className="flex-1" title={t("dashboard.latest_workflow_run")}>
-          <Table<WorkflowRunModel>
-            columns={tableColumns}
-            dataSource={tableData}
-            loading={tableLoading}
-            locale={{
-              emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} />,
-            }}
-            pagination={false}
-            rowKey={(record) => record.id}
-            scroll={{ x: "max(100%, 960px)" }}
-            size="small"
-          />
-        </Card>
-      </Flex>
+      <WorkflowRunDetailDrawer {...detailDrawerProps} />
     </div>
-  );
-};
-
-const StatisticCard = ({
-  label,
-  loading,
-  icon,
-  value,
-  suffix,
-  onClick,
-}: {
-  label: React.ReactNode;
-  loading?: boolean;
-  icon: React.ReactNode;
-  value?: string | number | React.ReactNode;
-  suffix?: React.ReactNode;
-  onClick?: () => void;
-}) => {
-  return (
-    <Card className="size-full overflow-hidden" bordered={false} hoverable loading={loading} onClick={onClick}>
-      <Space size="middle">
-        {icon}
-        <Statistic
-          title={label}
-          valueRender={() => {
-            return <Typography.Text className="text-4xl">{value}</Typography.Text>;
-          }}
-          suffix={<Typography.Text className="text-sm">{suffix}</Typography.Text>}
-        />
-      </Space>
-    </Card>
   );
 };
 

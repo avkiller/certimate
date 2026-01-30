@@ -4,12 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 
+	"github.com/certimate-go/certimate/internal/app"
+	"github.com/certimate-go/certimate/internal/domain"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
-	"github.com/usual2970/certimate/internal/app"
-	"github.com/usual2970/certimate/internal/domain"
 )
 
 type WorkflowOutputRepository struct{}
@@ -51,70 +50,19 @@ func (r *WorkflowOutputRepository) Save(ctx context.Context, workflowOutput *dom
 	return workflowOutput, nil
 }
 
-func (r *WorkflowOutputRepository) SaveWithCertificate(ctx context.Context, workflowOutput *domain.WorkflowOutput, certificate *domain.Certificate) (*domain.WorkflowOutput, error) {
-	record, err := r.saveRecord(workflowOutput)
-	if err != nil {
-		return workflowOutput, err
-	} else {
-		workflowOutput.Id = record.Id
-		workflowOutput.CreatedAt = record.GetDateTime("created").Time()
-		workflowOutput.UpdatedAt = record.GetDateTime("updated").Time()
-	}
-
-	if certificate == nil {
-		panic("certificate is nil")
-	} else {
-		if certificate.WorkflowId != "" && certificate.WorkflowId != workflowOutput.WorkflowId {
-			return workflowOutput, fmt.Errorf("certificate #%s is not belong to workflow #%s", certificate.Id, workflowOutput.WorkflowId)
-		}
-		if certificate.WorkflowRunId != "" && certificate.WorkflowRunId != workflowOutput.RunId {
-			return workflowOutput, fmt.Errorf("certificate #%s is not belong to workflow run #%s", certificate.Id, workflowOutput.RunId)
-		}
-		if certificate.WorkflowNodeId != "" && certificate.WorkflowNodeId != workflowOutput.NodeId {
-			return workflowOutput, fmt.Errorf("certificate #%s is not belong to workflow node #%s", certificate.Id, workflowOutput.NodeId)
-		}
-		if certificate.WorkflowOutputId != "" && certificate.WorkflowOutputId != workflowOutput.Id {
-			return workflowOutput, fmt.Errorf("certificate #%s is not belong to workflow output #%s", certificate.Id, workflowOutput.Id)
-		}
-
-		certificate.WorkflowId = workflowOutput.WorkflowId
-		certificate.WorkflowRunId = workflowOutput.RunId
-		certificate.WorkflowNodeId = workflowOutput.NodeId
-		certificate.WorkflowOutputId = workflowOutput.Id
-		certificate, err := NewCertificateRepository().Save(ctx, certificate)
-		if err != nil {
-			return workflowOutput, err
-		}
-
-		// 写入证书 ID 到工作流输出结果中
-		for i, item := range workflowOutput.Outputs {
-			if item.Name == string(domain.WorkflowNodeIONameCertificate) {
-				workflowOutput.Outputs[i].Value = certificate.Id
-				break
-			}
-		}
-		record.Set("outputs", workflowOutput.Outputs)
-		if err := app.GetApp().Save(record); err != nil {
-			return workflowOutput, err
-		}
-	}
-
-	return workflowOutput, err
-}
-
 func (r *WorkflowOutputRepository) castRecordToModel(record *core.Record) (*domain.WorkflowOutput, error) {
 	if record == nil {
-		return nil, fmt.Errorf("record is nil")
+		return nil, errors.New("the record is nil")
 	}
 
-	node := &domain.WorkflowNode{}
-	if err := record.UnmarshalJSONField("node", node); err != nil {
-		return nil, err
+	nodeConfig := make(domain.WorkflowNodeConfig)
+	if err := record.UnmarshalJSONField("nodeConfig", &nodeConfig); err != nil {
+		return nil, errors.New("field 'nodeConfig' is malformed")
 	}
 
-	outputs := make([]domain.WorkflowNodeIO, 0)
+	outputs := make([]*domain.WorkflowOutputEntry, 0)
 	if err := record.UnmarshalJSONField("outputs", &outputs); err != nil {
-		return nil, err
+		return nil, errors.New("field 'outputs' is malformed")
 	}
 
 	workflowOutput := &domain.WorkflowOutput{
@@ -123,10 +71,10 @@ func (r *WorkflowOutputRepository) castRecordToModel(record *core.Record) (*doma
 			CreatedAt: record.GetDateTime("created").Time(),
 			UpdatedAt: record.GetDateTime("updated").Time(),
 		},
-		WorkflowId: record.GetString("workflowId"),
-		RunId:      record.GetString("runId"),
+		WorkflowId: record.GetString("workflowRef"),
+		RunId:      record.GetString("runRef"),
 		NodeId:     record.GetString("nodeId"),
-		Node:       node,
+		NodeConfig: nodeConfig,
 		Outputs:    outputs,
 		Succeeded:  record.GetBool("succeeded"),
 	}
@@ -148,10 +96,10 @@ func (r *WorkflowOutputRepository) saveRecord(workflowOutput *domain.WorkflowOut
 			return record, err
 		}
 	}
-	record.Set("workflowId", workflowOutput.WorkflowId)
-	record.Set("runId", workflowOutput.RunId)
+	record.Set("workflowRef", workflowOutput.WorkflowId)
+	record.Set("runRef", workflowOutput.RunId)
 	record.Set("nodeId", workflowOutput.NodeId)
-	record.Set("node", workflowOutput.Node)
+	record.Set("nodeConfig", workflowOutput.NodeConfig)
 	record.Set("outputs", workflowOutput.Outputs)
 	record.Set("succeeded", workflowOutput.Succeeded)
 	if err := app.GetApp().Save(record); err != nil {

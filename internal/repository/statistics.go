@@ -3,8 +3,8 @@ package repository
 import (
 	"context"
 
-	"github.com/usual2970/certimate/internal/app"
-	"github.com/usual2970/certimate/internal/domain"
+	"github.com/certimate-go/certimate/internal/app"
+	"github.com/certimate-go/certimate/internal/domain"
 )
 
 type StatisticsRepository struct{}
@@ -21,29 +21,29 @@ func (r *StatisticsRepository) Get(ctx context.Context) (*domain.Statistics, err
 		Total int `db:"total"`
 	}{}
 	if err := app.GetDB().
-		NewQuery("SELECT COUNT(*) AS total FROM certificate").
+		NewQuery("SELECT COUNT(*) AS total FROM certificate WHERE deleted = ''").
 		One(&certTotal); err != nil {
 		return nil, err
 	}
 	rs.CertificateTotal = certTotal.Total
 
 	// 即将过期证书
-	certExpireSoonTotal := struct {
+	certExpiringSoonTotal := struct {
 		Total int `db:"total"`
 	}{}
 	if err := app.GetDB().
-		NewQuery("SELECT COUNT(*) AS total FROM certificate WHERE expireAt > DATETIME('now') and expireAt < DATETIME('now', '+20 days')").
-		One(&certExpireSoonTotal); err != nil {
+		NewQuery("SELECT COUNT(*) AS total FROM certificate WHERE validityNotAfter > DATETIME('now') and validityNotAfter < DATETIME('now', '+20 days') AND deleted = ''").
+		One(&certExpiringSoonTotal); err != nil {
 		return nil, err
 	}
-	rs.CertificateExpireSoon = certExpireSoonTotal.Total
+	rs.CertificateExpiringSoon = certExpiringSoonTotal.Total
 
 	// 已过期证书
 	certExpiredTotal := struct {
 		Total int `db:"total"`
 	}{}
 	if err := app.GetDB().
-		NewQuery("SELECT COUNT(*) AS total FROM certificate WHERE expireAt < DATETIME('now')").
+		NewQuery("SELECT COUNT(*) AS total FROM certificate WHERE validityNotAfter < DATETIME('now') AND deleted = ''").
 		One(&certExpiredTotal); err != nil {
 		return nil, err
 	}

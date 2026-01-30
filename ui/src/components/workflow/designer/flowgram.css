@@ -1,0 +1,26 @@
+﻿/* 隐藏 flowgram 的标签背景 */
+/* flowgram 暂未提供相关配置项，这里需与 antd.colorBgContainer 保持一致 */
+:root {
+  --g-editor-background: #fff;
+}
+.dark {
+  --g-editor-background: #262c2d;
+}
+
+/* 隐藏 flowgram 的折叠按钮 */
+.flow-canvas-collapse-adder > .flow-canvas-collapse {
+  display: hidden !important;
+  position: absolute !important;
+  top: -99999px !important;
+  left: -99999px !important;
+  width: 0 !important;
+  height: 0 !important;
+  visibility: hidden !important;
+  transform: scale(0) !important;
+}
+
+/* 控制 flowgram 线条样式 */
+/* flowgram 暂未提供相关配置项 */
+.flow-lines-container {
+  stroke-width: 1.5px;
+}

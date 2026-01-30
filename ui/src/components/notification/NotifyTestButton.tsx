@@ -5,15 +5,15 @@ import { Button, type ButtonProps, message, notification } from "antd";
 import { notifyTest } from "@/api/notify";
 import { getErrMsg } from "@/utils/error";
 
-export type NotifyTestButtonProps = {
+export interface NotifyTestButtonProps {
   className?: string;
   style?: React.CSSProperties;
-  channel: string;
   disabled?: boolean;
+  provider: string;
   size?: ButtonProps["size"];
-};
+}
 
-const NotifyTestButton = ({ className, style, channel, disabled, size }: NotifyTestButtonProps) => {
+const NotifyTestButton = ({ className, style, provider, disabled, size }: NotifyTestButtonProps) => {
   const { t } = useTranslation();
 
   const [messageApi, MessageContextHolder] = message.useMessage();
@@ -21,10 +21,10 @@ const NotifyTestButton = ({ className, style, channel, disabled, size }: NotifyT
 
   const { loading, run: executeNotifyTest } = useRequest(
     () => {
-      return notifyTest(channel);
+      return notifyTest(provider);
     },
     {
-      refreshDeps: [channel],
+      refreshDeps: [provider],
       manual: true,
       onSuccess: () => {
         messageApi.success(t("settings.notification.push_test.pushed"));

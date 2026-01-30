@@ -4,12 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 
+	"github.com/certimate-go/certimate/internal/app"
+	"github.com/certimate-go/certimate/internal/domain"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
-	"github.com/usual2970/certimate/internal/app"
-	"github.com/usual2970/certimate/internal/domain"
 )
 
 type CertificateRepository struct{}
@@ -18,11 +17,11 @@ func NewCertificateRepository() *CertificateRepository {
 	return &CertificateRepository{}
 }
 
-func (r *CertificateRepository) ListExpireSoon(ctx context.Context) ([]*domain.Certificate, error) {
+func (r *CertificateRepository) ListExpiringSoon(ctx context.Context) ([]*domain.Certificate, error) {
 	records, err := app.GetApp().FindAllRecords(
 		domain.CollectionNameCertificate,
-		dbx.NewExp("expireAt>DATETIME('now')"),
-		dbx.NewExp("expireAt<DATETIME('now', '+20 days')"),
+		dbx.NewExp("validityNotAfter>DATETIME('now')"),
+		dbx.NewExp("validityNotAfter<DATETIME('now', '+20 days')"),
 		dbx.NewExp("deleted=null"),
 	)
 	if err != nil {
@@ -58,20 +57,39 @@ func (r *CertificateRepository) GetById(ctx context.Context, id string) (*domain
 	return r.castRecordToModel(record)
 }
 
-func (r *CertificateRepository) GetByWorkflowNodeId(ctx context.Context, workflowNodeId string) (*domain.Certificate, error) {
+func (r *CertificateRepository) GetByWorkflowIdAndNodeId(ctx context.Context, workflowId string, workflowNodeId string) (*domain.Certificate, error) {
 	records, err := app.GetApp().FindRecordsByFilter(
 		domain.CollectionNameCertificate,
-		"workflowNodeId={:workflowNodeId} && deleted=null",
+		"workflowRef={:workflowId} && workflowNodeId={:workflowNodeId} && deleted=null",
 		"-created",
 		1, 0,
+		dbx.Params{"workflowId": workflowId},
 		dbx.Params{"workflowNodeId": workflowNodeId},
 	)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, domain.ErrRecordNotFound
-		}
 		return nil, err
 	}
+
+	if len(records) == 0 {
+		return nil, domain.ErrRecordNotFound
+	}
+
+	return r.castRecordToModel(records[0])
+}
+
+func (r *CertificateRepository) GetByWorkflowRunIdAndNodeId(ctx context.Context, workflowRunId string, workflowNodeId string) (*domain.Certificate, error) {
+	records, err := app.GetApp().FindRecordsByFilter(
+		domain.CollectionNameCertificate,
+		"workflowRunRef={:workflowRunId} && workflowNodeId={:workflowNodeId} && deleted=null",
+		"-created",
+		1, 0,
+		dbx.Params{"workflowRunId": workflowRunId},
+		dbx.Params{"workflowNodeId": workflowNodeId},
+	)
+	if err != nil {
+		return nil, err
+	}
+
 	if len(records) == 0 {
 		return nil, domain.ErrRecordNotFound
 	}
@@ -103,18 +121,18 @@ func (r *CertificateRepository) Save(ctx context.Context, certificate *domain.Ce
 	record.Set("serialNumber", certificate.SerialNumber)
 	record.Set("certificate", certificate.Certificate)
 	record.Set("privateKey", certificate.PrivateKey)
-	record.Set("issuer", certificate.Issuer)
+	record.Set("issuerOrg", certificate.IssuerOrg)
 	record.Set("issuerCertificate", certificate.IssuerCertificate)
 	record.Set("keyAlgorithm", string(certificate.KeyAlgorithm))
-	record.Set("effectAt", certificate.EffectAt)
-	record.Set("expireAt", certificate.ExpireAt)
-	record.Set("acmeAccountUrl", certificate.ACMEAccountUrl)
+	record.Set("validityNotBefore", certificate.ValidityNotBefore)
+	record.Set("validityNotAfter", certificate.ValidityNotAfter)
+	record.Set("acmeAcctUrl", certificate.ACMEAcctUrl)
 	record.Set("acmeCertUrl", certificate.ACMECertUrl)
 	record.Set("acmeCertStableUrl", certificate.ACMECertStableUrl)
-	record.Set("workflowId", certificate.WorkflowId)
-	record.Set("workflowRunId", certificate.WorkflowRunId)
+	record.Set("acmeRenewed", certificate.ACMERenewed)
+	record.Set("workflowRef", certificate.WorkflowId)
+	record.Set("workflowRunRef", certificate.WorkflowRunId)
 	record.Set("workflowNodeId", certificate.WorkflowNodeId)
-	record.Set("workflowOutputId", certificate.WorkflowOutputId)
 	if err := app.GetApp().Save(record); err != nil {
 		return certificate, err
 	}
@@ -125,9 +143,32 @@ func (r *CertificateRepository) Save(ctx context.Context, certificate *domain.Ce
 	return certificate, nil
 }
 
+func (r *CertificateRepository) DeleteWhere(ctx context.Context, exprs ...dbx.Expression) (int, error) {
+	records, err := app.GetApp().FindAllRecords(domain.CollectionNameCertificate, exprs...)
+	if err != nil {
+		return 0, nil
+	}
+
+	var ret int
+	var errs []error
+	for _, record := range records {
+		if err := app.GetApp().Delete(record); err != nil {
+			errs = append(errs, err)
+		} else {
+			ret++
+		}
+	}
+
+	if len(errs) > 0 {
+		return ret, errors.Join(errs...)
+	}
+
+	return ret, nil
+}
+
 func (r *CertificateRepository) castRecordToModel(record *core.Record) (*domain.Certificate, error) {
 	if record == nil {
-		return nil, fmt.Errorf("record is nil")
+		return nil, errors.New("the record is nil")
 	}
 
 	certificate := &domain.Certificate{
@@ -141,18 +182,18 @@ func (r *CertificateRepository) castRecordToModel(record *core.Record) (*domain.
 		SerialNumber:      record.GetString("serialNumber"),
 		Certificate:       record.GetString("certificate"),
 		PrivateKey:        record.GetString("privateKey"),
-		Issuer:            record.GetString("issuer"),
+		IssuerOrg:         record.GetString("issuerOrg"),
 		IssuerCertificate: record.GetString("issuerCertificate"),
 		KeyAlgorithm:      domain.CertificateKeyAlgorithmType(record.GetString("keyAlgorithm")),
-		EffectAt:          record.GetDateTime("effectAt").Time(),
-		ExpireAt:          record.GetDateTime("expireAt").Time(),
-		ACMEAccountUrl:    record.GetString("acmeAccountUrl"),
+		ValidityNotBefore: record.GetDateTime("validityNotBefore").Time(),
+		ValidityNotAfter:  record.GetDateTime("validityNotAfter").Time(),
+		ACMEAcctUrl:       record.GetString("acmeAcctUrl"),
 		ACMECertUrl:       record.GetString("acmeCertUrl"),
 		ACMECertStableUrl: record.GetString("acmeCertStableUrl"),
-		WorkflowId:        record.GetString("workflowId"),
-		WorkflowRunId:     record.GetString("workflowRunId"),
+		ACMERenewed:       record.GetBool("acmeRenewed"),
+		WorkflowId:        record.GetString("workflowRef"),
+		WorkflowRunId:     record.GetString("workflowRunRef"),
 		WorkflowNodeId:    record.GetString("workflowNodeId"),
-		WorkflowOutputId:  record.GetString("workflowOutputId"),
 	}
 	return certificate, nil
 }
