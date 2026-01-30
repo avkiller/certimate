@@ -15,19 +15,24 @@ const (
 	mockMessage = "test_message"
 )
 
-var fWebhookUrl string
+var (
+	fWebhookUrl string
+	fSecret     string
+)
 
 func init() {
-	argsPrefix := "CERTIMATE_NOTIFIER_LARKBOT_"
+	argsPrefix := "LARKBOT_"
 
 	flag.StringVar(&fWebhookUrl, argsPrefix+"WEBHOOKURL", "", "")
+	flag.StringVar(&fSecret, argsPrefix+"SECRET", "", "")
 }
 
 /*
 Shell command to run this test:
 
 	go test -v ./larkbot_test.go -args \
-	--CERTIMATE_NOTIFIER_LARKBOT_WEBHOOKURL="https://example.com/your-webhook-url"
+	--LARKBOT_WEBHOOKURL="https://example.com/your-webhook-url" \
+	--LARKBOT_SECRET="your-secret"
 */
 func TestNotify(t *testing.T) {
 	flag.Parse()
@@ -36,17 +41,19 @@ func TestNotify(t *testing.T) {
 		t.Log(strings.Join([]string{
 			"args:",
 			fmt.Sprintf("WEBHOOKURL: %v", fWebhookUrl),
+			fmt.Sprintf("SECRET: %v", fSecret),
 		}, "\n"))
 
-		notifier, err := provider.NewNotifierProvider(&provider.NotifierProviderConfig{
+		provider, err := provider.NewNotifier(&provider.NotifierConfig{
 			WebhookUrl: fWebhookUrl,
+			Secret:     fSecret,
 		})
 		if err != nil {
 			t.Errorf("err: %+v", err)
 			return
 		}
 
-		res, err := notifier.Notify(context.Background(), mockSubject, mockMessage)
+		res, err := provider.Notify(context.Background(), mockSubject, mockMessage)
 		if err != nil {
 			t.Errorf("err: %+v", err)
 			return

@@ -38,17 +38,16 @@ const BizDeployNodeConfigFieldsProviderVolcEngineCLB = () => {
       <Form.Item
         name={[parentNamePath, "resourceType"]}
         initialValue={initialValues.resourceType}
-        label={t("workflow_node.deploy.form.volcengine_clb_resource_type.label")}
+        label={t("workflow_node.deploy.form.shared_resource_type.label")}
         rules={[formRule]}
       >
-        <Select placeholder={t("workflow_node.deploy.form.volcengine_clb_resource_type.placeholder")}>
-          <Select.Option key={RESOURCE_TYPE_LOADBALANCER} value={RESOURCE_TYPE_LOADBALANCER}>
-            {t("workflow_node.deploy.form.volcengine_clb_resource_type.option.loadbalancer.label")}
-          </Select.Option>
-          <Select.Option key={RESOURCE_TYPE_LISTENER} value={RESOURCE_TYPE_LISTENER}>
-            {t("workflow_node.deploy.form.volcengine_clb_resource_type.option.listener.label")}
-          </Select.Option>
-        </Select>
+        <Select
+          options={[RESOURCE_TYPE_LOADBALANCER, RESOURCE_TYPE_LISTENER].map((s) => ({
+            value: s,
+            label: t(`workflow_node.deploy.form.volcengine_clb_resource_type.option.${s}.label`),
+          }))}
+          placeholder={t("workflow_node.deploy.form.shared_resource_type.placeholder")}
+        />
       </Form.Item>
 
       <Show when={fieldResourceType === RESOURCE_TYPE_LOADBALANCER}>
@@ -91,7 +90,7 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
   return z
     .object({
       region: z.string().nonempty(t("workflow_node.deploy.form.volcengine_clb_region.placeholder")),
-      resourceType: z.literal([RESOURCE_TYPE_LOADBALANCER, RESOURCE_TYPE_LISTENER], t("workflow_node.deploy.form.volcengine_clb_resource_type.placeholder")),
+      resourceType: z.literal([RESOURCE_TYPE_LOADBALANCER, RESOURCE_TYPE_LISTENER], t("workflow_node.deploy.form.shared_resource_type.placeholder")),
       loadbalancerId: z.string().nullish(),
       listenerId: z.string().nullish(),
     })
@@ -99,8 +98,8 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
       switch (values.resourceType) {
         case RESOURCE_TYPE_LOADBALANCER:
           {
-            const res = z.string().nonempty().safeParse(values.loadbalancerId);
-            if (!res.success) {
+            const scLoadbalancerId = z.string().nonempty();
+            if (!scLoadbalancerId.safeParse(values.loadbalancerId).success) {
               ctx.addIssue({
                 code: "custom",
                 message: t("workflow_node.deploy.form.volcengine_clb_loadbalancer_id.placeholder"),
@@ -112,8 +111,8 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
 
         case RESOURCE_TYPE_LISTENER:
           {
-            const res = z.string().nonempty().safeParse(values.listenerId);
-            if (!res.success) {
+            const scListenerId = z.string().nonempty();
+            if (!scListenerId.safeParse(values.listenerId).success) {
               ctx.addIssue({
                 code: "custom",
                 message: t("workflow_node.deploy.form.volcengine_clb_listener_id.placeholder"),

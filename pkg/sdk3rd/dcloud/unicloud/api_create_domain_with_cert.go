@@ -13,7 +13,7 @@ type CreateDomainWithCertRequest struct {
 }
 
 type CreateDomainWithCertResponse struct {
-	apiResponseBase
+	sdkResponseBase
 }
 
 func (c *Client) CreateDomainWithCert(req *CreateDomainWithCertRequest) (*CreateDomainWithCertResponse, error) {

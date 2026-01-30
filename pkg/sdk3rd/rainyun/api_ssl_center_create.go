@@ -11,7 +11,7 @@ type SslCenterCreateRequest struct {
 }
 
 type SslCenterCreateResponse struct {
-	apiResponseBase
+	sdkResponseBase
 }
 
 func (c *Client) SslCenterCreate(req *SslCenterCreateRequest) (*SslCenterCreateResponse, error) {

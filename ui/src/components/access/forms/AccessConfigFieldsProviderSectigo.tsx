@@ -68,14 +68,8 @@ const getSchema = ({ i18n = getI18n() }: { i18n: ReturnType<typeof getI18n> }) =
 
   return z.object({
     validationType: z.string().nonempty(t("access.form.sectigo_validation_type.placeholder")),
-    eabKid: z
-      .string()
-      .min(1, t("access.form.shared_acme_eab_kid.placeholder"))
-      .max(256, t("common.errmsg.string_max", { max: 256 })),
-    eabHmacKey: z
-      .string()
-      .min(1, t("access.form.shared_acme_eab_hmac_key.placeholder"))
-      .max(256, t("common.errmsg.string_max", { max: 256 })),
+    eabKid: z.string().nonempty(t("access.form.shared_acme_eab_kid.placeholder")),
+    eabHmacKey: z.string().nonempty(t("access.form.shared_acme_eab_hmac_key.placeholder")),
   });
 };
 

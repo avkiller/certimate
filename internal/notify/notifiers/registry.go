@@ -1,13 +1,13 @@
-﻿package notifiers
+package notifiers
 
 import (
 	"fmt"
 
 	"github.com/certimate-go/certimate/internal/domain"
-	"github.com/certimate-go/certimate/pkg/core"
+	"github.com/certimate-go/certimate/pkg/core/notifier"
 )
 
-type ProviderFactoryFunc func(options *ProviderFactoryOptions) (core.Notifier, error)
+type ProviderFactoryFunc func(options *ProviderFactoryOptions) (notifier.Provider, error)
 
 type ProviderFactoryOptions struct {
 	ProviderAccessConfig   map[string]any
@@ -16,6 +16,7 @@ type ProviderFactoryOptions struct {
 
 type Registry[T comparable] interface {
 	Register(T, ProviderFactoryFunc) error
+	MustRegister(T, ProviderFactoryFunc)
 	Get(T) (ProviderFactoryFunc, error)
 }
 
@@ -30,6 +31,12 @@ func (r *registry[T]) Register(name T, factory ProviderFactoryFunc) error {
 
 	r.factories[name] = factory
 	return nil
+}
+
+func (r *registry[T]) MustRegister(name T, factory ProviderFactoryFunc) {
+	if err := r.Register(name, factory); err != nil {
+		panic(err)
+	}
 }
 
 func (r *registry[T]) Get(name T) (ProviderFactoryFunc, error) {

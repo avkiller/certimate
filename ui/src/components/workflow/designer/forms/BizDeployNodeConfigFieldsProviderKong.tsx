@@ -4,6 +4,7 @@ import { createSchemaFieldRule } from "antd-zod";
 import { z } from "zod";
 
 import Show from "@/components/Show";
+import Tips from "@/components/Tips";
 
 import { useFormNestedFieldsContext } from "./_context";
 
@@ -24,17 +25,23 @@ const BizDeployNodeConfigFieldsProviderKong = () => {
 
   return (
     <>
+      <Form.Item>
+        <Tips message={<span dangerouslySetInnerHTML={{ __html: t("workflow_node.deploy.form.kong.guide") }}></span>} />
+      </Form.Item>
+
       <Form.Item
         name={[parentNamePath, "resourceType"]}
         initialValue={initialValues.resourceType}
-        label={t("workflow_node.deploy.form.kong_resource_type.label")}
+        label={t("workflow_node.deploy.form.shared_resource_type.label")}
         rules={[formRule]}
       >
-        <Select placeholder={t("workflow_node.deploy.form.kong_resource_type.placeholder")}>
-          <Select.Option key={RESOURCE_TYPE_CERTIFICATE} value={RESOURCE_TYPE_CERTIFICATE}>
-            {t("workflow_node.deploy.form.kong_resource_type.option.certificate.label")}
-          </Select.Option>
-        </Select>
+        <Select
+          options={[RESOURCE_TYPE_CERTIFICATE].map((s) => ({
+            value: s,
+            label: t(`workflow_node.deploy.form.kong_resource_type.option.${s}.label`),
+          }))}
+          placeholder={t("workflow_node.deploy.form.shared_resource_type.placeholder")}
+        />
       </Form.Item>
 
       <Form.Item
@@ -73,7 +80,7 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
 
   return z
     .object({
-      resourceType: z.literal(RESOURCE_TYPE_CERTIFICATE, t("workflow_node.deploy.form.kong_resource_type.placeholder")),
+      resourceType: z.literal(RESOURCE_TYPE_CERTIFICATE, t("workflow_node.deploy.form.shared_resource_type.placeholder")),
       workspace: z.string().nullish(),
       certificateId: z.string().nullish(),
     })

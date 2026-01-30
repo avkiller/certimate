@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { FlowLayoutDefault } from "@flowgram.ai/fixed-layout-editor";
 import { IconArrowBackUp, IconDots, IconTransferIn, IconTransferOut } from "@tabler/icons-react";
 import { useDeepCompareEffect } from "ahooks";
 import { Alert, App, Button, Card, Dropdown, Result, Space, theme } from "antd";
@@ -9,15 +10,17 @@ import Show from "@/components/Show";
 import { WorkflowDesigner, type WorkflowDesignerInstance, WorkflowNodeDrawer, WorkflowToolbar } from "@/components/workflow/designer";
 import WorkflowGraphExportModal from "@/components/workflow/WorkflowGraphExportModal";
 import WorkflowGraphImportModal from "@/components/workflow/WorkflowGraphImportModal";
-import { useZustandShallowSelector } from "@/hooks";
+import { useAppSettings, useZustandShallowSelector } from "@/hooks";
 import { useWorkflowStore } from "@/stores/workflow";
-import { getErrMsg } from "@/utils/error";
+import { unwrapErrMsg } from "@/utils/error";
 
 const WorkflowDetailDesign = () => {
   const { t } = useTranslation();
 
   const { token: themeToken } = theme.useToken();
   const { message, modal, notification } = App.useApp();
+
+  const { appSettings: globalAppSettings } = useAppSettings();
 
   const { workflow, ...workflowStore } = useWorkflowStore(useZustandShallowSelector(["workflow", "orchestrate", "publish", "rollback"]));
 
@@ -26,7 +29,7 @@ const WorkflowDetailDesign = () => {
 
   const designerRef = useRef<WorkflowDesignerInstance>(null);
   const designerPending = useRef(false); // 保存中时阻止刷新画布
-  const [designerError, setDesignerError] = useState<any>();
+  const [designerError, setDesignerError] = useState<unknown>();
   useDeepCompareEffect(() => {
     if (designerRef.current == null || designerRef.current.document.disposed) return;
     if (designerPending.current) return;
@@ -52,7 +55,7 @@ const WorkflowDetailDesign = () => {
       await workflowStore.orchestrate(graph);
     } catch (err) {
       console.error(err);
-      notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
+      notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
     } finally {
       designerPending.current = false;
     }
@@ -69,7 +72,7 @@ const WorkflowDetailDesign = () => {
           message.success(t("common.text.operation_succeeded"));
         } catch (err) {
           console.error(err);
-          notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
+          notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
         }
       },
     });
@@ -91,7 +94,7 @@ const WorkflowDetailDesign = () => {
           message.success(t("common.text.operation_succeeded"));
         } catch (err) {
           console.error(err);
-          notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
+          notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
         }
       },
     });
@@ -113,7 +116,7 @@ const WorkflowDetailDesign = () => {
       } catch (err) {
         console.error(err);
         message.destroy(loadingKey);
-        notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
+        notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
       }
     });
   };
@@ -134,17 +137,33 @@ const WorkflowDetailDesign = () => {
           },
         }}
       >
-        <WorkflowDesigner ref={designerRef} onDocumentChange={handleDesignerDocumentChange} onNodeClick={(_, node) => designerNodeDrawer.open(node)}>
+        <WorkflowDesigner
+          ref={designerRef}
+          defaultLayout={
+            globalAppSettings.defaultWorkflowLayout === "horizontal"
+              ? FlowLayoutDefault.HORIZONTAL_FIXED_LAYOUT
+              : globalAppSettings.defaultWorkflowLayout === "vertical"
+                ? FlowLayoutDefault.VERTICAL_FIXED_LAYOUT
+                : void 0
+          }
+          onDocumentChange={handleDesignerDocumentChange}
+          onNodeClick={(_, node) => designerNodeDrawer.open(node)}
+        >
           <div className="absolute top-8 z-10 w-full px-4">
             <div className="container">
               <div className="flex items-center justify-end gap-4">
                 <div className="flex flex-1 items-center justify-end gap-4 overflow-hidden">
                   <div className="flex-1 overflow-hidden">
                     <Show when={workflow.hasDraft!}>
-                      <Alert message={<div className="truncate">{t("workflow.detail.design.unpublished_draft.alert")}</div>} showIcon type="warning" />
+                      <Alert showIcon title={<div className="truncate">{t("workflow.detail.design.unpublished_draft.alert")}</div>} type="warning" />
                     </Show>
                   </div>
-                  <Space.Compact>
+                  <Space.Compact
+                    style={{
+                      backgroundColor: themeToken.colorBgContainer,
+                      borderRadius: themeToken.borderRadius,
+                    }}
+                  >
                     <Button disabled={workflowPublishDisabled} ghost type="primary" onClick={handlePublishClick}>
                       {t("workflow.detail.design.action.publish.button")}
                     </Button>
@@ -198,9 +217,9 @@ const WorkflowDetailDesign = () => {
             </div>
           </div>
 
-          {designerError && (
+          {!!designerError && (
             <div className="absolute top-1/2 left-1/2 z-10 w-full -translate-1/2 px-4">
-              <Result status="warning" title="Data corruption!" subTitle={`Error: ${getErrMsg(designerError)}`} />
+              <Result status="warning" title="Data corruption!" subTitle={`Error: ${unwrapErrMsg(designerError)}`} />
             </div>
           )}
 

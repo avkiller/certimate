@@ -18,7 +18,7 @@ const AccessConfigFormFieldsProviderLeCDN = () => {
   return (
     <>
       <Form.Item name={[parentNamePath, "serverUrl"]} initialValue={initialValues.serverUrl} label={t("access.form.lecdn_server_url.label")} rules={[formRule]}>
-        <Input placeholder={t("access.form.lecdn_server_url.placeholder")} />
+        <Input type="url" placeholder={t("access.form.lecdn_server_url.placeholder")} />
       </Form.Item>
 
       <Form.Item
@@ -48,10 +48,7 @@ const AccessConfigFormFieldsProviderLeCDN = () => {
         label={t("access.form.shared_allow_insecure_conns.label")}
         rules={[formRule]}
       >
-        <Switch
-          checkedChildren={t("access.form.shared_allow_insecure_conns.switch.on")}
-          unCheckedChildren={t("access.form.shared_allow_insecure_conns.switch.off")}
-        />
+        <Switch />
       </Form.Item>
     </>
   );

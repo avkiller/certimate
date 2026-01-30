@@ -31,6 +31,7 @@ const BizApplyNodeConfigFieldsProviderAWSRoute53 = () => {
         name={[parentNamePath, "hostedZoneId"]}
         initialValue={initialValues.hostedZoneId}
         label={t("workflow_node.apply.form.aws_route53_hosted_zone_id.label")}
+        extra={t("workflow_node.apply.form.aws_route53_hosted_zone_id.help")}
         rules={[formRule]}
         tooltip={<span dangerouslySetInnerHTML={{ __html: t("workflow_node.apply.form.aws_route53_hosted_zone_id.tooltip") }}></span>}
       >
@@ -43,7 +44,6 @@ const BizApplyNodeConfigFieldsProviderAWSRoute53 = () => {
 const getInitialValues = (): Nullish<z.infer<ReturnType<typeof getSchema>>> => {
   return {
     region: "us-east-1",
-    hostedZoneId: "",
   };
 };
 
@@ -52,7 +52,7 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
 
   return z.object({
     region: z.string().nonempty(t("workflow_node.apply.form.aws_route53_region.placeholder")),
-    hostedZoneId: z.string().nonempty(t("workflow_node.apply.form.aws_route53_hosted_zone_id.placeholder")),
+    hostedZoneId: z.string().nullish(),
   });
 };
 

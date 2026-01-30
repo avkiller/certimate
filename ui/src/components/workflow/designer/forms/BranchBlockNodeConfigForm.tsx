@@ -1,6 +1,6 @@
 import { useMemo, useRef } from "react";
 import { getI18n, useTranslation } from "react-i18next";
-import { type FlowNodeEntity, getNodeForm } from "@flowgram.ai/fixed-layout-editor";
+import { type FlowNodeEntity } from "@flowgram.ai/fixed-layout-editor";
 import { type AnchorProps, Form, type FormInstance } from "antd";
 import { createSchemaFieldRule } from "antd-zod";
 import { z } from "zod";
@@ -35,7 +35,7 @@ const BranchBlockNodeConfigForm = ({ node, ...props }: BranchBlockNodeConfigForm
   const { i18n, t } = useTranslation();
 
   const initialValues = useMemo(() => {
-    return getNodeForm(node)?.getValueIn("config") as WorkflowNodeConfigForBranchBlock | undefined;
+    return node.form?.getValueIn("config") as WorkflowNodeConfigForBranchBlock | undefined;
   }, [node]);
 
   const formSchema = getSchema({ i18n }).superRefine(async (values, ctx) => {
@@ -66,7 +66,7 @@ const BranchBlockNodeConfigForm = ({ node, ...props }: BranchBlockNodeConfigForm
     <NodeFormContextProvider value={{ node }}>
       <Form {...formProps} clearOnDestroy={true} form={formInst} layout="vertical" preserve={false} scrollToFirstError>
         <div id="parameters" data-anchor="parameters">
-          <Form.Item name="expression" label={t("workflow_node.branch_block.form.expression.label")} rules={[formRule]}>
+          <Form.Item name="expression" label={t("workflow_node.branch_block.form.expression.label")} rules={[formRule]} validateTrigger={false}>
             <BranchBlockNodeConfigExprInputBox ref={exprInputBoxRef} />
           </Form.Item>
         </div>

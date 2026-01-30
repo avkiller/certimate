@@ -12,7 +12,7 @@ type CreateCertificateRequest struct {
 }
 
 type CreateCertificateResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
 	Id                string   `json:"_id"`
 	SubjectCommonName string   `json:"subjectCommonName"`

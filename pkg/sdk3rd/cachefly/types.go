@@ -1,14 +1,14 @@
 package cachefly
 
-type apiResponse interface {
+type sdkResponse interface {
 	GetMessage() string
 }
 
-type apiResponseBase struct {
+type sdkResponseBase struct {
 	Message *string `json:"message,omitempty"`
 }
 
-func (r *apiResponseBase) GetMessage() string {
+func (r *sdkResponseBase) GetMessage() string {
 	if r.Message == nil {
 		return ""
 	}
@@ -16,4 +16,4 @@ func (r *apiResponseBase) GetMessage() string {
 	return *r.Message
 }
 
-var _ apiResponse = (*apiResponseBase)(nil)
+var _ sdkResponse = (*sdkResponseBase)(nil)

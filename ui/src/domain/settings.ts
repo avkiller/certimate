@@ -2,6 +2,8 @@ import { type CAProviderType } from "./provider";
 
 export const SETTINGS_NAMES = Object.freeze({
   EMAILS: "emails",
+  NOTIFY_TEMPLATE: "notifyTemplate",
+  SCRIPT_TEMPLATE: "scriptTemplate",
   SSL_PROVIDER: "sslProvider",
   PERSISTENCE: "persistence",
 } as const);
@@ -19,18 +21,39 @@ export type EmailsSettingsContent = {
 };
 // #endregion
 
+// #region Settings: NotifyTemplate
+export type NotifyTemplateContent = {
+  templates: Array<{
+    name: string;
+    subject: string;
+    message: string;
+  }>;
+};
+// #endregion
+
+// #region Settings: ScriptTemplate
+export type ScriptTemplateContent = {
+  templates: Array<{
+    name: string;
+    command: string;
+  }>;
+};
+// #endregion
+
 // #region Settings: SSLProvider
 export type SSLProviderSettingsContent = {
   provider: CAProviderType;
-  config: {
+  configs: {
     [key: string]: Record<string, unknown> | undefined;
   };
+  timeout?: number;
 };
 // #endregion
 
 // #region Settings: Persistence
 export type PersistenceSettingsContent = {
-  workflowRunsMaxDaysRetention?: number;
-  expiredCertificatesMaxDaysRetention?: number;
+  certificatesWarningDaysBeforeExpire?: number;
+  certificatesRetentionMaxDays?: number;
+  workflowRunsRetentionMaxDays?: number;
 };
 // #endregion

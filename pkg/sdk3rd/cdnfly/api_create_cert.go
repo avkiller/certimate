@@ -14,7 +14,7 @@ type CreateCertRequest struct {
 }
 
 type CreateCertResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
 	Data string `json:"data"`
 }

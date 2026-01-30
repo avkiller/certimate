@@ -1,6 +1,6 @@
 ﻿import { useMemo } from "react";
 import { getI18n, useTranslation } from "react-i18next";
-import { type FlowNodeEntity, getNodeForm } from "@flowgram.ai/fixed-layout-editor";
+import { type FlowNodeEntity } from "@flowgram.ai/fixed-layout-editor";
 import { type AnchorProps, Form, type FormInstance, InputNumber } from "antd";
 import { createSchemaFieldRule } from "antd-zod";
 import { z } from "zod";
@@ -24,7 +24,7 @@ const DelayNodeConfigForm = ({ node, ...props }: DelayNodeConfigFormProps) => {
   const { i18n, t } = useTranslation();
 
   const initialValues = useMemo(() => {
-    return getNodeForm(node)?.getValueIn("config") as WorkflowNodeConfigForDelay | undefined;
+    return node.form?.getValueIn("config") as WorkflowNodeConfigForDelay | undefined;
   }, [node]);
 
   const formSchema = getSchema({ i18n });
@@ -45,7 +45,7 @@ const DelayNodeConfigForm = ({ node, ...props }: DelayNodeConfigFormProps) => {
               min={0}
               max={3600}
               placeholder={t("workflow_node.delay.form.wait.placeholder")}
-              addonAfter={t("workflow_node.delay.form.wait.unit")}
+              suffix={t("workflow_node.delay.form.wait.unit")}
             />
           </Form.Item>
         </div>
@@ -66,21 +66,15 @@ const getAnchorItems = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n
 
 const getInitialValues = (): Nullish<z.infer<ReturnType<typeof getSchema>>> => {
   return {
-    ...defaultNodeConfigForDelay(),
+    ...(defaultNodeConfigForDelay() as Nullish<z.infer<ReturnType<typeof getSchema>>>),
   };
 };
 
 const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) => {
-  const { t } = i18n;
+  const { t: _ } = i18n;
 
   return z.object({
-    wait: z.preprocess(
-      (v) => Number(v),
-      z
-        .number(t("workflow_node.delay.form.wait.placeholder"))
-        .int(t("workflow_node.delay.form.wait.placeholder"))
-        .gte(1, t("workflow_node.delay.form.wait.placeholder"))
-    ),
+    wait: z.coerce.number().int().positive(),
   });
 };
 

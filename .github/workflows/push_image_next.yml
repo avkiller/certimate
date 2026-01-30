@@ -5,6 +5,7 @@ on:
     tags:
       - "v[0-9]*-alpha*"
       - "v[0-9]*-beta*"
+      - "v[0-9]*-rc*"
   workflow_dispatch:
     inputs:
       tag:
@@ -17,23 +18,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 22.19.0
+          node-version: 24
 
       - name: Build UI
         run: |
-          echo "VITE_APP_VERSION=${GITHUB_REF#refs/tags/}" > ./ui/.env
           npm --prefix=./ui ci
           npm --prefix=./ui run build
 
       - name: Upload UI build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ui-build
           path: ./ui/dist
@@ -44,7 +44,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
+
+      - name: Free disk space
+        uses: BRAINSia/free-disk-space@v2
+        with:
+          tool-cache: false
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -61,6 +66,7 @@ jobs:
             registry.cn-shanghai.aliyuncs.com/certimate/certimate
           tags: |
             type=ref,event=tag,pattern={{version}}
+            type=raw,value=next
           flavor: |
             latest=false
 
@@ -77,12 +83,8 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # - name: Inject tag version of UI
-      #   run: |
-      #     echo "VITE_APP_VERSION=${GITHUB_REF#refs/tags/}" > ./ui/.env
-
       - name: Download UI build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: ui-build
           path: ./ui/dist
@@ -91,7 +93,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          # file: ./Dockerfile.gh
+          # file: ./Dockerfile
           file: ./Dockerfile.gh
           platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true

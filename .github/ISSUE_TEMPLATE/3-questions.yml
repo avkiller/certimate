@@ -1,11 +1,17 @@
 name: "❓ Questions"
-description: "遇到了困难需要求助？ / Have problem in use and need help?"
-title: "简要描述你遇到的问题"
+description: "Have problem in use and need help? / 遇到了困难需要求助？"
+title: "Describe the question briefly / 简要描述你遇到的问题"
+type: question
 body:
   - type: markdown
     attributes:
       value: |
-        ## Welcome!
+        **Before you submit the issue, please make sure of the following checklist**:
+        1. Yes, I'm using the latest release.
+        2. Yes, I've searched for [existing issues](https://github.com/certimate-go/certimate/issues) (including closed ones) on GitHub and didn't find any similar.
+        3. Yes, I've read the [documentation](https://docs.certimate.me/) and didn't find any similar.
+        4. Please describe the problem in detail according to the template specification, otherwise the issue will be closed directly.
+        5. Please limit one question per issue.
 
         **在提交 Issue 之前，请确认以下事项**：
         1. 我**确认**正在使用的是当前最新版本。
@@ -14,31 +20,24 @@ body:
         4. 请**务必**按照模板规范详细描述问题，否则 Issue 将会被直接关闭。
         5. 请保持每个 Issue 只包含一个问题求助。如果有多个问题，请分别提交 Issue。
 
-        **Before you submit the issue, please make sure of the following checklist**:
-        1. Yes, I'm using the latest release.
-        2. Yes, I've searched for [existing issues](https://github.com/certimate-go/certimate/issues) (including closed ones) on GitHub and didn't find any similar.
-        3. Yes, I've read the [documentation](https://docs.certimate.me/en/) and didn't find any similar.
-        4. Please describe the problem in detail according to the template specification, otherwise the issue will be closed directly.
-        5. Please limit one question per issue.
-
   - type: input
     attributes:
-      label: 软件版本 / Release Version
-      description: 请提供 Certimate 的具体版本（请不要填写 `latest` 之类的无效版本号）。 / Please provide the specific version of Certimate.
+      label: Release Version / 软件版本
+      description: Please provide the specific version of Certimate. / 请提供 Certimate 的具体版本（请不要填写 `latest` 之类的无效版本号）。
       placeholder: (e.g. v1.0.0)
     validations:
       required: true
 
   - type: textarea
     attributes:
-      label: 问题描述 / Description
-      description: 请详细清晰地描述你遇到的问题，如果可能请上传截图。 / Describe the problem you encountered in detail and clearly, and upload screenshots if possible.
+      label: Description / 问题描述
+      description: Describe the problem you encountered in detail and clearly, and upload screenshots if possible. / 请详细清晰地描述你遇到的问题，如果可能请上传截图。
     validations:
       required: true
 
   - type: textarea
     attributes:
-      label: 其他 / Miscellaneous
-      description: 在此处添加关于该问题的任何其他信息。 / Add any other context about the problem here.
+      label: Miscellaneous / 其他
+      description: Add any other context about the problem here. / 在此处添加关于该问题的任何其他信息。
     validations:
       required: false

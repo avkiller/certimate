@@ -4,7 +4,7 @@ import { createSchemaFieldRule } from "antd-zod";
 import { z } from "zod";
 
 import Show from "@/components/Show";
-import { validDomainName } from "@/utils/validators";
+import { isDomain } from "@/utils/validator";
 
 import { useFormNestedFieldsContext } from "./_context";
 
@@ -50,20 +50,16 @@ const BizDeployNodeConfigFieldsProviderTencentCloudCLB = () => {
       <Form.Item
         name={[parentNamePath, "resourceType"]}
         initialValue={initialValues.resourceType}
-        label={t("workflow_node.deploy.form.tencentcloud_clb_resource_type.label")}
+        label={t("workflow_node.deploy.form.shared_resource_type.label")}
         rules={[formRule]}
       >
-        <Select placeholder={t("workflow_node.deploy.form.tencentcloud_clb_resource_type.placeholder")}>
-          <Select.Option key={RESOURCE_TYPE_LOADBALANCER} value={RESOURCE_TYPE_LOADBALANCER}>
-            {t("workflow_node.deploy.form.tencentcloud_clb_resource_type.option.loadbalancer.label")}
-          </Select.Option>
-          <Select.Option key={RESOURCE_TYPE_LISTENER} value={RESOURCE_TYPE_LISTENER}>
-            {t("workflow_node.deploy.form.tencentcloud_clb_resource_type.option.listener.label")}
-          </Select.Option>
-          <Select.Option key={RESOURCE_TYPE_RULEDOMAIN} value={RESOURCE_TYPE_RULEDOMAIN}>
-            {t("workflow_node.deploy.form.tencentcloud_clb_resource_type.option.ruledomain.label")}
-          </Select.Option>
-        </Select>
+        <Select
+          options={[RESOURCE_TYPE_LOADBALANCER, RESOURCE_TYPE_LISTENER, RESOURCE_TYPE_RULEDOMAIN].map((s) => ({
+            value: s,
+            label: t(`workflow_node.deploy.form.tencentcloud_clb_resource_type.option.${s}.label`),
+          }))}
+          placeholder={t("workflow_node.deploy.form.shared_resource_type.placeholder")}
+        />
       </Form.Item>
 
       <Form.Item
@@ -94,7 +90,6 @@ const BizDeployNodeConfigFieldsProviderTencentCloudCLB = () => {
           initialValue={initialValues.domain}
           label={t("workflow_node.deploy.form.tencentcloud_clb_ruledomain.label")}
           rules={[formRule]}
-          tooltip={<span dangerouslySetInnerHTML={{ __html: t("workflow_node.deploy.form.tencentcloud_clb_ruledomain.tooltip") }}></span>}
         >
           <Input placeholder={t("workflow_node.deploy.form.tencentcloud_clb_ruledomain.placeholder")} />
         </Form.Item>
@@ -119,7 +114,7 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
       endpoint: z.string().nullish(),
       resourceType: z.literal(
         [RESOURCE_TYPE_LOADBALANCER, RESOURCE_TYPE_LISTENER, RESOURCE_TYPE_RULEDOMAIN],
-        t("workflow_node.deploy.form.tencentcloud_clb_resource_type.placeholder")
+        t("workflow_node.deploy.form.shared_resource_type.placeholder")
       ),
       region: z.string().nonempty(t("workflow_node.deploy.form.tencentcloud_clb_region.placeholder")),
       loadbalancerId: z.string().nonempty(t("workflow_node.deploy.form.tencentcloud_clb_loadbalancer_id.placeholder")),
@@ -150,7 +145,7 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
               });
             }
 
-            if (!validDomainName(values.domain!, { allowWildcard: true })) {
+            if (!isDomain(values.domain!, { allowWildcard: true })) {
               ctx.addIssue({
                 code: "custom",
                 message: t("common.errmsg.domain_invalid"),

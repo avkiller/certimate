@@ -11,7 +11,7 @@ type SetSettingCertRequest struct {
 }
 
 type SetSettingCertResponse struct {
-	apiResponseBase
+	sdkResponseBase
 }
 
 func (c *Client) SetSettingCert(req *SetSettingCertRequest) (*SetSettingCertResponse, error) {

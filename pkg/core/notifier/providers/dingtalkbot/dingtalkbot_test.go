@@ -21,7 +21,7 @@ var (
 )
 
 func init() {
-	argsPrefix := "CERTIMATE_NOTIFIER_DINGTALKBOT_"
+	argsPrefix := "DINGTALKBOT_"
 
 	flag.StringVar(&fWebhookUrl, argsPrefix+"WEBHOOKURL", "", "")
 	flag.StringVar(&fSecret, argsPrefix+"SECRET", "", "")
@@ -31,8 +31,8 @@ func init() {
 Shell command to run this test:
 
 	go test -v ./dingtalkbot_test.go -args \
-	--CERTIMATE_NOTIFIER_DINGTALKBOT_WEBHOOKURL="https://example.com/your-webhook-url" \
-	--CERTIMATE_NOTIFIER_DINGTALKBOT_SECRET="your-secret"
+	--DINGTALKBOT_WEBHOOKURL="https://example.com/your-webhook-url" \
+	--DINGTALKBOT_SECRET="your-secret"
 */
 func TestNotify(t *testing.T) {
 	flag.Parse()
@@ -44,7 +44,7 @@ func TestNotify(t *testing.T) {
 			fmt.Sprintf("SECRET: %v", fSecret),
 		}, "\n"))
 
-		notifier, err := provider.NewNotifierProvider(&provider.NotifierProviderConfig{
+		provider, err := provider.NewNotifier(&provider.NotifierConfig{
 			WebhookUrl: fWebhookUrl,
 			Secret:     fSecret,
 		})
@@ -53,7 +53,7 @@ func TestNotify(t *testing.T) {
 			return
 		}
 
-		res, err := notifier.Notify(context.Background(), mockSubject, mockMessage)
+		res, err := provider.Notify(context.Background(), mockSubject, mockMessage)
 		if err != nil {
 			t.Errorf("err: %+v", err)
 			return

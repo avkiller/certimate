@@ -8,7 +8,7 @@ import (
 )
 
 type GetSiteResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
 	Data *struct {
 		Id          int64  `json:"id"`

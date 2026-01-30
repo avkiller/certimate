@@ -11,7 +11,7 @@ type DeleteDomainResolutionRequest struct {
 }
 
 type DeleteDomainResolutionResponse struct {
-	apiResponseBase
+	sdkResponseBase
 }
 
 func (c *Client) DeleteDomainResolution(req *DeleteDomainResolutionRequest) (*DeleteDomainResolutionResponse, error) {

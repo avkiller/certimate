@@ -3,20 +3,21 @@ package dns
 import (
 	"context"
 	"net/http"
-	"strconv"
+
+	qs "github.com/google/go-querystring/query"
 )
 
 type QueryRecordListRequest struct {
-	Domain   *string `json:"domain,omitempty"`
-	Host     *string `json:"host,omitempty"`
-	Type     *string `json:"type,omitempty"`
-	LineCode *string `json:"lineCode,omitempty"`
-	Value    *string `json:"value,omitempty"`
-	State    *int32  `json:"state,omitempty"`
+	Domain   *string `json:"domain,omitempty"   url:"domain,omitempty"`
+	Host     *string `json:"host,omitempty"     url:"host,omitempty"`
+	Type     *string `json:"type,omitempty"     url:"type,omitempty"`
+	LineCode *string `json:"lineCode,omitempty" url:"lineCode,omitempty"`
+	Value    *string `json:"value,omitempty"    url:"value,omitempty"`
+	State    *int32  `json:"state,omitempty"    url:"state,omitempty"`
 }
 
 type QueryRecordListResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
 	ReturnObj *struct {
 		Records []*DnsRecord `json:"records,omitempty"`
@@ -32,26 +33,12 @@ func (c *Client) QueryRecordListWithContext(ctx context.Context, req *QueryRecor
 	if err != nil {
 		return nil, err
 	} else {
-		if req.Domain != nil {
-			httpreq.SetQueryParam("domain", *req.Domain)
-		}
-		if req.Host != nil {
-			httpreq.SetQueryParam("host", *req.Host)
-		}
-		if req.Type != nil {
-			httpreq.SetQueryParam("type", *req.Type)
-		}
-		if req.LineCode != nil {
-			httpreq.SetQueryParam("lineCode", *req.LineCode)
-		}
-		if req.Value != nil {
-			httpreq.SetQueryParam("value", *req.Value)
-		}
-		if req.State != nil {
-			httpreq.SetQueryParam("state", strconv.Itoa(int(*req.State)))
+		values, err := qs.Values(req)
+		if err != nil {
+			return nil, err
 		}
 
-		httpreq.SetBody(req)
+		httpreq.SetQueryParamsFromValues(values)
 		httpreq.SetContext(ctx)
 	}
 

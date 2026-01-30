@@ -1,112 +1,112 @@
-# 贡献指南
+# Contribution Guide
 
 <div align="center">
 
-中文 ｜ [English](CONTRIBUTING_EN.md)
+English ｜ [简体中文](CONTRIBUTING_zh.md)
 
 </div>
 
-非常感谢你抽出时间来帮助改进 Certimate！以下是向 Certimate 提交 Pull Request 时的操作指南。
+Thank you for taking the time to improve Certimate! Below is a guide for submitting a PR (Pull Request) to the Certimate repository.
 
-我们需要保持敏捷和快速迭代，同时也希望确保贡献者能获得尽可能流畅的参与体验。这份贡献指南旨在帮助你熟悉代码库和我们的工作方式，让你可以尽快进入有趣的开发环节。
+We need to be nimble and ship fast given where we are, but we also want to make sure that contributors like you get as smooth an experience at contributing as possible. We've assembled this contribution guide for that purpose, aiming at getting you familiarized with the codebase & how we work with contributors, so you could quickly jump to the fun part.
 
-索引：
+Index:
 
-- [开发](#开发)
-  - [要求](#要求)
-  - [后端代码](#后端代码)
-  - [前端代码](#前端代码)
-- [提交 PR](#提交-pr)
-  - [提交流程](#提交流程)
-- [获取帮助](#获取帮助)
+- [Development](#development)
+  - [Prerequisites](#prerequisites)
+  - [Backend Code](#backend-code)
+  - [Frontend Code](#frontend-code)
+- [Submitting PR](#submitting-pr)
+  - [Pull Request Process](#pull-request-process)
+- [Getting Help](#getting-help)
 
 ---
 
-## 开发
+## Development
 
-### 要求
+### Prerequisites
 
-- Go 1.24+（用于修改后端代码）
-- Node.js 22.12+（用于修改前端代码）
+- Go 1.25+ (for backend code changes)
+- Node.js 22.12+ (for frontend code changes)
 
-### 后端代码
+### Backend Code
 
-Certimate 的后端代码是使用 Golang 开发的，是一个基于 [Pocketbase](https://github.com/pocketbase/pocketbase) 构建的单体应用。
+The backend code of Certimate is developed using Golang. It is a monolithic application based on [Pocketbase](https://github.com/pocketbase/pocketbase).
 
-假设你已经对 Certimate 的后端代码做出了一些修改，现在你想要运行它，请遵循以下步骤：
+Once you have made changes to the backend code in Certimate, follow these steps to run the project:
 
-1. 进入根目录；
-2. 安装依赖：
+1. Navigate to the root directory.
+2. Install dependencies:
    ```bash
    go mod vendor
    ```
-3. 启动本地开发服务：
+3. Start the local development server:
    ```bash
    go run main.go serve
    ```
 
-这将启动一个 Web 服务器，默认运行在 `http://localhost:8090`，并使用来自 `/ui/dist` 的预构建管理页面。
+This will start a web server at `http://localhost:8090` using the prebuilt WebUI located in `/ui/dist`.
 
-> 如果你遇到报错 `ui/embed.go: pattern all:dist: no matching files found`，请参考“[前端代码](#前端代码)”这一小节构建 WebUI。
+> If you encounter an error `ui/embed.go: pattern all:dist: no matching files found`, please refer to _[Frontend Code](#frontend-code)_ and build WebUI first.
 
-**在向主仓库提交 PR 之前，你应该：**
+**Before submitting a PR to the main repository, you should:**
 
-- 使用 [gofumpt](https://github.com/mvdan/gofumpt) 格式化你的代码。推荐使用 VSCode，并安装 gofumpt 插件，以便在保存时自动格式化。
-- 为你的改动添加单元测试或集成测试（使用 Go 标准库中的 `testing` 包）。
+- Format your source code by using [gofumpt](https://github.com/mvdan/gofumpt). Recommended using VSCode and installing the gofumpt plugin to automatically format when saving.
+- Adding unit or integration tests for your changes (with go standard library `testing` package).
 
-### 前端代码
+### Frontend Code
 
-Certimate 的前端代码是使用 TypeScript 开发的，是一个基于 [React](https://github.com/facebook/react) 和 [Vite](https://github.com/vitejs/vite) 构建的单页应用。
+The frontend code of Certimate is developed using TypeScript. It is a SPA based on [React](https://github.com/facebook/react) and [Vite](https://github.com/vitejs/vite).
 
-假设你已经对 Certimate 的前端代码做出了一些修改，现在你想要运行它，请遵循以下步骤：
+Once you have made changes to the backend code in Certimate, follow these steps to run the project:
 
-1. 进入 `/ui` 目录；
-2. 安装依赖：
+1. Navigate to the `/ui` directory.
+2. Install dependencies:
    ```bash
    npm install
    ```
-3. 启动 Vite 开发服务器：
+3. Start the local development server:
    ```bash
    npm run dev
    ```
 
-这将启动一个 Web 服务器，默认运行在 `http://localhost:5173`，你可以通过浏览器访问来查看运行中的 WebUI。
+This will start a web server at `http://localhost:5173`. You can now access the WebUI in your browser.
 
-完成修改后，运行以下命令来构建 WebUI，以便它能被嵌入到 Go 包中：
+After completing your changes, build the WebUI so it can be embedded into the Go package:
 
 ```bash
 npm run build
 ```
 
-**在向主仓库提交 PR 之前，你应该：**
+**Before submitting a PR to the main repository, you should:**
 
-- 使用 [ESLint](https://github.com/eslint/eslint) 格式化你的代码。推荐使用 VSCode，并安装 ESLint 插件，以便在保存时自动格式化。
+- Format your source code by using [ESLint](https://github.com/eslint/eslint). Recommended using VSCode and installing the ESLint plugin to automatically format when saving.
 
-## 提交 PR
+## Submitting PR
 
-在提交 PR 之前，请先创建一个 Issue 来讨论你的修改方案，并等待来自项目维护者的反馈。这样做有助于：
+Before opening a Pull Request, please open an issue to discuss the change and get feedback from the maintainers. This will helps us:
 
-- 让我们充分理解你的修改内容；
-- 评估修改是否符合项目路线图；
-- 避免重复工作；
-- 防止你投入时间到可能无法被合并的修改中。
+- To understand the context of the change.
+- To ensure it fits into Certimate's roadmap.
+- To prevent us from duplicating work.
+- To prevent you from spending time on a change that we may not be able to accept.
 
-### 提交流程
+### Pull Request Process
 
-1. Fork 本仓库并签出到 `main` 分支；
-2. 在提交 PR 之前，请先发起 Issue 讨论你想要做的修改；
-3. 为你的修改创建一个新的分支；
-4. 请为你的修改添加相应的测试；
-5. 确保你的代码能通过现有的测试；
-6. 请在 PR 描述中关联相关 Issue；
-7. 等待合并！
+1. Fork the repository, and then checkout `main` branch.
+2. Before you draft a PR, please open an issue to discuss the changes you want to make.
+3. Create a new branch for your changes.
+4. Please add tests for your changes accordingly.
+5. Ensure your code passes the existing tests.
+6. Please link the issue in the PR description.
+7. Get merged!
 
 > [!IMPORTANT]
 >
-> 建议为每个新功能或 Bug 修复创建一个从 `main` 分支派生的新分支。如果你计划提交多个 PR，请保持不同的改动在独立分支中，以便更容易进行代码审查并最终合并。
+> It is recommended to create a new branch from `main` for each bug fix or feature. If you plan to submit multiple PRs, ensure the changes are in separate branches for easier review and eventual merge.
 >
-> 保持一个 PR 只实现一个功能或修复。
+> Keep each PR focused on a single feature or fix.
 
-## 获取帮助
+## Getting Help
 
-如果你在贡献过程中遇到困难或问题，可以通过 GitHub Issues 向我们提问。
+If you ever get stuck or get a burning question while contributing, simply shoot your queries our way via the GitHub issues.

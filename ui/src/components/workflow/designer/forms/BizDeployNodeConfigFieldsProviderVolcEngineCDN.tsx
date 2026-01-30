@@ -4,13 +4,13 @@ import { createSchemaFieldRule } from "antd-zod";
 import { z } from "zod";
 
 import Show from "@/components/Show";
-import { validDomainName } from "@/utils/validators";
+import { isDomain } from "@/utils/validator";
 
 import { useFormNestedFieldsContext } from "./_context";
 
-const MATCH_PATTERN_EXACT = "exact" as const;
-const MATCH_PATTERN_WILDCARD = "wildcard" as const;
-const MATCH_PATTERN_CERTSAN = "certsan" as const;
+const DOMAIN_MATCH_PATTERN_EXACT = "exact" as const;
+const DOMAIN_MATCH_PATTERN_WILDCARD = "wildcard" as const;
+const DOMAIN_MATCH_PATTERN_CERTSAN = "certsan" as const;
 
 const BizDeployNodeConfigFieldsProviderVolcEngineCDN = () => {
   const { i18n, t } = useTranslation();
@@ -23,19 +23,25 @@ const BizDeployNodeConfigFieldsProviderVolcEngineCDN = () => {
   const formInst = Form.useFormInstance();
   const initialValues = getInitialValues();
 
-  const fieldDomainPattern = Form.useWatch([parentNamePath, "matchPattern"], { form: formInst, preserve: true });
+  const fieldDomainMatchPattern = Form.useWatch([parentNamePath, "domainMatchPattern"], { form: formInst, preserve: true });
 
   return (
     <>
       <Form.Item
-        name={[parentNamePath, "matchPattern"]}
-        initialValue={initialValues.matchPattern}
+        name={[parentNamePath, "domainMatchPattern"]}
+        initialValue={initialValues.domainMatchPattern}
         label={t("workflow_node.deploy.form.shared_domain_match_pattern.label")}
-        extra={<span dangerouslySetInnerHTML={{ __html: t("workflow_node.deploy.form.shared_domain_match_pattern.help_wildcard") }}></span>}
+        extra={
+          fieldDomainMatchPattern === DOMAIN_MATCH_PATTERN_EXACT ? (
+            <span dangerouslySetInnerHTML={{ __html: t("workflow_node.deploy.form.shared_domain_match_pattern.help_wildcard") }}></span>
+          ) : (
+            void 0
+          )
+        }
         rules={[formRule]}
       >
         <Radio.Group
-          options={[MATCH_PATTERN_EXACT, MATCH_PATTERN_WILDCARD, MATCH_PATTERN_CERTSAN].map((s) => ({
+          options={[DOMAIN_MATCH_PATTERN_EXACT, DOMAIN_MATCH_PATTERN_WILDCARD, DOMAIN_MATCH_PATTERN_CERTSAN].map((s) => ({
             key: s,
             label: t(`workflow_node.deploy.form.shared_domain_match_pattern.option.${s}.label`),
             value: s,
@@ -43,13 +49,12 @@ const BizDeployNodeConfigFieldsProviderVolcEngineCDN = () => {
         />
       </Form.Item>
 
-      <Show when={fieldDomainPattern !== MATCH_PATTERN_CERTSAN}>
+      <Show when={fieldDomainMatchPattern !== DOMAIN_MATCH_PATTERN_CERTSAN}>
         <Form.Item
           name={[parentNamePath, "domain"]}
           initialValue={initialValues.domain}
           label={t("workflow_node.deploy.form.volcengine_cdn_domain.label")}
           rules={[formRule]}
-          tooltip={<span dangerouslySetInnerHTML={{ __html: t("workflow_node.deploy.form.volcengine_cdn_domain.tooltip") }}></span>}
         >
           <Input placeholder={t("workflow_node.deploy.form.volcengine_cdn_domain.placeholder")} />
         </Form.Item>
@@ -60,7 +65,7 @@ const BizDeployNodeConfigFieldsProviderVolcEngineCDN = () => {
 
 const getInitialValues = (): Nullish<z.infer<ReturnType<typeof getSchema>>> => {
   return {
-    matchPattern: MATCH_PATTERN_EXACT,
+    domainMatchPattern: DOMAIN_MATCH_PATTERN_EXACT,
     domain: "",
   };
 };
@@ -70,19 +75,16 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
 
   return z
     .object({
-      matchPattern: z.enum(
-        [MATCH_PATTERN_EXACT, MATCH_PATTERN_WILDCARD, MATCH_PATTERN_CERTSAN],
-        t("workflow_node.deploy.form.shared_domain_match_pattern.placeholder")
-      ),
+      domainMatchPattern: z.string().nonempty(t("workflow_node.deploy.form.shared_domain_match_pattern.placeholder")).default(DOMAIN_MATCH_PATTERN_EXACT),
       domain: z.string().nullish(),
     })
     .superRefine((values, ctx) => {
-      if (values.matchPattern) {
-        switch (values.matchPattern) {
-          case MATCH_PATTERN_EXACT:
-          case MATCH_PATTERN_WILDCARD:
+      if (values.domainMatchPattern) {
+        switch (values.domainMatchPattern) {
+          case DOMAIN_MATCH_PATTERN_EXACT:
+          case DOMAIN_MATCH_PATTERN_WILDCARD:
             {
-              if (!validDomainName(values.domain!, { allowWildcard: true })) {
+              if (!isDomain(values.domain!, { allowWildcard: true })) {
                 ctx.addIssue({
                   code: "custom",
                   message: t("common.errmsg.domain_invalid"),

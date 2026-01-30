@@ -61,18 +61,9 @@ const getSchema = ({ i18n = getI18n() }: { i18n: ReturnType<typeof getI18n> }) =
   const { t } = i18n;
 
   return z.object({
-    privateKey: z
-      .string()
-      .min(1, t("access.form.ucloud_private_key.placeholder"))
-      .max(64, t("common.errmsg.string_max", { max: 64 })),
-    publicKey: z
-      .string()
-      .min(1, t("access.form.ucloud_public_key.placeholder"))
-      .max(64, t("common.errmsg.string_max", { max: 64 })),
-    projectId: z
-      .string()
-      .max(64, t("common.errmsg.string_max", { max: 64 }))
-      .nullish(),
+    privateKey: z.string().nonempty(t("access.form.ucloud_private_key.placeholder")),
+    publicKey: z.string().nonempty(t("access.form.ucloud_public_key.placeholder")),
+    projectId: z.string().nullish(),
   });
 };
 

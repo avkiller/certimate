@@ -18,7 +18,7 @@ type SslCenterListRequest struct {
 }
 
 type SslCenterListResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
 	Data *struct {
 		TotalRecords int32        `json:"TotalRecords"`

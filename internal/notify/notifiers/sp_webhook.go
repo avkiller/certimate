@@ -5,14 +5,14 @@ import (
 	"net/http"
 
 	"github.com/certimate-go/certimate/internal/domain"
-	"github.com/certimate-go/certimate/pkg/core"
+	"github.com/certimate-go/certimate/pkg/core/notifier"
 	"github.com/certimate-go/certimate/pkg/core/notifier/providers/webhook"
 	xhttp "github.com/certimate-go/certimate/pkg/utils/http"
 	xmaps "github.com/certimate-go/certimate/pkg/utils/maps"
 )
 
 func init() {
-	if err := Registries.Register(domain.NotificationProviderTypeWebhook, func(options *ProviderFactoryOptions) (core.Notifier, error) {
+	Registries.MustRegister(domain.NotificationProviderTypeWebhook, func(options *ProviderFactoryOptions) (notifier.Provider, error) {
 		credentials := domain.AccessConfigForWebhook{}
 		if err := xmaps.Populate(options.ProviderAccessConfig, &credentials); err != nil {
 			return nil, fmt.Errorf("failed to populate provider access config: %w", err)
@@ -38,16 +38,14 @@ func init() {
 			}
 		}
 
-		provider, err := webhook.NewNotifierProvider(&webhook.NotifierProviderConfig{
+		provider, err := webhook.NewNotifier(&webhook.NotifierConfig{
 			WebhookUrl:               credentials.Url,
 			WebhookData:              xmaps.GetOrDefaultString(options.ProviderExtendedConfig, "webhookData", credentials.DataString),
 			Method:                   credentials.Method,
 			Headers:                  mergedHeaders,
-			Timeout:                  xmaps.GetInt32(options.ProviderExtendedConfig, "timeout"),
+			Timeout:                  xmaps.GetInt(options.ProviderExtendedConfig, "timeout"),
 			AllowInsecureConnections: credentials.AllowInsecureConnections,
 		})
 		return provider, err
-	}); err != nil {
-		panic(err)
-	}
+	})
 }

@@ -1,4 +1,4 @@
-﻿package engine
+package engine
 
 import (
 	"fmt"
@@ -17,13 +17,13 @@ type VariableState struct {
 
 func (s VariableState) ValueString() string {
 	switch s.ValueType {
-	case "string":
-		return s.Value.(string)
-	case "number":
+	case stateValTypeString:
+		return fmt.Sprintf("%s", s.Value)
+	case stateValTypeNumber:
 		return fmt.Sprintf("%d", s.Value)
-	case "boolean":
+	case stateValTypeBoolean:
 		return strconv.FormatBool(s.Value.(bool))
-	case "datetime":
+	case stateValTypeDateTime:
 		valueAsTime := s.Value.(time.Time)
 		if valueAsTime.IsZero() {
 			return "-"
@@ -166,11 +166,11 @@ type InOutState struct {
 
 func (s InOutState) ValueString() string {
 	switch s.ValueType {
-	case "string":
+	case stateValTypeString:
 		return s.Value.(string)
-	case "number":
+	case stateValTypeNumber:
 		return fmt.Sprintf("%d", s.Value)
-	case "boolean":
+	case stateValTypeBoolean:
 		return strconv.FormatBool(s.Value.(bool))
 	default:
 		return fmt.Sprintf("%v", s.Value)
@@ -279,25 +279,34 @@ func newInOutManager() InOutManager {
 }
 
 const (
+	stateValTypeBoolean  = "boolean"
+	stateValTypeDateTime = "datetime"
+	stateValTypeNumber   = "number"
+	stateValTypeString   = "string"
+)
+
+const (
 	stateIOTypeRef = "ref"
 )
 
 const (
-	stateVarKeyWorkflowId           = "workflow.id"           // ValueType: "string"
-	stateVarKeyWorkflowName         = "workflow.name"         // ValueType: "string"
-	stateVarKeyRunId                = "run.id"                // ValueType: "string"
-	stateVarKeyRunTrigger           = "run.trigger"           // ValueType: "string"
-	stateVarKeyNodeId               = "node.id"               // ValueType: "string"
-	stateVarKeyNodeName             = "node.name"             // ValueType: "string"
-	stateVarKeyNodeSkipped          = "node.skipped"          // ValueType: "boolean"
-	stateVarKeyErrorNodeId          = "error.nodeId"          // ValueType: "string"
-	stateVarKeyErrorNodeName        = "error.nodeName"        // ValueType: "string"
-	stateVarKeyErrorMessage         = "error.message"         // ValueType: "string"
-	stateVarKeyCertificateDomain    = "certificate.domain"    // ValueType: "string"
-	stateVarKeyCertificateDomains   = "certificate.domains"   // ValueType: "string"
-	stateVarKeyCertificateNotBefore = "certificate.notBefore" // ValueType: "datetime"
-	stateVarKeyCertificateNotAfter  = "certificate.notAfter"  // ValueType: "datetime"
-	stateVarKeyCertificateHoursLeft = "certificate.hoursLeft" // ValueType: "number"
-	stateVarKeyCertificateDaysLeft  = "certificate.daysLeft"  // ValueType: "number"
-	stateVarKeyCertificateValidity  = "certificate.validity"  // ValueType: "boolean"
+	stateVarKeyWorkflowId                 = "workflow.id"                 // ValueType: "string"
+	stateVarKeyWorkflowName               = "workflow.name"               // ValueType: "string"
+	stateVarKeyRunId                      = "run.id"                      // ValueType: "string"
+	stateVarKeyRunTrigger                 = "run.trigger"                 // ValueType: "string"
+	stateVarKeyNodeId                     = "node.id"                     // ValueType: "string"
+	stateVarKeyNodeName                   = "node.name"                   // ValueType: "string"
+	stateVarKeyNodeSkipped                = "node.skipped"                // ValueType: "boolean"
+	stateVarKeyErrorNodeId                = "error.nodeId"                // ValueType: "string"
+	stateVarKeyErrorNodeName              = "error.nodeName"              // ValueType: "string"
+	stateVarKeyErrorMessage               = "error.message"               // ValueType: "string"
+	stateVarKeyCertificateDomain          = "certificate.domain"          // 已废弃，仅为兼容旧版而保留，请使用 [stateVarKeyCertificateCommonName]
+	stateVarKeyCertificateDomains         = "certificate.domains"         // 已废弃，仅为兼容旧版而保留，请使用 [stateVarKeyCertificateSubjectAltNames]
+	stateVarKeyCertificateCommonName      = "certificate.commonName"      // ValueType: "string"
+	stateVarKeyCertificateSubjectAltNames = "certificate.subjectAltNames" // ValueType: "string"
+	stateVarKeyCertificateNotBefore       = "certificate.notBefore"       // ValueType: "datetime"
+	stateVarKeyCertificateNotAfter        = "certificate.notAfter"        // ValueType: "datetime"
+	stateVarKeyCertificateHoursLeft       = "certificate.hoursLeft"       // ValueType: "number"
+	stateVarKeyCertificateDaysLeft        = "certificate.daysLeft"        // ValueType: "number"
+	stateVarKeyCertificateValidity        = "certificate.validity"        // ValueType: "boolean"
 )

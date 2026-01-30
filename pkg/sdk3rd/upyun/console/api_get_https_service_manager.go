@@ -7,9 +7,9 @@ import (
 )
 
 type GetHttpsServiceManagerResponse struct {
-	apiResponseBase
+	sdkResponseBase
 	Data *struct {
-		apiResponseBaseData
+		sdkResponseBaseData
 		Status  int32                       `json:"status"`
 		Domains []HttpsServiceManagerDomain `json:"result"`
 	} `json:"data,omitempty"`

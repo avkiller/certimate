@@ -23,7 +23,7 @@ const AccessConfigFormFieldsProviderSafeLine = () => {
         label={t("access.form.safeline_server_url.label")}
         rules={[formRule]}
       >
-        <Input placeholder={t("access.form.safeline_server_url.placeholder")} />
+        <Input type="url" placeholder={t("access.form.safeline_server_url.placeholder")} />
       </Form.Item>
 
       <Form.Item
@@ -42,10 +42,7 @@ const AccessConfigFormFieldsProviderSafeLine = () => {
         label={t("access.form.shared_allow_insecure_conns.label")}
         rules={[formRule]}
       >
-        <Switch
-          checkedChildren={t("access.form.shared_allow_insecure_conns.switch.on")}
-          unCheckedChildren={t("access.form.shared_allow_insecure_conns.switch.off")}
-        />
+        <Switch />
       </Form.Item>
     </>
   );
@@ -63,10 +60,7 @@ const getSchema = ({ i18n = getI18n() }: { i18n: ReturnType<typeof getI18n> }) =
 
   return z.object({
     serverUrl: z.url(t("common.errmsg.url_invalid")),
-    apiToken: z
-      .string()
-      .min(1, t("access.form.safeline_api_token.placeholder"))
-      .max(64, t("common.errmsg.string_max", { max: 64 })),
+    apiToken: z.string().nonempty(t("access.form.safeline_api_token.placeholder")),
     allowInsecureConnections: z.boolean().nullish(),
   });
 };

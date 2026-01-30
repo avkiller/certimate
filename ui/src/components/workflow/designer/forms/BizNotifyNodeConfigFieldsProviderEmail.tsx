@@ -3,7 +3,7 @@ import { Form, Input } from "antd";
 import { createSchemaFieldRule } from "antd-zod";
 import { z } from "zod";
 
-import { validEmailAddress } from "@/utils/validators";
+import { isEmail } from "@/utils/validator";
 
 import { useFormNestedFieldsContext } from "./_context";
 
@@ -45,7 +45,7 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
       .nullish()
       .refine((v) => {
         if (!v) return true;
-        return validEmailAddress(v);
+        return isEmail(v);
       }, t("common.errmsg.email_invalid")),
   });
 };

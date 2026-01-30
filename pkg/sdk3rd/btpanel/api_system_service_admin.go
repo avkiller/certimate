@@ -11,7 +11,7 @@ type SystemServiceAdminRequest struct {
 }
 
 type SystemServiceAdminResponse struct {
-	apiResponseBase
+	sdkResponseBase
 }
 
 func (c *Client) SystemServiceAdmin(req *SystemServiceAdminRequest) (*SystemServiceAdminResponse, error) {

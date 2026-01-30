@@ -8,39 +8,43 @@ import (
 
 	"github.com/go-resty/resty/v2"
 
-	"github.com/certimate-go/certimate/pkg/core"
+	"github.com/certimate-go/certimate/internal/app"
+	"github.com/certimate-go/certimate/pkg/core/notifier"
 )
 
-type NotifierProviderConfig struct {
+type NotifierConfig struct {
 	// Discord Bot API Token。
 	BotToken string `json:"botToken"`
 	// Discord Channel ID。
 	ChannelId string `json:"channelId"`
 }
 
-type NotifierProvider struct {
-	config     *NotifierProviderConfig
+type Notifier struct {
+	config     *NotifierConfig
 	logger     *slog.Logger
 	httpClient *resty.Client
 }
 
-var _ core.Notifier = (*NotifierProvider)(nil)
+var _ notifier.Provider = (*Notifier)(nil)
 
-func NewNotifierProvider(config *NotifierProviderConfig) (*NotifierProvider, error) {
+func NewNotifier(config *NotifierConfig) (*Notifier, error) {
 	if config == nil {
 		return nil, errors.New("the configuration of the notifier provider is nil")
 	}
 
-	client := resty.New()
+	client := resty.New().
+		SetHeader("Authorization", fmt.Sprintf("Bot %s", config.BotToken)).
+		SetHeader("Content-Type", "application/json").
+		SetHeader("User-Agent", app.AppUserAgent)
 
-	return &NotifierProvider{
+	return &Notifier{
 		config:     config,
 		logger:     slog.Default(),
 		httpClient: client,
 	}, nil
 }
 
-func (n *NotifierProvider) SetLogger(logger *slog.Logger) {
+func (n *Notifier) SetLogger(logger *slog.Logger) {
 	if logger == nil {
 		n.logger = slog.New(slog.DiscardHandler)
 	} else {
@@ -48,13 +52,10 @@ func (n *NotifierProvider) SetLogger(logger *slog.Logger) {
 	}
 }
 
-func (n *NotifierProvider) Notify(ctx context.Context, subject string, message string) (*core.NotifyResult, error) {
+func (n *Notifier) Notify(ctx context.Context, subject string, message string) (*notifier.NotifyResult, error) {
 	// REF: https://discord.com/developers/docs/resources/message#create-message
 	req := n.httpClient.R().
 		SetContext(ctx).
-		SetHeader("Authorization", "Bot "+n.config.BotToken).
-		SetHeader("Content-Type", "application/json").
-		SetHeader("User-Agent", "certimate").
 		SetBody(map[string]any{
 			"content": subject + "\n" + message,
 		})
@@ -62,8 +63,8 @@ func (n *NotifierProvider) Notify(ctx context.Context, subject string, message s
 	if err != nil {
 		return nil, fmt.Errorf("discord api error: failed to send request: %w", err)
 	} else if resp.IsError() {
-		return nil, fmt.Errorf("discord api error: unexpected status code: %d, resp: %s", resp.StatusCode(), resp.String())
+		return nil, fmt.Errorf("discord api error: unexpected status code: %d (resp: %s)", resp.StatusCode(), resp.String())
 	}
 
-	return &core.NotifyResult{}, nil
+	return &notifier.NotifyResult{}, nil
 }

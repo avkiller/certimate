@@ -1,9 +1,11 @@
 import { getI18n, useTranslation } from "react-i18next";
-import { Form, Input } from "antd";
+import { IconBulb } from "@tabler/icons-react";
+import { Button, Form, Input, Popover } from "antd";
 import { createSchemaFieldRule } from "antd-zod";
 import { z } from "zod";
 
-import CodeInput from "@/components/CodeInput";
+import CodeTextInput from "@/components/CodeTextInput";
+import { isJsonObject } from "@/utils/validator";
 
 import { useFormNestedFieldsContext } from "./_context";
 
@@ -30,21 +32,25 @@ const BizDeployNodeConfigFieldsProviderWebhook = () => {
 
   return (
     <>
-      <Form.Item
-        name={[parentNamePath, "webhookData"]}
-        initialValue={initialValues.webhookData}
-        label={t("workflow_node.deploy.form.webhook_data.label")}
-        extra={t("workflow_node.deploy.form.webhook_data.help")}
-        rules={[formRule]}
-      >
-        <CodeInput
-          height="auto"
-          minHeight="64px"
-          maxHeight="256px"
-          language="json"
-          placeholder={t("workflow_node.deploy.form.webhook_data.placeholder")}
-          onBlur={handleWebhookDataBlur}
-        />
+      <Form.Item label={t("workflow_node.deploy.form.webhook_data.label")} extra={t("workflow_node.deploy.form.webhook_data.help")}>
+        <div className="absolute -top-1.5 right-0 -translate-y-full">
+          <Popover content={<div dangerouslySetInnerHTML={{ __html: t("workflow_node.deploy.form.webhook_data.vartips") }} />} mouseEnterDelay={1}>
+            <Button color="default" size="small" variant="link">
+              <IconBulb size="1.25em" />
+            </Button>
+          </Popover>
+        </div>
+        <Form.Item name={[parentNamePath, "webhookData"]} initialValue={initialValues.webhookData} noStyle rules={[formRule]}>
+          <CodeTextInput
+            lineWrapping={false}
+            height="auto"
+            minHeight="64px"
+            maxHeight="256px"
+            language="json"
+            placeholder={t("workflow_node.deploy.form.webhook_data.placeholder")}
+            onBlur={handleWebhookDataBlur}
+          />
+        </Form.Item>
       </Form.Item>
 
       <Form.Item name={[parentNamePath, "timeout"]} label={t("workflow_node.deploy.form.webhook_timeout.label")} rules={[formRule]}>
@@ -54,7 +60,7 @@ const BizDeployNodeConfigFieldsProviderWebhook = () => {
           min={0}
           max={3600}
           placeholder={t("workflow_node.deploy.form.webhook_timeout.placeholder")}
-          addonAfter={t("workflow_node.deploy.form.webhook_timeout.unit")}
+          suffix={t("workflow_node.deploy.form.webhook_timeout.unit")}
         />
       </Form.Item>
     </>
@@ -74,17 +80,11 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
       .nullish()
       .refine((v) => {
         if (!v) return true;
-
-        try {
-          const obj = JSON.parse(v);
-          return typeof obj === "object" && !Array.isArray(obj);
-        } catch {
-          return false;
-        }
-      }, t("workflow_node.deploy.form.webhook_data.errmsg.json_invalid")),
+        return isJsonObject(v);
+      }, t("common.errmsg.json_invalid")),
     timeout: z.preprocess(
       (v) => (v == null || v === "" ? void 0 : Number(v)),
-      z.number().int(t("workflow_node.deploy.form.webhook_timeout.placeholder")).gte(1, t("workflow_node.deploy.form.webhook_timeout.placeholder")).nullish()
+      z.number().int().gte(1, t("workflow_node.deploy.form.webhook_timeout.placeholder")).nullish()
     ),
   });
 };

@@ -1,4 +1,4 @@
-﻿package engine
+package engine
 
 import (
 	"errors"
@@ -15,7 +15,7 @@ type conditionNodeExecutor struct {
 func (ne *conditionNodeExecutor) Execute(execCtx *NodeExecutionContext) (*NodeExecutionResult, error) {
 	var engine *workflowEngine
 	if we, ok := execCtx.engine.(*workflowEngine); !ok {
-		panic("impossible!")
+		panic("unreachable")
 	} else {
 		engine = we
 	}
@@ -25,9 +25,10 @@ func (ne *conditionNodeExecutor) Execute(execCtx *NodeExecutionContext) (*NodeEx
 	errs := make([]error, 0)
 	blocks := lo.Filter(execCtx.Node.Blocks, func(n *Node, _ int) bool { return n.Type == NodeTypeBranchBlock })
 	for _, node := range blocks {
+		ctx := execCtx.Context()
 		select {
-		case <-execCtx.ctx.Done():
-			return execRes, execCtx.ctx.Err()
+		case <-ctx.Done():
+			return execRes, ctx.Err()
 		default:
 		}
 
@@ -89,7 +90,7 @@ func (ne *branchBlockNodeExecutor) Execute(execCtx *NodeExecutionContext) (*Node
 	}
 
 	if engine, ok := execCtx.engine.(*workflowEngine); !ok {
-		panic("impossible!")
+		panic("unreachable")
 	} else {
 		if err := engine.executeBlocks(execCtx.Clone(), execCtx.Node.Blocks); err != nil {
 			return execRes, fmt.Errorf("%w: %w", ErrBlocksException, err)

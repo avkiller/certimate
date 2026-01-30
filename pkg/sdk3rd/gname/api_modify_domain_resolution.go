@@ -16,7 +16,7 @@ type ModifyDomainResolutionRequest struct {
 }
 
 type ModifyDomainResolutionResponse struct {
-	apiResponseBase
+	sdkResponseBase
 }
 
 func (c *Client) ModifyDomainResolution(req *ModifyDomainResolutionRequest) (*ModifyDomainResolutionResponse, error) {

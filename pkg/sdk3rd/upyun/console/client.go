@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/go-resty/resty/v2"
+
+	"github.com/certimate-go/certimate/internal/app"
 )
 
 type Client struct {
@@ -37,7 +39,7 @@ func NewClient(username, password string) (*Client, error) {
 		SetBaseURL("https://console.upyun.com").
 		SetHeader("Accept", "application/json").
 		SetHeader("Content-Type", "application/json").
-		SetHeader("User-Agent", "certimate").
+		SetHeader("User-Agent", app.AppUserAgent).
 		SetPreRequestHook(func(c *resty.Client, req *http.Request) error {
 			if client.loginCookie != "" {
 				req.Header.Set("Cookie", client.loginCookie)
@@ -80,13 +82,13 @@ func (c *Client) doRequest(req *resty.Request) (*resty.Response, error) {
 	if err != nil {
 		return resp, fmt.Errorf("sdkerr: failed to send request: %w", err)
 	} else if resp.IsError() {
-		return resp, fmt.Errorf("sdkerr: unexpected status code: %d, resp: %s", resp.StatusCode(), resp.String())
+		return resp, fmt.Errorf("sdkerr: unexpected status code: %d (resp: %s)", resp.StatusCode(), resp.String())
 	}
 
 	return resp, nil
 }
 
-func (c *Client) doRequestWithResult(req *resty.Request, res apiResponse) (*resty.Response, error) {
+func (c *Client) doRequestWithResult(req *resty.Request, res sdkResponse) (*resty.Response, error) {
 	if req == nil {
 		return nil, fmt.Errorf("sdkerr: nil request")
 	}
@@ -101,11 +103,11 @@ func (c *Client) doRequestWithResult(req *resty.Request, res apiResponse) (*rest
 
 	if len(resp.Body()) != 0 {
 		if err := json.Unmarshal(resp.Body(), &res); err != nil {
-			return resp, fmt.Errorf("sdkerr: failed to unmarshal response: %w", err)
+			return resp, fmt.Errorf("sdkerr: failed to unmarshal response: %w (resp: %s)", err, resp.String())
 		} else {
-			tresp := &apiResponseBase{}
+			tresp := &sdkResponseBase{}
 			if err := json.Unmarshal(resp.Body(), &tresp); err != nil {
-				return resp, fmt.Errorf("sdkerr: failed to unmarshal response: %w", err)
+				return resp, fmt.Errorf("sdkerr: failed to unmarshal response: %w (resp: %s)", err, resp.String())
 			} else if tdata := tresp.GetData(); tdata == nil {
 				return resp, fmt.Errorf("sdkerr: received empty data")
 			} else if terrcode := tdata.GetErrorCode(); terrcode != 0 {
@@ -135,9 +137,9 @@ func (c *Client) ensureCookieExists() error {
 	}
 
 	type signinResponse struct {
-		apiResponseBase
+		sdkResponseBase
 		Data *struct {
-			apiResponseBaseData
+			sdkResponseBaseData
 			Result bool `json:"result"`
 		} `json:"data,omitempty"`
 	}

@@ -51,14 +51,8 @@ const getSchema = ({ i18n = getI18n() }: { i18n: ReturnType<typeof getI18n> }) =
   const { t } = i18n;
 
   return z.object({
-    apiKey: z
-      .string()
-      .min(1, t("access.form.godaddy_api_key.placeholder"))
-      .max(64, t("common.errmsg.string_max", { max: 64 })),
-    apiSecret: z
-      .string()
-      .min(1, t("access.form.godaddy_api_secret.placeholder"))
-      .max(64, t("common.errmsg.string_max", { max: 64 })),
+    apiKey: z.string().nonempty(t("access.form.godaddy_api_key.placeholder")),
+    apiSecret: z.string().nonempty(t("access.form.godaddy_api_secret.placeholder")),
   });
 };
 

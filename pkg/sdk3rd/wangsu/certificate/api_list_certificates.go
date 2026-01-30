@@ -6,7 +6,7 @@ import (
 )
 
 type ListCertificatesResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
 	Certificates []*CertificateRecord `json:"ssl-certificates,omitempty"`
 }

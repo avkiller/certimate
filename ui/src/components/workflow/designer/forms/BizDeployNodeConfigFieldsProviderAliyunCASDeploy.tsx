@@ -87,18 +87,14 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
     region: z.string().nonempty(t("workflow_node.deploy.form.aliyun_casdeploy_region.placeholder")),
     resourceIds: z.string().refine((v) => {
       if (!v) return false;
-      return String(v)
-        .split(MULTIPLE_INPUT_SEPARATOR)
-        .every((e) => /^[1-9]\d*$/.test(e));
+      return v.split(MULTIPLE_INPUT_SEPARATOR).every((e) => /^[1-9]\d*$/.test(e));
     }, t("workflow_node.deploy.form.aliyun_casdeploy_resource_ids.errmsg.invalid")),
     contactIds: z
       .string()
       .nullish()
       .refine((v) => {
         if (!v) return true;
-        return String(v)
-          .split(MULTIPLE_INPUT_SEPARATOR)
-          .every((e) => /^[1-9]\d*$/.test(e));
+        return v.split(MULTIPLE_INPUT_SEPARATOR).every((e) => /^[1-9]\d*$/.test(e));
       }, t("workflow_node.deploy.form.aliyun_casdeploy_contact_ids.errmsg.invalid")),
   });
 };

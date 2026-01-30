@@ -14,7 +14,7 @@ import WorkflowStatus from "@/components/workflow/WorkflowStatus";
 import { WORKFLOW_TRIGGERS, type WorkflowModel, duplicateNodes } from "@/domain/workflow";
 import { useAppSettings } from "@/hooks";
 import { get as getWorkflow, list as listWorkflows, remove as removeWorkflow, save as saveWorkflow } from "@/repository/workflow";
-import { getErrMsg } from "@/utils/error";
+import { unwrapErrMsg } from "@/utils/error";
 
 const WorkflowList = () => {
   const navigate = useNavigate();
@@ -133,8 +133,8 @@ const WorkflowList = () => {
           menu={{
             items: [
               {
-                key: "edit",
-                label: t("workflow.action.edit.menu"),
+                key: "modify",
+                label: t("workflow.action.modify.menu"),
                 icon: (
                   <span className="anticon scale-125">
                     <IconEdit size="1em" />
@@ -235,7 +235,7 @@ const WorkflowList = () => {
     () => {
       const { columnKey: sorterKey, order: sorterOrder } = sorter;
       let sort: string | undefined;
-      sort = sorterKey === "lastRun" ? "lastRunTime" : "";
+      sort = sorterKey === "lastRun" ? "lastRunTime" : void 0;
       sort = sort && (sorterOrder === "ascend" ? `${sort}` : sorterOrder === "descend" ? `-${sort}` : void 0);
 
       return listWorkflows({
@@ -280,7 +280,7 @@ const WorkflowList = () => {
         }
 
         console.error(err);
-        notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
+        notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
 
         throw err;
       },
@@ -335,7 +335,7 @@ const WorkflowList = () => {
       }
     } catch (err) {
       console.error(err);
-      notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
+      notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
     }
   };
 
@@ -346,7 +346,7 @@ const WorkflowList = () => {
       message.info(t("workflow.action.execute.prompt"));
     } catch (err) {
       console.error(err);
-      notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
+      notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
     }
   };
 
@@ -371,7 +371,7 @@ const WorkflowList = () => {
           }
         } catch (err) {
           console.error(err);
-          notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
+          notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
         }
       },
     });
@@ -397,7 +397,7 @@ const WorkflowList = () => {
           }
         } catch (err) {
           console.error(err);
-          notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
+          notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
         }
       },
     });
@@ -429,7 +429,7 @@ const WorkflowList = () => {
           }
         } catch (err) {
           console.error(err);
-          notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
+          notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
         }
       },
     });
@@ -492,8 +492,8 @@ const WorkflowList = () => {
               ) : (
                 <Empty
                   className="py-24"
-                  title={t("workflow.nodata.title")}
-                  description={loadError ? getErrMsg(loadError) : t("workflow.nodata.description")}
+                  title={loadError ? t("common.text.nodata_failed") : t("workflow.nodata.title")}
+                  description={loadError ? unwrapErrMsg(loadError) : t("workflow.nodata.description")}
                   icon={<IconHierarchy3 size={24} />}
                   extra={
                     loadError ? (

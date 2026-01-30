@@ -7,19 +7,19 @@ import (
 )
 
 type RcdnInstanceSslBindRequest struct {
-	CertId  int32    `json:"cert_id"`
+	CertId  int64    `json:"cert_id"`
 	Domains []string `json:"domains"`
 }
 
 type RcdnInstanceSslBindResponse struct {
-	apiResponseBase
+	sdkResponseBase
 }
 
-func (c *Client) RcdnInstanceSslBind(instanceId int32, req *RcdnInstanceSslBindRequest) (*RcdnInstanceSslBindResponse, error) {
+func (c *Client) RcdnInstanceSslBind(instanceId int64, req *RcdnInstanceSslBindRequest) (*RcdnInstanceSslBindResponse, error) {
 	return c.RcdnInstanceSslBindWithContext(context.Background(), instanceId, req)
 }
 
-func (c *Client) RcdnInstanceSslBindWithContext(ctx context.Context, instanceId int32, req *RcdnInstanceSslBindRequest) (*RcdnInstanceSslBindResponse, error) {
+func (c *Client) RcdnInstanceSslBindWithContext(ctx context.Context, instanceId int64, req *RcdnInstanceSslBindRequest) (*RcdnInstanceSslBindResponse, error) {
 	if instanceId == 0 {
 		return nil, fmt.Errorf("sdkerr: unset instanceId")
 	}

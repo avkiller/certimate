@@ -1,0 +1,28 @@
+package deployers
+
+import (
+	"fmt"
+
+	"github.com/certimate-go/certimate/internal/domain"
+	"github.com/certimate-go/certimate/pkg/core/deployer"
+	baishancdn "github.com/certimate-go/certimate/pkg/core/deployer/providers/baishan-cdn"
+	xmaps "github.com/certimate-go/certimate/pkg/utils/maps"
+)
+
+func init() {
+	Registries.MustRegister(domain.DeploymentProviderTypeBaishanCDN, func(options *ProviderFactoryOptions) (deployer.Provider, error) {
+		credentials := domain.AccessConfigForBaishan{}
+		if err := xmaps.Populate(options.ProviderAccessConfig, &credentials); err != nil {
+			return nil, fmt.Errorf("failed to populate provider access config: %w", err)
+		}
+
+		provider, err := baishancdn.NewDeployer(&baishancdn.DeployerConfig{
+			ApiToken:           credentials.ApiToken,
+			ResourceType:       xmaps.GetString(options.ProviderExtendedConfig, "resourceType"),
+			DomainMatchPattern: xmaps.GetString(options.ProviderExtendedConfig, "domainMatchPattern"),
+			Domain:             xmaps.GetString(options.ProviderExtendedConfig, "domain"),
+			CertificateId:      xmaps.GetString(options.ProviderExtendedConfig, "certificateId"),
+		})
+		return provider, err
+	})
+}

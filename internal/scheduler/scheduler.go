@@ -9,14 +9,15 @@ import (
 	"github.com/certimate-go/certimate/internal/workflow"
 )
 
-func Register() {
+func Setup() {
 	workflowRepo := repository.NewWorkflowRepository()
 	workflowRunRepo := repository.NewWorkflowRunRepository()
+	acmeAccountRepo := repository.NewACMEAccountRepository()
 	certificateRepo := repository.NewCertificateRepository()
 	settingsRepo := repository.NewSettingsRepository()
 
 	workflowSvc := workflow.NewWorkflowService(workflowRepo, workflowRunRepo, settingsRepo)
-	certificateSvc := certificate.NewCertificateService(certificateRepo, settingsRepo)
+	certificateSvc := certificate.NewCertificateService(acmeAccountRepo, certificateRepo, settingsRepo)
 
 	if err := InitWorkflowScheduler(workflowSvc); err != nil {
 		app.GetLogger().Error("failed to init workflow scheduler", slog.Any("error", err))

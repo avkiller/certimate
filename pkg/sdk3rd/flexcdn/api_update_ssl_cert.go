@@ -21,7 +21,7 @@ type UpdateSSLCertRequest struct {
 }
 
 type UpdateSSLCertResponse struct {
-	apiResponseBase
+	sdkResponseBase
 }
 
 func (c *Client) UpdateSSLCert(req *UpdateSSLCertRequest) (*UpdateSSLCertResponse, error) {

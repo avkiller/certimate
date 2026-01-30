@@ -31,6 +31,7 @@ const AccessConfigFormFieldsProviderCloudflare = () => {
         name={[parentNamePath, "zoneApiToken"]}
         initialValue={initialValues.zoneApiToken}
         label={t("access.form.cloudflare_zone_api_token.label")}
+        extra={<span dangerouslySetInnerHTML={{ __html: t("access.form.cloudflare_zone_api_token.help") }}></span>}
         rules={[formRule]}
         tooltip={<span dangerouslySetInnerHTML={{ __html: t("access.form.cloudflare_zone_api_token.tooltip") }}></span>}
       >
@@ -50,14 +51,8 @@ const getSchema = ({ i18n = getI18n() }: { i18n: ReturnType<typeof getI18n> }) =
   const { t } = i18n;
 
   return z.object({
-    dnsApiToken: z
-      .string()
-      .min(1, t("access.form.cloudflare_dns_api_token.placeholder"))
-      .max(64, t("common.errmsg.string_max", { max: 64 })),
-    zoneApiToken: z
-      .string()
-      .max(64, t("common.errmsg.string_max", { max: 64 }))
-      .nullish(),
+    dnsApiToken: z.string().nonempty(t("access.form.cloudflare_dns_api_token.placeholder")),
+    zoneApiToken: z.string().nullish(),
   });
 };
 

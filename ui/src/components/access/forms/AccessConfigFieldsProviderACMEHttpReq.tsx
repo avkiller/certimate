@@ -36,8 +36,8 @@ const AccessConfigFormFieldsProviderACMEHttpReq = () => {
       >
         <Select
           options={[
-            { value: "", label: "(default)" },
-            { value: "RAW", label: "RAW" },
+            { label: "(default)", value: "" },
+            { label: "RAW", value: "RAW" },
           ]}
           placeholder={t("access.form.acmehttpreq_mode.placeholder")}
         />
@@ -79,14 +79,8 @@ const getSchema = ({ i18n = getI18n() }: { i18n: ReturnType<typeof getI18n> }) =
   return z.object({
     endpoint: z.url(t("common.errmsg.url_invalid")),
     mode: z.string().nullish(),
-    username: z
-      .string()
-      .max(256, t("common.errmsg.string_max", { max: 256 }))
-      .nullish(),
-    password: z
-      .string()
-      .max(256, t("common.errmsg.string_max", { max: 256 }))
-      .nullish(),
+    username: z.string().nullish(),
+    password: z.string().nullish(),
   });
 };
 

@@ -1,16 +1,16 @@
 package safeline
 
-type apiResponse interface {
+type sdkResponse interface {
 	GetErrCode() string
 	GetErrMsg() string
 }
 
-type apiResponseBase struct {
+type sdkResponseBase struct {
 	ErrCode *string `json:"err,omitempty"`
 	ErrMsg  *string `json:"msg,omitempty"`
 }
 
-func (r *apiResponseBase) GetErrCode() string {
+func (r *sdkResponseBase) GetErrCode() string {
 	if r.ErrCode == nil {
 		return ""
 	}
@@ -18,7 +18,7 @@ func (r *apiResponseBase) GetErrCode() string {
 	return *r.ErrCode
 }
 
-func (r *apiResponseBase) GetErrMsg() string {
+func (r *sdkResponseBase) GetErrMsg() string {
 	if r.ErrMsg == nil {
 		return ""
 	}
@@ -26,7 +26,7 @@ func (r *apiResponseBase) GetErrMsg() string {
 	return *r.ErrMsg
 }
 
-var _ apiResponse = (*apiResponseBase)(nil)
+var _ sdkResponse = (*sdkResponseBase)(nil)
 
 type CertificateManul struct {
 	Crt string `json:"crt"`

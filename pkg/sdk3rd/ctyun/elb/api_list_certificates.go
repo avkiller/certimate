@@ -3,18 +3,20 @@ package elb
 import (
 	"context"
 	"net/http"
+
+	qs "github.com/google/go-querystring/query"
 )
 
 type ListCertificatesRequest struct {
-	ClientToken *string `json:"clientToken,omitempty"`
-	RegionID    *string `json:"regionID,omitempty"`
-	IDs         *string `json:"IDs,omitempty"`
-	Name        *string `json:"name,omitempty"`
-	Type        *string `json:"type,omitempty"`
+	ClientToken *string `json:"clientToken,omitempty" url:"clientToken,omitempty"`
+	RegionID    *string `json:"regionID,omitempty"    url:"regionID,omitempty"`
+	IDs         *string `json:"IDs,omitempty"         url:"IDs,omitempty"`
+	Name        *string `json:"name,omitempty"        url:"name,omitempty"`
+	Type        *string `json:"type,omitempty"        url:"type,omitempty"`
 }
 
 type ListCertificatesResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
 	ReturnObj []*CertificateRecord `json:"returnObj,omitempty"`
 }
@@ -28,22 +30,12 @@ func (c *Client) ListCertificatesWithContext(ctx context.Context, req *ListCerti
 	if err != nil {
 		return nil, err
 	} else {
-		if req.ClientToken != nil {
-			httpreq.SetQueryParam("clientToken", *req.ClientToken)
-		}
-		if req.RegionID != nil {
-			httpreq.SetQueryParam("regionID", *req.RegionID)
-		}
-		if req.IDs != nil {
-			httpreq.SetQueryParam("IDs", *req.IDs)
-		}
-		if req.Name != nil {
-			httpreq.SetQueryParam("name", *req.Name)
-		}
-		if req.Type != nil {
-			httpreq.SetQueryParam("type", *req.Type)
+		values, err := qs.Values(req)
+		if err != nil {
+			return nil, err
 		}
 
+		httpreq.SetQueryParamsFromValues(values)
 		httpreq.SetContext(ctx)
 	}
 

@@ -40,10 +40,7 @@ const getSchema = ({ i18n = getI18n() }: { i18n: ReturnType<typeof getI18n> }) =
   const { t } = i18n;
 
   return z.object({
-    token: z
-      .string()
-      .min(1, t("access.form.desec_token.placeholder"))
-      .max(256, t("common.errmsg.string_max", { max: 256 })),
+    token: z.string().nonempty(t("access.form.desec_token.placeholder")),
   });
 };
 

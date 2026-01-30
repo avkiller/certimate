@@ -11,10 +11,10 @@ type MigrateHttpsDomainRequest struct {
 }
 
 type MigrateHttpsDomainResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
 	Data *struct {
-		apiResponseBaseData
+		sdkResponseBaseData
 
 		Status bool `json:"status"`
 	} `json:"data,omitempty"`

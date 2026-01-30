@@ -6,9 +6,9 @@ import { type AccessModel } from "@/domain/access";
 import { accessProvidersMap } from "@/domain/provider";
 import { useZustandShallowSelector } from "@/hooks";
 import { useAccessesStore } from "@/stores/access";
+import { matchSearchOption } from "@/utils/search";
 
-export interface AccessTypeSelectProps
-  extends Omit<SelectProps, "filterOption" | "filterSort" | "labelRender" | "loading" | "options" | "optionFilterProp" | "optionLabelProp" | "optionRender"> {
+export interface AccessTypeSelectProps extends Omit<SelectProps, "labelRender" | "loading" | "options" | "optionLabelProp" | "optionRender"> {
   onFilter?: (value: string, option: AccessModel) => boolean;
 }
 
@@ -16,7 +16,9 @@ const AccessSelect = ({ onFilter, ...props }: AccessTypeSelectProps) => {
   const { token: themeToken } = theme.useToken();
 
   const { accesses, loadedAtOnce, fetchAccesses } = useAccessesStore(useZustandShallowSelector(["accesses", "loadedAtOnce", "fetchAccesses"]));
-  useMount(() => fetchAccesses(false));
+  useMount(() => {
+    fetchAccesses(false);
+  });
 
   const [options, setOptions] = useState<Array<{ key: string; value: string; label: string; data: AccessModel }>>([]);
   useEffect(() => {
@@ -54,11 +56,9 @@ const AccessSelect = ({ onFilter, ...props }: AccessTypeSelectProps) => {
   return (
     <Select
       {...props}
-      filterOption={(inputValue, option) => {
-        if (!option) return false;
-
-        const value = inputValue.toLowerCase();
-        return option.label.toLowerCase().includes(value);
+      showSearch={{
+        filterOption: (inputValue, option) => matchSearchOption(inputValue, option!),
+        optionFilterProp: "label",
       }}
       labelRender={({ value }) => {
         if (value != null) {
@@ -69,7 +69,6 @@ const AccessSelect = ({ onFilter, ...props }: AccessTypeSelectProps) => {
       }}
       loading={!loadedAtOnce}
       options={options}
-      optionFilterProp="label"
       optionLabelProp={void 0}
       optionRender={(option) => renderOption(option.data.value)}
     />

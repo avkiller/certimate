@@ -12,7 +12,7 @@ type UpdateDomainRequest struct {
 }
 
 type UpdateDomainResponse struct {
-	apiResponseBase
+	sdkResponseBase
 }
 
 func (c *Client) UpdateDomain(req *UpdateDomainRequest) (*UpdateDomainResponse, error) {

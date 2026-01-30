@@ -17,7 +17,7 @@ type UpdateCertificateRequest struct {
 }
 
 type UpdateCertificateResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
 	CertificateLocation string `json:"location,omitempty"`
 }

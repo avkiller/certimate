@@ -13,7 +13,7 @@ type SiteSetSSLRequest struct {
 }
 
 type SiteSetSSLResponse struct {
-	apiResponseBase
+	sdkResponseBase
 }
 
 func (c *Client) SiteSetSSL(req *SiteSetSSLRequest) (*SiteSetSSLResponse, error) {

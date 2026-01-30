@@ -23,7 +23,7 @@ func (c *UFileClient) NewAddUFileSSLCertRequest() *AddUFileSSLCertRequest {
 
 	c.Client.SetupRequest(req)
 
-	req.SetRetryable(false)
+	req.SetRetryable(true)
 	return req
 }
 

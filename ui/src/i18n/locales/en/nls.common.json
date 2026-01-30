@@ -13,6 +13,7 @@
   "common.button.reload": "Reload",
   "common.button.reset": "Reset",
   "common.button.save": "Save changes",
+  "common.button.save_and_continue": "Save and continue",
   "common.button.submit": "Submit",
   "common.button.view": "View",
 
@@ -20,10 +21,12 @@
   "common.text.import_from_file": "Import from file ...",
   "common.text.happy_browser": "The browser version is too low to make Certimate WebUI working well. Recommend using modern browsers such as Google Chrome v119.0 or higher.",
   "common.text.nodata": "No data available",
+  "common.text.nodata_failed": "Failed to load data",
   "common.text.operation_confirm": "Operation confirm",
   "common.text.operation_succeeded": "Operation succeeded",
   "common.text.operation_failed": "Operation failed",
   "common.text.request_error": "Request error",
+  "common.text.saved": "Saved successfully",
   "common.text.saving": "Saving ...",
   "common.text.search": "Search ...",
 
@@ -44,6 +47,7 @@
   "common.errmsg.port_invalid": "Please enter a valid port",
   "common.errmsg.ip_invalid": "Please enter a valid IP address",
   "common.errmsg.url_invalid": "Please enter a valid URL",
+  "access.errmsg.json_invalid": "Please enter a valid JSON string",
   "common.errmsg.form_invalid": "Please check the form content",
 
   "common.notifier.bark": "Bark",

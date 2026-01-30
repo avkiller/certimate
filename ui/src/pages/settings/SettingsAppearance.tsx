@@ -24,6 +24,11 @@ const SettingsAppearance = () => {
 
       <h2>{t("settings.appearance.pagination.title")}</h2>
       <SettingsAppearancePagination className="md:max-w-160" />
+
+      <Divider />
+
+      <h2>{t("settings.appearance.workflow.title")}</h2>
+      <SettingsAppearanceWorkflow className="md:max-w-160" />
     </>
   );
 };
@@ -75,7 +80,7 @@ const SettingsAppearanceLanguage = ({ className, style }: { className?: string; 
   const [localeChanged, setLocaleChanged] = useState(false);
 
   const handleChange = (value: string) => {
-    if (value !== i18n.language) {
+    if (value !== (i18n.resolvedLanguage ?? i18n.language)) {
       setLocaleChanged(true);
       i18n.changeLanguage(value);
     }
@@ -91,7 +96,7 @@ const SettingsAppearanceLanguage = ({ className, style }: { className?: string; 
               value: item.key,
               label: item.label,
             }))}
-            value={i18n.language}
+            value={i18n.resolvedLanguage ?? i18n.language}
             onChange={handleChange}
           />
         </Form.Item>
@@ -105,7 +110,7 @@ const SettingsAppearancePagination = ({ className, style }: { className?: string
 
   const { appSettings: globalAppSettings, setAppSettings: setGlobalAppSettings } = useAppSettings();
 
-  const handleChange = (value: number) => {
+  const handleChange = (value: (typeof globalAppSettings)["defaultPerPage"]) => {
     setGlobalAppSettings(
       produce(globalAppSettings, (draft) => {
         draft.defaultPerPage = value;
@@ -125,6 +130,39 @@ const SettingsAppearancePagination = ({ className, style }: { className?: string
             }))}
             placeholder={t("settings.appearance.pagination.form.default_per_page.placeholder")}
             defaultValue={globalAppSettings.defaultPerPage}
+            onChange={handleChange}
+          />
+        </Form.Item>
+      </Form>
+    </div>
+  );
+};
+
+const SettingsAppearanceWorkflow = ({ className, style }: { className?: string; style?: React.CSSProperties }) => {
+  const { t } = useTranslation();
+
+  const { appSettings: globalAppSettings, setAppSettings: setGlobalAppSettings } = useAppSettings();
+
+  const handleChange = (value: (typeof globalAppSettings)["defaultWorkflowLayout"]) => {
+    setGlobalAppSettings(
+      produce(globalAppSettings, (draft) => {
+        draft.defaultWorkflowLayout = value;
+      })
+    );
+  };
+
+  return (
+    <div className={className} style={style}>
+      <Form layout="vertical">
+        <Form.Item label={t("settings.appearance.workflow.form.default_designer_layout.label")}>
+          <Select
+            options={["horizontal", "vertical"].map((value) => ({
+              key: value,
+              value: value,
+              label: t(`settings.appearance.workflow.form.default_designer_layout.option.${value}`),
+            }))}
+            placeholder={t("settings.appearance.workflow.form.default_designer_layout.placeholder")}
+            defaultValue={globalAppSettings.defaultWorkflowLayout}
             onChange={handleChange}
           />
         </Form.Item>

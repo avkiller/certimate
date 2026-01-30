@@ -51,14 +51,8 @@ const getSchema = ({ i18n = getI18n() }: { i18n: ReturnType<typeof getI18n> }) =
   const { t } = i18n;
 
   return z.object({
-    apiKey: z
-      .string()
-      .min(1, t("access.form.porkbun_api_key.placeholder"))
-      .max(256, t("common.errmsg.string_max", { max: 256 })),
-    secretApiKey: z
-      .string()
-      .min(1, t("access.form.porkbun_secret_api_key.placeholder"))
-      .max(256, t("common.errmsg.string_max", { max: 256 })),
+    apiKey: z.string().nonempty(t("access.form.porkbun_api_key.placeholder")),
+    secretApiKey: z.string().nonempty(t("access.form.porkbun_secret_api_key.placeholder")),
   });
 };
 

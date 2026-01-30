@@ -1,4 +1,4 @@
-﻿package engine
+package engine
 
 import (
 	"context"
@@ -16,12 +16,8 @@ type certificateRepository interface {
 	Save(ctx context.Context, certificate *domain.Certificate) (*domain.Certificate, error)
 }
 
-type workflowRunRepository interface {
-	GetById(ctx context.Context, workflowRunId string) (*domain.WorkflowRun, error)
-}
-
 type workflowOutputRepository interface {
-	GetByNodeId(ctx context.Context, workflowNodeId string) (*domain.WorkflowOutput, error)
+	GetByWorkflowIdAndNodeId(ctx context.Context, workflowId string, workflowNodeId string) (*domain.WorkflowOutput, error)
 	Save(ctx context.Context, workflowOutput *domain.WorkflowOutput) (*domain.WorkflowOutput, error)
 }
 

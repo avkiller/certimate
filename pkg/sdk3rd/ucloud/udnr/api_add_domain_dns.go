@@ -12,8 +12,8 @@ type AddDomainDNSRequest struct {
 	DnsType    *string `required:"true"`
 	RecordName *string `required:"true"`
 	Content    *string `required:"true"`
-	TTL        *int    `required:"true"`
-	Prio       *int    `required:"false"`
+	TTL        *string `required:"true"`
+	Prio       *string `required:"false"`
 }
 
 type AddDomainDNSResponse struct {

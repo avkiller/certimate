@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { getI18n, useTranslation } from "react-i18next";
-import { type FlowNodeEntity, getNodeForm } from "@flowgram.ai/fixed-layout-editor";
+import { type FlowNodeEntity } from "@flowgram.ai/fixed-layout-editor";
 import { IconDice6 } from "@tabler/icons-react";
 import { type AnchorProps, Button, Form, type FormInstance, Input, Radio, Space } from "antd";
 import { createSchemaFieldRule } from "antd-zod";
@@ -9,9 +9,9 @@ import { z } from "zod";
 
 import Show from "@/components/Show";
 import Tips from "@/components/Tips";
-import { WORKFLOW_TRIGGERS, type WorkflowNodeConfigForStart, type WorkflowTriggerType, defaultNodeConfigForStart } from "@/domain/workflow";
+import { WORKFLOW_TRIGGERS, type WorkflowNodeConfigForStart, defaultNodeConfigForStart } from "@/domain/workflow";
 import { useAntdForm } from "@/hooks";
-import { getNextCronExecutions, validCronExpression } from "@/utils/cron";
+import { getNextCronExecutions, validateCronExpression } from "@/utils/cron";
 
 import { NodeFormContextProvider } from "./_context";
 import { NodeType } from "../nodes/typings";
@@ -29,7 +29,7 @@ const StartNodeConfigForm = ({ node, ...props }: StartNodeConfigFormProps) => {
   const { i18n, t } = useTranslation();
 
   const initialValues = useMemo(() => {
-    return getNodeForm(node)?.getValueIn("config") as WorkflowNodeConfigForStart | undefined;
+    return node.form?.getValueIn("config") as WorkflowNodeConfigForStart | undefined;
   }, [node]);
 
   const formSchema = getSchema({ i18n });
@@ -40,11 +40,11 @@ const StartNodeConfigForm = ({ node, ...props }: StartNodeConfigFormProps) => {
     initialValues: initialValues ?? getInitialValues(),
   });
 
-  const fieldTrigger = Form.useWatch<WorkflowTriggerType>("trigger", formInst);
-  const fieldTriggerCron = Form.useWatch<string>("triggerCron", formInst);
+  const fieldTrigger = Form.useWatch("trigger", formInst);
+  const fieldTriggerCron = Form.useWatch("triggerCron", formInst);
   const [fieldTriggerCronExpectedExecutions, setFieldTriggerCronExpectedExecutions] = useState<Date[]>([]);
   useEffect(() => {
-    setFieldTriggerCronExpectedExecutions(getNextCronExecutions(fieldTriggerCron, 5));
+    setFieldTriggerCronExpectedExecutions(getNextCronExecutions(fieldTriggerCron!, 5));
   }, [fieldTriggerCron]);
 
   const handleTriggerChange = (value: string) => {
@@ -125,7 +125,7 @@ const getAnchorItems = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n
 const getInitialValues = (): Nullish<z.infer<ReturnType<typeof getSchema>>> => {
   return {
     trigger: WORKFLOW_TRIGGERS.MANUAL,
-    ...defaultNodeConfigForStart(),
+    ...(defaultNodeConfigForStart() as Nullish<z.infer<ReturnType<typeof getSchema>>>),
   };
 };
 
@@ -134,12 +134,12 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
 
   return z
     .object({
-      trigger: z.string(t("workflow_node.start.form.trigger.placeholder")).nonempty(t("workflow_node.start.form.trigger.placeholder")),
+      trigger: z.string().nonempty(t("workflow_node.start.form.trigger.placeholder")),
       triggerCron: z.string().nullish(),
     })
     .superRefine((values, ctx) => {
       if (values.trigger === WORKFLOW_TRIGGERS.SCHEDULED) {
-        if (!validCronExpression(values.triggerCron!)) {
+        if (!validateCronExpression(values.triggerCron!)) {
           ctx.addIssue({
             code: "custom",
             message: t("workflow_node.start.form.trigger_cron.errmsg.invalid"),

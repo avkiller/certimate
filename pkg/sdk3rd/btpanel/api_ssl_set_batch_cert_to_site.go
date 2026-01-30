@@ -16,7 +16,7 @@ type SSLSetBatchCertToSiteRequestBatchInfo struct {
 }
 
 type SSLSetBatchCertToSiteResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
 	TotalCount   int32 `json:"total"`
 	SuccessCount int32 `json:"success"`

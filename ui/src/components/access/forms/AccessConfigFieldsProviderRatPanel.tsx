@@ -24,7 +24,7 @@ const AccessConfigFormFieldsProviderRatPanel = () => {
         extra={t("access.form.ratpanel_server_url.help")}
         rules={[formRule]}
       >
-        <Input placeholder={t("access.form.ratpanel_server_url.placeholder")} />
+        <Input type="url" placeholder={t("access.form.ratpanel_server_url.placeholder")} />
       </Form.Item>
 
       <Form.Item
@@ -53,10 +53,7 @@ const AccessConfigFormFieldsProviderRatPanel = () => {
         label={t("access.form.shared_allow_insecure_conns.label")}
         rules={[formRule]}
       >
-        <Switch
-          checkedChildren={t("access.form.shared_allow_insecure_conns.switch.on")}
-          unCheckedChildren={t("access.form.shared_allow_insecure_conns.switch.off")}
-        />
+        <Switch />
       </Form.Item>
     </>
   );
@@ -75,7 +72,7 @@ const getSchema = ({ i18n = getI18n() }: { i18n: ReturnType<typeof getI18n> }) =
 
   return z.object({
     serverUrl: z.url(t("common.errmsg.url_invalid")),
-    accessTokenId: z.preprocess((v) => Number(v), z.number().positive(t("access.form.ratpanel_access_token_id.placeholder"))),
+    accessTokenId: z.coerce.number().int().positive(),
     accessToken: z.string().nonempty(t("access.form.ratpanel_access_token.placeholder")),
     allowInsecureConnections: z.boolean().nullish(),
   });

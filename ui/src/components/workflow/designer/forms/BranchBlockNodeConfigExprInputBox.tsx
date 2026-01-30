@@ -1,6 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { getNodeForm } from "@flowgram.ai/fixed-layout-editor";
 import { IconCircleMinus, IconCirclePlus } from "@tabler/icons-react";
 import { useControllableValue } from "ahooks";
 import { Button, Form, Input, Radio, Select, theme } from "antd";
@@ -171,7 +170,7 @@ const BranchBlockNodeConfigExprInputBox = forwardRef<BranchBlockNodeConfigExprIn
       return getAllPreviousNodes(node)
         .filter((node) => node.flowNodeType === NodeType.BizApply || node.flowNodeType === NodeType.BizUpload || node.flowNodeType === NodeType.BizMonitor)
         .map((node) => {
-          const form = getNodeForm(node);
+          const form = node.form;
           const group = {
             data: {
               name: form?.getValueIn("name"),
@@ -249,15 +248,21 @@ const BranchBlockNodeConfigExprInputBox = forwardRef<BranchBlockNodeConfigExprIn
       }
     };
 
-    const handleFormChange = (_: undefined, values: ConditionFormValues) => {
-      setValue(formValuesToExpr(values));
+    const handleFormChange = (_: unknown, values: ConditionFormValues) => {
+      // TODO: 这里直接用参数 `values` 会丢失部分字段，引发 Issue #1096。
+      // 暂时先用 `getFieldsValue()` 代替，待排查原因，疑似与 antd v6 升级有关。
+      setTimeout(() => {
+        values = formInst.getFieldsValue();
+        const expr = formValuesToExpr(values);
+        setValue(expr);
+      }, 0);
     };
 
     useImperativeHandle(ref, () => {
       return {
         validate: async () => {
-          await formInst.validateFields();
-          return formValuesToExpr(formInst.getFieldsValue());
+          const formValues = await formInst.validateFields();
+          return formValuesToExpr(formValues);
         },
       };
     });
@@ -368,7 +373,7 @@ const BranchBlockNodeConfigExprInputBox = forwardRef<BranchBlockNodeConfigExprIn
                 </div>
               ))}
 
-              <Form.Item>
+              <Form.Item noStyle>
                 <Button type="dashed" block icon={<IconCirclePlus size="1.25em" />} onClick={() => add({})}>
                   {t("workflow_node.branch_block.form.expression.add_condition.button")}
                 </Button>

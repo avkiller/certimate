@@ -11,7 +11,7 @@ type ConfigSetCertRequest struct {
 }
 
 type ConfigSetCertResponse struct {
-	apiResponseBase
+	sdkResponseBase
 }
 
 func (c *Client) ConfigSetCert(req *ConfigSetCertRequest) (*ConfigSetCertResponse, error) {

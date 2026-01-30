@@ -10,10 +10,12 @@ builds:
   - id: build_noncgo
     main: ./
     binary: certimate
-    ldflags:
-      - -s -w -X github.com/certimate-go/certimate.Version={{ .Version }}
     env:
       - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X github.com/certimate-go/certimate.Version={{ .Version }}
     goos:
       - linux
       - windows
@@ -47,6 +49,8 @@ archives:
 checksum:
   name_template: "checksums.txt"
   
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
 changelog:
   sort: asc
   filters:

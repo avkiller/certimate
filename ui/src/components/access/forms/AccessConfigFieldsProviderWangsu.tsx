@@ -62,18 +62,9 @@ const getSchema = ({ i18n = getI18n() }: { i18n: ReturnType<typeof getI18n> }) =
   const { t } = i18n;
 
   return z.object({
-    accessKeyId: z
-      .string()
-      .min(1, t("access.form.wangsu_access_key_id.placeholder"))
-      .max(64, t("common.errmsg.string_max", { max: 64 })),
-    accessKeySecret: z
-      .string()
-      .min(1, t("access.form.wangsu_access_key_secret.placeholder"))
-      .max(64, t("common.errmsg.string_max", { max: 64 })),
-    apiKey: z
-      .string()
-      .min(1, t("access.form.wangsu_api_key.placeholder"))
-      .max(256, t("common.errmsg.string_max", { max: 256 })),
+    accessKeyId: z.string().nonempty(t("access.form.wangsu_access_key_id.placeholder")),
+    accessKeySecret: z.string().nonempty(t("access.form.wangsu_access_key_secret.placeholder")),
+    apiKey: z.string().nonempty(t("access.form.wangsu_api_key.placeholder")),
   });
 };
 

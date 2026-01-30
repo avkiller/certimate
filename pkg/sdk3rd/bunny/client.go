@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/go-resty/resty/v2"
+
+	"github.com/certimate-go/certimate/internal/app"
 )
 
 type Client struct {
@@ -20,7 +22,7 @@ func NewClient(apiToken string) (*Client, error) {
 		SetBaseURL("https://api.bunny.net").
 		SetHeader("Accept", "application/json").
 		SetHeader("Content-Type", "application/json").
-		SetHeader("User-Agent", "certimate").
+		SetHeader("User-Agent", app.AppUserAgent).
 		SetHeader("AccessKey", apiToken)
 
 	return &Client{client}, nil
@@ -57,7 +59,7 @@ func (c *Client) doRequest(req *resty.Request) (*resty.Response, error) {
 	if err != nil {
 		return resp, fmt.Errorf("sdkerr: failed to send request: %w", err)
 	} else if resp.IsError() {
-		return resp, fmt.Errorf("sdkerr: unexpected status code: %d, resp: %s", resp.StatusCode(), resp.String())
+		return resp, fmt.Errorf("sdkerr: unexpected status code: %d (resp: %s)", resp.StatusCode(), resp.String())
 	}
 
 	return resp, nil

@@ -6,17 +6,17 @@ import (
 	"strconv"
 )
 
-type apiResponse interface {
+type sdkResponse interface {
 	GetCode() string
 	GetMessage() string
 }
 
-type apiResponseBase struct {
+type sdkResponseBase struct {
 	Code    json.RawMessage `json:"code"`
 	Message string          `json:"msg"`
 }
 
-func (r *apiResponseBase) GetCode() string {
+func (r *sdkResponseBase) GetCode() string {
 	if r.Code == nil {
 		return ""
 	}
@@ -39,8 +39,8 @@ func (r *apiResponseBase) GetCode() string {
 	}
 }
 
-func (r *apiResponseBase) GetMessage() string {
+func (r *sdkResponseBase) GetMessage() string {
 	return r.Message
 }
 
-var _ apiResponse = (*apiResponseBase)(nil)
+var _ sdkResponse = (*sdkResponseBase)(nil)

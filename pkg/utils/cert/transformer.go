@@ -22,7 +22,7 @@ import (
 //   - data: PFX 格式的证书数据。
 //   - err: 错误。
 func TransformCertificateFromPEMToPFX(certPEM string, privkeyPEM string, pfxPassword string) ([]byte, error) {
-	blocks := decodePEM([]byte(certPEM))
+	blocks := decodePEMBlocks([]byte(certPEM))
 
 	certs := make([]*x509.Certificate, 0, len(blocks))
 	for i, block := range blocks {
@@ -67,12 +67,12 @@ func TransformCertificateFromPEMToPFX(certPEM string, privkeyPEM string, pfxPass
 //   - data: JKS 格式的证书数据。
 //   - err: 错误。
 func TransformCertificateFromPEMToJKS(certPEM string, privkeyPEM string, jksAlias string, jksKeypass string, jksStorepass string) ([]byte, error) {
-	certBlocks := decodePEM([]byte(certPEM))
+	certBlocks := decodePEMBlocks([]byte(certPEM))
 	if len(certBlocks) == 0 {
 		return nil, errors.New("failed to decode certificate PEM")
 	}
 
-	privkeyBlocks := decodePEM([]byte(privkeyPEM))
+	privkeyBlocks := decodePEMBlocks([]byte(privkeyPEM))
 	if len(privkeyBlocks) == 0 {
 		return nil, errors.New("failed to decode private key PEM")
 	}

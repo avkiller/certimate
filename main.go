@@ -24,35 +24,36 @@ import (
 )
 
 func main() {
+	pb := app.GetApp().(*pocketbase.PocketBase)
+	if len(os.Args) < 2 {
+		slog.Error("[CERTIMATE] missing exec args, maybe you forget the 'serve' command?")
+		os.Exit(1)
+		return
+	}
+
 	var flagHttp string
 	pflag.CommandLine = pflag.NewFlagSet(os.Args[0], pflag.ContinueOnError)
 	pflag.CommandLine.Parse(os.Args[2:]) // skip the first two arguments: "main.go serve"
 	pflag.StringVar(&flagHttp, "http", "127.0.0.1:8090", "HTTP server address")
 	pflag.Parse()
 
-	app := app.GetApp().(*pocketbase.PocketBase)
-	if len(os.Args) < 2 {
-		slog.Error("[CERTIMATE] missing exec args")
-		os.Exit(1)
-		return
-	}
-
-	migratecmd.MustRegister(app, app.RootCmd, migratecmd.Config{
+	migratecmd.MustRegister(pb, pb.RootCmd, migratecmd.Config{
 		// enable auto creation of migration files when making collection changes in the Admin UI
 		// (the isGoRun check is to enable it only during development)
 		Automigrate: strings.HasPrefix(os.Args[0], os.TempDir()),
 	})
 
-	app.RootCmd.AddCommand(cmd.NewInternalCommand(app))
+	pb.RootCmd.AddCommand(cmd.NewInternalCommand(pb))
+	pb.RootCmd.AddCommand(cmd.NewWinscCommand(pb))
 
-	app.OnServe().BindFunc(func(e *core.ServeEvent) error {
-		scheduler.Register()
-		workflow.Register()
-		routes.Register(e.Router)
+	pb.OnServe().BindFunc(func(e *core.ServeEvent) error {
+		scheduler.Setup()
+		workflow.Setup()
+		routes.BindRouter(e.Router)
 		return e.Next()
 	})
 
-	app.OnServe().Bind(&hook.Handler[*core.ServeEvent]{
+	pb.OnServe().Bind(&hook.Handler[*core.ServeEvent]{
 		Func: func(e *core.ServeEvent) error {
 			e.Router.
 				GET("/{path...}", apis.Static(ui.DistDirFS, false)).
@@ -62,17 +63,17 @@ func main() {
 		Priority: 999,
 	})
 
-	app.OnServe().BindFunc(func(e *core.ServeEvent) error {
+	pb.OnServe().BindFunc(func(e *core.ServeEvent) error {
 		slog.Info("[CERTIMATE] Visit the website: http://" + flagHttp)
 		return e.Next()
 	})
 
-	app.OnTerminate().BindFunc(func(e *core.TerminateEvent) error {
-		routes.Unregister()
+	pb.OnTerminate().BindFunc(func(e *core.TerminateEvent) error {
+		workflow.Teardown()
 		return e.Next()
 	})
 
-	if err := app.Start(); err != nil {
+	if err := cmd.Serve(pb); err != nil {
 		slog.Error("[CERTIMATE] Start failed.", slog.Any("error", err))
 	}
 }

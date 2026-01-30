@@ -1,18 +1,20 @@
 package baishan
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
-type apiResponse interface {
-	GetCode() int32
+type sdkResponse interface {
+	GetCode() int
 	GetMessage() string
 }
 
-type apiResponseBase struct {
-	Code    *int32  `json:"code,omitempty"`
+type sdkResponseBase struct {
+	Code    *int    `json:"code,omitempty"`
 	Message *string `json:"message,omitempty"`
 }
 
-func (r *apiResponseBase) GetCode() int32 {
+func (r *sdkResponseBase) GetCode() int {
 	if r.Code == nil {
 		return 0
 	}
@@ -20,7 +22,7 @@ func (r *apiResponseBase) GetCode() int32 {
 	return *r.Code
 }
 
-func (r *apiResponseBase) GetMessage() string {
+func (r *sdkResponseBase) GetMessage() string {
 	if r.Message == nil {
 		return ""
 	}
@@ -28,7 +30,18 @@ func (r *apiResponseBase) GetMessage() string {
 	return *r.Message
 }
 
-var _ apiResponse = (*apiResponseBase)(nil)
+var _ sdkResponse = (*sdkResponseBase)(nil)
+
+type DomainRecord struct {
+	Id         string `json:"id"`
+	Domain     string `json:"domain"`
+	Type       string `json:"type"`
+	Status     string `json:"status"`
+	Cname      string `json:"cname"`
+	Area       string `json:"area"`
+	CreateTime string `json:"create_time"`
+	UpdateTime string `json:"update_time"`
+}
 
 type DomainCertificate struct {
 	CertId         json.Number `json:"cert_id"`

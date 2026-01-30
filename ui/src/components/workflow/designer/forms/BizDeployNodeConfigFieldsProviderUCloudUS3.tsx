@@ -3,7 +3,7 @@ import { Form, Input } from "antd";
 import { createSchemaFieldRule } from "antd-zod";
 import { z } from "zod";
 
-import { validDomainName } from "@/utils/validators";
+import { isDomain } from "@/utils/validator";
 
 import { useFormNestedFieldsContext } from "./_context";
 
@@ -34,7 +34,6 @@ const BizDeployNodeConfigFieldsProviderUCloudUS3 = () => {
         initialValue={initialValues.bucket}
         label={t("workflow_node.deploy.form.ucloud_us3_bucket.label")}
         rules={[formRule]}
-        tooltip={<span dangerouslySetInnerHTML={{ __html: t("workflow_node.deploy.form.ucloud_us3_bucket.tooltip") }}></span>}
       >
         <Input placeholder={t("workflow_node.deploy.form.ucloud_us3_bucket.placeholder")} />
       </Form.Item>
@@ -44,7 +43,6 @@ const BizDeployNodeConfigFieldsProviderUCloudUS3 = () => {
         initialValue={initialValues.domain}
         label={t("workflow_node.deploy.form.ucloud_us3_domain.label")}
         rules={[formRule]}
-        tooltip={<span dangerouslySetInnerHTML={{ __html: t("workflow_node.deploy.form.ucloud_us3_domain.tooltip") }}></span>}
       >
         <Input placeholder={t("workflow_node.deploy.form.ucloud_us3_domain.placeholder")} />
       </Form.Item>
@@ -66,7 +64,7 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
   return z.object({
     region: z.string().nonempty(t("workflow_node.deploy.form.ucloud_us3_region.placeholder")),
     bucket: z.string().nonempty(t("workflow_node.deploy.form.ucloud_us3_bucket.placeholder")),
-    domain: z.string().refine((v) => validDomainName(v), t("common.errmsg.domain_invalid")),
+    domain: z.string().refine((v) => isDomain(v), t("common.errmsg.domain_invalid")),
   });
 };
 

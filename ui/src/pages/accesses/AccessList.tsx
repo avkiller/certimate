@@ -1,14 +1,15 @@
 import { useState } from "react";
-import { CopyToClipboard } from "react-copy-to-clipboard";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { IconCirclePlus, IconCopy, IconDots, IconEdit, IconFingerprint, IconPlus, IconReload, IconTrash } from "@tabler/icons-react";
 import { useMount, useRequest } from "ahooks";
 import { App, Avatar, Button, Dropdown, Input, Skeleton, Table, type TableProps, Tabs, Typography, theme } from "antd";
 import dayjs from "dayjs";
+import { produce } from "immer";
 import { ClientResponseError } from "pocketbase";
 
 import AccessEditDrawer, { type AccessEditDrawerProps } from "@/components/access/AccessEditDrawer";
+import CopyableText from "@/components/CopyableText";
 import Empty from "@/components/Empty";
 import Show from "@/components/Show";
 import { type AccessModel } from "@/domain/access";
@@ -16,7 +17,7 @@ import { ACCESS_USAGES, accessProvidersMap } from "@/domain/provider";
 import { useAppSettings, useZustandShallowSelector } from "@/hooks";
 import { get as getAccess } from "@/repository/access";
 import { useAccessesStore } from "@/stores/access";
-import { getErrMsg } from "@/utils/error";
+import { unwrapErrMsg } from "@/utils/error";
 
 type AccessUsages = AccessEditDrawerProps["usage"];
 
@@ -28,13 +29,11 @@ const AccessList = () => {
 
   const { token: themeToken } = theme.useToken();
 
-  const { message, modal, notification } = App.useApp();
+  const { modal, notification } = App.useApp();
 
   const { appSettings: globalAppSettings } = useAppSettings();
 
-  const { accesses, loadedAtOnce, fetchAccesses, deleteAccess } = useAccessesStore(
-    useZustandShallowSelector(["accesses", "loadedAtOnce", "fetchAccesses", "deleteAccess"])
-  );
+  const { fetchAccesses, deleteAccess } = useAccessesStore(useZustandShallowSelector(["loadedAtOnce", "fetchAccesses", "deleteAccess"]));
   useMount(() => {
     fetchAccesses().catch((err) => {
       if (err instanceof ClientResponseError && err.isAbort) {
@@ -42,7 +41,7 @@ const AccessList = () => {
       }
 
       console.error(err);
-      notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
+      notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
     });
   });
 
@@ -65,19 +64,9 @@ const AccessList = () => {
       width: 160,
       render: (_, record) => {
         return (
-          <CopyToClipboard
-            text={record.id}
-            onCopy={() => {
-              message.success(t("common.text.copied"));
-            }}
-          >
-            <div className="group/td cursor-pointer" onClick={(e) => e.stopPropagation()}>
-              <div className="relative inline-block">
-                <span className="z-1 font-mono">{record.id}</span>
-                <div className="absolute top-0 left-0 size-full scale-110 overflow-hidden rounded bg-primary opacity-0 transition-opacity group-hover/td:opacity-10"></div>
-              </div>
-            </div>
-          </CopyToClipboard>
+          <div onClick={(e) => e.stopPropagation()}>
+            <CopyableText className="font-mono">{record.id}</CopyableText>
+          </div>
         );
       },
     },
@@ -117,7 +106,7 @@ const AccessList = () => {
             items: [
               {
                 key: "edit",
-                label: t("access.action.edit.menu"),
+                label: t("access.action.modify.menu"),
                 icon: (
                   <span className="anticon scale-125">
                     <IconEdit size="1em" />
@@ -197,11 +186,16 @@ const AccessList = () => {
     },
   };
 
-  const { loading, run: refreshData } = useRequest(
-    () => {
-      const startIndex = (page - 1) * pageSize;
-      const endIndex = startIndex + pageSize;
-      const list = accesses
+  const {
+    loading,
+    error: loadError,
+    run: refreshData,
+  } = useRequest(
+    async () => {
+      const list = await fetchAccesses();
+      const startIdx = (page - 1) * pageSize;
+      const endIdx = startIdx + pageSize;
+      const items = list
         .filter((e) => {
           const keyword = (filters["keyword"] as string | undefined)?.trim();
           if (keyword) {
@@ -226,12 +220,12 @@ const AccessList = () => {
           }
         });
       return Promise.resolve({
-        items: list.slice(startIndex, endIndex),
-        totalItems: list.length,
+        items: items.slice(startIdx, endIdx),
+        totalItems: items.length,
       });
     },
     {
-      refreshDeps: [accesses, filters, page, pageSize],
+      refreshDeps: [filters, page, pageSize],
       onBefore: () => {
         setSearchParams((prev) => {
           if (filters["keyword"]) {
@@ -269,7 +263,7 @@ const AccessList = () => {
   const handleReloadClick = () => {
     if (loading) return;
 
-    fetchAccesses();
+    refreshData();
   };
 
   const handlePaginationChange = (page: number, pageSize: number) => {
@@ -292,7 +286,17 @@ const AccessList = () => {
   };
 
   const handleRecordDuplicateClick = (access: AccessModel) => {
-    createDrawer.open({ data: { ...access, id: void 0, name: `${access.name}-copy` } });
+    const copier = (data: AccessModel) =>
+      produce(data, (draft) => {
+        draft.id = (void 0)!;
+        draft.created = (void 0)!;
+        draft.updated = (void 0)!;
+        draft.name = `${data.name}-copy`;
+        return draft;
+      });
+    getAccess(access.id).then((data) => {
+      createDrawer.open({ data: copier(data) });
+    });
   };
 
   const handleRecordDeleteClick = async (access: AccessModel) => {
@@ -313,7 +317,7 @@ const AccessList = () => {
           refreshData();
         } catch (err) {
           console.error(err);
-          notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
+          notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
         }
       },
     });
@@ -345,7 +349,7 @@ const AccessList = () => {
           }
         } catch (err) {
           console.error(err);
-          notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
+          notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
         }
       },
     });
@@ -414,11 +418,11 @@ const AccessList = () => {
               ) : (
                 <Empty
                   className="py-24"
-                  title={t("access.nodata.title")}
-                  description={!loadedAtOnce ? getErrMsg("Network error.") : t("access.nodata.description")}
+                  title={loadError ? t("common.text.nodata_failed") : t("access.nodata.title")}
+                  description={loadError ? unwrapErrMsg(loadError) : t("access.nodata.description")}
                   icon={<IconFingerprint size={24} />}
                   extra={
-                    !loadedAtOnce ? (
+                    loadError ? (
                       <Button ghost icon={<IconReload size="1.25em" />} type="primary" onClick={handleReloadClick}>
                         {t("common.button.reload")}
                       </Button>
@@ -469,7 +473,7 @@ const AccessList = () => {
         </div>
 
         <AccessEditDrawer mode="create" usage={filters["usage"] as AccessUsages} {...createDrawerProps} />
-        <AccessEditDrawer mode="edit" usage={filters["usage"] as AccessUsages} {...detailDrawerProps} />
+        <AccessEditDrawer mode="modify" usage={filters["usage"] as AccessUsages} {...detailDrawerProps} />
       </div>
     </div>
   );

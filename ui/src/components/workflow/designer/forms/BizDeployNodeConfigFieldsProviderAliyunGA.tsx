@@ -4,7 +4,7 @@ import { createSchemaFieldRule } from "antd-zod";
 import { z } from "zod";
 
 import Show from "@/components/Show";
-import { validDomainName } from "@/utils/validators";
+import { isDomain } from "@/utils/validator";
 
 import { useFormNestedFieldsContext } from "./_context";
 
@@ -29,17 +29,16 @@ const BizDeployNodeConfigFieldsProviderAliyunGA = () => {
       <Form.Item
         name={[parentNamePath, "resourceType"]}
         initialValue={initialValues.resourceType}
-        label={t("workflow_node.deploy.form.aliyun_ga_resource_type.label")}
+        label={t("workflow_node.deploy.form.shared_resource_type.label")}
         rules={[formRule]}
       >
-        <Select placeholder={t("workflow_node.deploy.form.aliyun_ga_resource_type.placeholder")}>
-          <Select.Option key={RESOURCE_TYPE_ACCELERATOR} value={RESOURCE_TYPE_ACCELERATOR}>
-            {t("workflow_node.deploy.form.aliyun_ga_resource_type.option.accelerator.label")}
-          </Select.Option>
-          <Select.Option key={RESOURCE_TYPE_LISTENER} value={RESOURCE_TYPE_LISTENER}>
-            {t("workflow_node.deploy.form.aliyun_ga_resource_type.option.listener.label")}
-          </Select.Option>
-        </Select>
+        <Select
+          options={[RESOURCE_TYPE_ACCELERATOR, RESOURCE_TYPE_LISTENER].map((s) => ({
+            value: s,
+            label: t(`workflow_node.deploy.form.aliyun_ga_resource_type.option.${s}.label`),
+          }))}
+          placeholder={t("workflow_node.deploy.form.shared_resource_type.placeholder")}
+        />
       </Form.Item>
 
       <Form.Item
@@ -71,7 +70,6 @@ const BizDeployNodeConfigFieldsProviderAliyunGA = () => {
           label={t("workflow_node.deploy.form.aliyun_ga_snidomain.label")}
           extra={t("workflow_node.deploy.form.aliyun_ga_snidomain.help")}
           rules={[formRule]}
-          tooltip={<span dangerouslySetInnerHTML={{ __html: t("workflow_node.deploy.form.aliyun_ga_snidomain.tooltip") }}></span>}
         >
           <Input allowClear placeholder={t("workflow_node.deploy.form.aliyun_ga_snidomain.placeholder")} />
         </Form.Item>
@@ -92,14 +90,15 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
 
   return z
     .object({
-      resourceType: z.literal([RESOURCE_TYPE_ACCELERATOR, RESOURCE_TYPE_LISTENER], t("workflow_node.deploy.form.aliyun_ga_resource_type.placeholder")),
+      resourceType: z.literal([RESOURCE_TYPE_ACCELERATOR, RESOURCE_TYPE_LISTENER], t("workflow_node.deploy.form.shared_resource_type.placeholder")),
       acceleratorId: z.string().nonempty(t("workflow_node.deploy.form.aliyun_ga_accelerator_id.placeholder")),
       listenerId: z.string().nullish(),
       domain: z
         .string()
         .nullish()
         .refine((v) => {
-          return !v || validDomainName(v!);
+          if (!v) return true;
+          return isDomain(v);
         }, t("common.errmsg.domain_invalid")),
     })
     .superRefine((values, ctx) => {

@@ -1,16 +1,15 @@
-﻿package engine
+package engine
 
 import (
+	"crypto/x509"
 	"fmt"
 	"log/slog"
 	"maps"
 	"math"
-	"os"
 	"slices"
 	"strings"
 	"time"
 
-	"github.com/go-acme/lego/v4/certcrypto"
 	legocertifier "github.com/go-acme/lego/v4/certificate"
 	"github.com/go-acme/lego/v4/lego"
 	legolog "github.com/go-acme/lego/v4/log"
@@ -18,21 +17,26 @@ import (
 	"github.com/xhit/go-str2duration/v2"
 
 	"github.com/certimate-go/certimate/internal/app"
-	"github.com/certimate-go/certimate/internal/certapply"
+	"github.com/certimate-go/certimate/internal/certacme"
 	"github.com/certimate-go/certimate/internal/domain"
 	"github.com/certimate-go/certimate/internal/repository"
 	"github.com/certimate-go/certimate/internal/tools/mproc"
 	xcert "github.com/certimate-go/certimate/pkg/utils/cert"
+	xcertkey "github.com/certimate-go/certimate/pkg/utils/cert/key"
+	xenv "github.com/certimate-go/certimate/pkg/utils/env"
 )
 
-var useMultiProc = true
+var envMultiProc = true
 
 func init() {
-	envMultiProc := os.Getenv("CERTIMATE_WORKFLOW_MULTIPROC")
-	if envMultiProc == "0" {
-		useMultiProc = false
-	}
+	envMultiProc = xenv.GetOrDefaultBool("CERTIMATE_WORKFLOW_MULTIPROC", true)
 }
+
+const (
+	BizApplyKeySourceAuto   = "auto"
+	BizApplyKeySourceReuse  = "reuse"
+	BizApplyKeySourceCustom = "custom"
+)
 
 /**
  * Outputs:
@@ -40,8 +44,8 @@ func init() {
  *
  * Variables:
  *   - "node.skipped": boolean
- *   - "certificate.domain": string
- *   - "certificate.domains": string
+ *   - "certificate.commanName": string
+ *   - "certificate.subjectAltNames": string
  *   - "certificate.notBefore": datetime
  *   - "certificate.notAfter": datetime
  *   - "certificate.hoursLeft": number
@@ -66,37 +70,37 @@ func (ne *bizApplyNodeExecutor) Execute(execCtx *NodeExecutionContext) (*NodeExe
 	lastOutput, lastCertificate, err := ne.getLastOutputArtifacts(execCtx)
 	if err != nil {
 		return execRes, err
-	} else if lastCertificate != nil {
-		ne.setOuputsOfResult(execCtx, execRes, lastCertificate, false)
-		ne.setVariablesOfResult(execCtx, execRes, lastCertificate)
+	} else {
+		if lastOutput != nil {
+			ne.logger.Info(fmt.Sprintf("found last node output #%s record", lastOutput.RunId))
+		}
+
+		if lastCertificate != nil {
+			ne.setOuputsOfResult(execCtx, execRes, lastCertificate, false)
+			ne.setVariablesOfResult(execCtx, execRes, lastCertificate)
+			ne.logger.Info(fmt.Sprintf("found last certificate #%s record", lastCertificate.Id))
+		}
 	}
 
 	// 检测是否可以跳过本次执行
 	if skippable, reason := ne.checkCanSkip(execCtx, lastOutput, lastCertificate); skippable {
 		ne.logger.Info(fmt.Sprintf("skip this application, because %s", reason))
 
-		execRes.AddVariableWithScope(execCtx.Node.Id, stateVarKeyNodeSkipped, true, "boolean")
+		execRes.AddVariableWithScope(execCtx.Node.Id, stateVarKeyNodeSkipped, true, stateValTypeBoolean)
 		return execRes, nil
 	} else {
 		if reason != "" {
 			ne.logger.Info(fmt.Sprintf("re-apply, because %s", reason))
 		} else {
-			ne.logger.Info("no found last issued certificate, begin to apply")
+			ne.logger.Info("no found last requested certificate, begin to apply")
 		}
 
-		execRes.AddVariableWithScope(execCtx.Node.Id, stateVarKeyNodeSkipped, false, "boolean")
+		execRes.AddVariableWithScope(execCtx.Node.Id, stateVarKeyNodeSkipped, false, stateValTypeBoolean)
 	}
 
 	// 申请证书
 	obtainResp, err := ne.executeObtain(execCtx, &nodeCfg, lastCertificate)
 	if err != nil {
-		return execRes, err
-	}
-
-	// 解析证书
-	certX509, err := xcert.ParseCertificateFromPEM(obtainResp.FullChainCertificate)
-	if err != nil {
-		ne.logger.Warn("could not parse certificate, may be the CA responded error")
 		return execRes, err
 	}
 
@@ -108,13 +112,12 @@ func (ne *bizApplyNodeExecutor) Execute(execCtx *NodeExecutionContext) (*NodeExe
 		IssuerCertificate: obtainResp.IssuerCertificate,
 		ACMEAcctUrl:       obtainResp.ACMEAcctUrl,
 		ACMECertUrl:       obtainResp.ACMECertUrl,
-		ACMECertStableUrl: obtainResp.ACMECertStableUrl,
 		WorkflowId:        execCtx.WorkflowId,
 		WorkflowRunId:     execCtx.RunId,
 		WorkflowNodeId:    execCtx.Node.Id,
 	}
-	certificate.PopulateFromX509(certX509)
-	if certificate, err := ne.certificateRepo.Save(execCtx.ctx, certificate); err != nil {
+	certificate.PopulateFromPEM(obtainResp.FullChainCertificate, obtainResp.PrivateKey)
+	if certificate, err := ne.certificateRepo.Save(execCtx.Context(), certificate); err != nil {
 		ne.logger.Warn("could not save certificate")
 		return execRes, err
 	} else {
@@ -123,8 +126,8 @@ func (ne *bizApplyNodeExecutor) Execute(execCtx *NodeExecutionContext) (*NodeExe
 
 	// 保存 ARI 替换状态
 	if lastCertificate != nil && obtainResp.ARIReplaced {
-		lastCertificate.ACMERenewed = true
-		ne.certificateRepo.Save(execCtx.ctx, lastCertificate)
+		lastCertificate.IsRenewed = true
+		ne.certificateRepo.Save(execCtx.Context(), lastCertificate)
 	}
 
 	// 节点输出
@@ -136,13 +139,13 @@ func (ne *bizApplyNodeExecutor) Execute(execCtx *NodeExecutionContext) (*NodeExe
 }
 
 func (ne *bizApplyNodeExecutor) getLastOutputArtifacts(execCtx *NodeExecutionContext) (*domain.WorkflowOutput, *domain.Certificate, error) {
-	lastOutput, err := ne.wfoutputRepo.GetByNodeId(execCtx.ctx, execCtx.Node.Id)
+	lastOutput, err := ne.wfoutputRepo.GetByWorkflowIdAndNodeId(execCtx.Context(), execCtx.WorkflowId, execCtx.Node.Id)
 	if err != nil && !domain.IsRecordNotFoundError(err) {
 		return nil, nil, fmt.Errorf("failed to get last output record of node #%s: %w", execCtx.Node.Id, err)
 	}
 
 	if lastOutput != nil {
-		lastCertificate, err := ne.certificateRepo.GetByWorkflowRunIdAndNodeId(execCtx.ctx, lastOutput.RunId, lastOutput.NodeId)
+		lastCertificate, err := ne.certificateRepo.GetByWorkflowRunIdAndNodeId(execCtx.Context(), lastOutput.RunId, lastOutput.NodeId)
 		if err != nil && !domain.IsRecordNotFoundError(err) {
 			return lastOutput, nil, fmt.Errorf("failed to get last certificate record of node #%s: %w", execCtx.Node.Id, err)
 		}
@@ -162,6 +165,9 @@ func (ne *bizApplyNodeExecutor) checkCanSkip(execCtx *NodeExecutionContext, last
 
 		if !slices.Equal(thisNodeCfg.Domains, lastNodeCfg.Domains) {
 			return false, "the configuration item 'Domains' changed"
+		}
+		if !slices.Equal(thisNodeCfg.IPAddrs, lastNodeCfg.IPAddrs) {
+			return false, "the configuration item 'IPAddrs' changed"
 		}
 		if thisNodeCfg.ContactEmail != lastNodeCfg.ContactEmail {
 			return false, "the configuration item 'ContactEmail' changed"
@@ -187,6 +193,21 @@ func (ne *bizApplyNodeExecutor) checkCanSkip(execCtx *NodeExecutionContext, last
 		if thisNodeCfg.KeyAlgorithm != lastNodeCfg.KeyAlgorithm {
 			return false, "the configuration item 'KeyAlgorithm' changed"
 		}
+		if thisNodeCfg.KeySource == BizApplyKeySourceCustom && thisNodeCfg.KeyContent != lastNodeCfg.KeyContent {
+			return false, "the configuration item 'KeyContent' changed"
+		}
+		if thisNodeCfg.ValidityLifetime != lastNodeCfg.ValidityLifetime {
+			return false, "the configuration item 'ValidityLifetime' changed"
+		}
+		if thisNodeCfg.PreferredChain != lastNodeCfg.PreferredChain {
+			return false, "the configuration item 'PreferredChain' changed"
+		}
+		if thisNodeCfg.ACMEProfile != lastNodeCfg.ACMEProfile {
+			return false, "the configuration item 'ACMEProfile' changed"
+		}
+		if thisNodeCfg.DisableCommonName != lastNodeCfg.DisableCommonName {
+			return false, "the configuration item 'DisableCommonName' changed"
+		}
 	}
 
 	if lastCertificate != nil {
@@ -194,26 +215,55 @@ func (ne *bizApplyNodeExecutor) checkCanSkip(execCtx *NodeExecutionContext, last
 		expirationTime := time.Until(lastCertificate.ValidityNotAfter)
 		daysLeft := int(math.Floor(expirationTime.Hours() / 24))
 		if expirationTime > renewalInterval {
-			return true, fmt.Sprintf("the last issued certificate #%s expires in %d day(s), next renewal will be in %d day(s)", lastCertificate.Id, daysLeft, thisNodeCfg.SkipBeforeExpiryDays)
+			return true, fmt.Sprintf("the last requested certificate expires in %d day(s), next renewal will be in %d day(s)", daysLeft, thisNodeCfg.SkipBeforeExpiryDays)
 		}
 
-		return false, fmt.Sprintf("the last issued certificate #%s expires in %d day(s)", lastCertificate.Id, daysLeft)
+		return false, fmt.Sprintf("the last requested certificate expires in %d day(s), the renewal window period has been reached", daysLeft)
 	}
 
 	return false, ""
 }
 
-func (ne *bizApplyNodeExecutor) executeObtain(execCtx *NodeExecutionContext, nodeCfg *domain.WorkflowNodeConfigForBizApply, lastCertificate *domain.Certificate) (*certapply.ObtainCertificateResponse, error) {
-	// 读取证书算法
+func (ne *bizApplyNodeExecutor) executeObtain(execCtx *NodeExecutionContext, nodeCfg *domain.WorkflowNodeConfigForBizApply, lastCertificate *domain.Certificate) (*certacme.ObtainCertificateResponse, error) {
+	// 读取私钥算法
+	// 如果复用私钥，则保持算法一致
 	legoKeyType, err := domain.CertificateKeyAlgorithmType(nodeCfg.KeyAlgorithm).KeyType()
 	if err != nil {
 		return nil, err
+	} else {
+		switch nodeCfg.KeySource {
+		case BizApplyKeySourceAuto:
+			break
+		case BizApplyKeySourceReuse:
+			if lastCertificate != nil {
+				legoKeyType, _ = lastCertificate.KeyAlgorithm.KeyType()
+			}
+		case BizApplyKeySourceCustom:
+			privkey, err := xcert.ParsePrivateKeyFromPEM(nodeCfg.KeyContent)
+			if err != nil {
+				return nil, fmt.Errorf("could not parse custom private key: %w", err)
+			} else {
+				privkeyAlg, privkeySize, _ := xcertkey.GetPrivateKeyAlgorithm(privkey)
+				switch privkeyAlg {
+				case x509.RSA:
+					if nodeCfg.KeyAlgorithm != fmt.Sprintf("RSA%d", privkeySize) {
+						return nil, fmt.Errorf("could not parse custom private key: unsupported algorithm or key size")
+					}
+				case x509.ECDSA:
+					if nodeCfg.KeyAlgorithm != fmt.Sprintf("EC%d", privkeySize) {
+						return nil, fmt.Errorf("could not parse custom private key: unsupported algorithm or key size")
+					}
+				default:
+					return nil, fmt.Errorf("could not parse custom private key: unsupported algorithm")
+				}
+			}
+		}
 	}
 
 	// 读取质询提供商授权
 	providerAccessConfig := make(map[string]any)
 	if nodeCfg.ProviderAccessId != "" {
-		if access, err := ne.accessRepo.GetById(execCtx.ctx, nodeCfg.ProviderAccessId); err != nil {
+		if access, err := ne.accessRepo.GetById(execCtx.Context(), nodeCfg.ProviderAccessId); err != nil {
 			return nil, fmt.Errorf("failed to get access #%s record: %w", nodeCfg.ProviderAccessId, err)
 		} else {
 			providerAccessConfig = access.Config
@@ -223,7 +273,7 @@ func (ne *bizApplyNodeExecutor) executeObtain(execCtx *NodeExecutionContext, nod
 	// 读取证书颁发机构授权
 	caAccessConfig := make(map[string]any)
 	if nodeCfg.CAProviderAccessId != "" {
-		if access, err := ne.accessRepo.GetById(execCtx.ctx, nodeCfg.CAProviderAccessId); err != nil {
+		if access, err := ne.accessRepo.GetById(execCtx.Context(), nodeCfg.CAProviderAccessId); err != nil {
 			return nil, fmt.Errorf("failed to get access #%s record: %w", nodeCfg.CAProviderAccessId, err)
 		} else {
 			caAccessConfig = access.Config
@@ -231,13 +281,13 @@ func (ne *bizApplyNodeExecutor) executeObtain(execCtx *NodeExecutionContext, nod
 	}
 
 	// 初始化 ACME 配置项
-	legoOptions := &certapply.ACMEConfigOptions{
+	legoOptions := &certacme.ACMEConfigOptions{
 		CAProvider:       nodeCfg.CAProvider,
 		CAAccessConfig:   caAccessConfig,
 		CAProviderConfig: nodeCfg.CAProviderConfig,
 		CertifierKeyType: legoKeyType,
 	}
-	legoConfig, err := certapply.NewACMEConfig(legoOptions)
+	legoConfig, err := certacme.NewACMEConfig(legoOptions)
 	if err != nil {
 		ne.logger.Warn("could not initialize acme config")
 		return nil, err
@@ -247,7 +297,7 @@ func (ne *bizApplyNodeExecutor) executeObtain(execCtx *NodeExecutionContext, nod
 
 	// 初始化 ACME 账户
 	// 注意此步骤仍需在主进程中进行，以保证并发安全
-	legoUser, err := certapply.NewACMEAccountWithSingleFlight(legoConfig, nodeCfg.ContactEmail)
+	legoUser, err := certacme.NewACMEAccountWithSingleFlight(legoConfig, nodeCfg.ContactEmail)
 	if err != nil {
 		ne.logger.Warn("could not initialize acme account")
 		return nil, err
@@ -256,9 +306,35 @@ func (ne *bizApplyNodeExecutor) executeObtain(execCtx *NodeExecutionContext, nod
 	}
 
 	// 构造证书申请请求
-	obtainReq := &certapply.ObtainCertificateRequest{
-		Domains:                nodeCfg.Domains,
-		KeyType:                legoKeyType,
+	legoDomains := make([]string, 0)
+	legoDomains = append(legoDomains, nodeCfg.Domains...)
+	legoDomains = append(legoDomains, nodeCfg.IPAddrs...)
+	obtainReq := &certacme.ObtainCertificateRequest{
+		DomainOrIPs:    legoDomains,
+		PrivateKeyType: legoKeyType,
+		PrivateKeyPEM: lo.
+			If(nodeCfg.KeySource == BizApplyKeySourceAuto, "").
+			ElseF(func() string {
+				switch nodeCfg.KeySource {
+				case BizApplyKeySourceReuse:
+					if lastCertificate != nil {
+						return lastCertificate.PrivateKey
+					}
+				case BizApplyKeySourceCustom:
+					return nodeCfg.KeyContent
+				}
+				return ""
+			}),
+		ValidityNotAfter: lo.
+			If(nodeCfg.ValidityLifetime == "", time.Time{}).
+			ElseF(func() time.Time {
+				duration, err := str2duration.ParseDuration(nodeCfg.ValidityLifetime)
+				if err != nil {
+					return time.Time{}
+				}
+				return time.Now().Add(duration)
+			}),
+		NoCommonName:           nodeCfg.DisableCommonName,
 		ChallengeType:          nodeCfg.ChallengeType,
 		Provider:               nodeCfg.Provider,
 		ProviderAccessConfig:   providerAccessConfig,
@@ -269,26 +345,20 @@ func (ne *bizApplyNodeExecutor) executeObtain(execCtx *NodeExecutionContext, nod
 		DnsPropagationTimeout:  nodeCfg.DnsPropagationTimeout,
 		DnsTTL:                 nodeCfg.DnsTTL,
 		HttpDelayWait:          nodeCfg.HttpDelayWait,
-		ValidityTo: lo.If(nodeCfg.ValidityLifetime == "", time.Time{}).
-			ElseF(func() time.Time {
-				duration, err := str2duration.ParseDuration(nodeCfg.ValidityLifetime)
-				if err != nil {
-					return time.Time{}
-				}
-				return time.Now().Add(duration)
-			}),
-		ACMEProfile: nodeCfg.ACMEProfile,
-		ARIReplacesAcctUrl: lo.If(lastCertificate == nil, "").
+		PreferredChain:         nodeCfg.PreferredChain,
+		ACMEProfile:            nodeCfg.ACMEProfile,
+		ARIReplacesAcctUrl: lo.
+			If(nodeCfg.DisableARI || lastCertificate == nil, "").
 			ElseF(func() string {
-				if lastCertificate.ACMERenewed {
+				if lastCertificate.IsRenewed {
 					return ""
 				}
-
 				return lastCertificate.ACMEAcctUrl
 			}),
-		ARIReplacesCertId: lo.If(lastCertificate == nil, "").
+		ARIReplacesCertId: lo.
+			If(nodeCfg.DisableARI || lastCertificate == nil, "").
 			ElseF(func() string {
-				if lastCertificate.ACMERenewed {
+				if lastCertificate.IsRenewed {
 					return ""
 				}
 
@@ -300,7 +370,7 @@ func (ne *bizApplyNodeExecutor) executeObtain(execCtx *NodeExecutionContext, nod
 					return ""
 				}
 
-				oldCertX509, err := certcrypto.ParsePEMCertificate([]byte(lastCertificate.Certificate))
+				oldCertX509, err := xcert.ParseCertificateFromPEM(lastCertificate.Certificate)
 				if err != nil {
 					return ""
 				}
@@ -311,18 +381,18 @@ func (ne *bizApplyNodeExecutor) executeObtain(execCtx *NodeExecutionContext, nod
 	}
 
 	// 如果启用多进程模式，发送指令
-	if useMultiProc {
+	if envMultiProc {
 		type InData struct {
-			Account *certapply.ACMEAccount              `json:"account,omitempty"`
-			Request *certapply.ObtainCertificateRequest `json:"request,omitempty"`
+			Account *certacme.ACMEAccount              `json:"account,omitempty"`
+			Request *certacme.ObtainCertificateRequest `json:"request,omitempty"`
 		}
 
 		type OutData struct {
-			Response *certapply.ObtainCertificateResponse `json:"response"`
+			Response *certacme.ObtainCertificateResponse `json:"response"`
 		}
 
 		msender := mproc.NewSender[InData, OutData]("certapply", ne.logger)
-		moutput, err := msender.SendWithContext(execCtx.ctx, &InData{
+		moutput, err := msender.SendWithContext(execCtx.Context(), &InData{
 			Account: legoUser,
 			Request: obtainReq,
 		})
@@ -334,15 +404,16 @@ func (ne *bizApplyNodeExecutor) executeObtain(execCtx *NodeExecutionContext, nod
 		if moutput.Response != nil {
 			return moutput.Response, nil
 		} else {
-			panic("impossible!")
+			panic("unreachable")
 		}
 	}
 
 	// 初始化 ACME 客户端
-	legolog.Logger = certapply.NewLegoLogger(app.GetLogger())
-	legoClient, err := certapply.NewACMEClientWithAccount(legoUser, func(c *lego.Config) error {
-		c.UserAgent = "certimate"
+	legolog.Logger = certacme.NewLegoLogger(app.GetLogger())
+	legoClient, err := certacme.NewACMEClientWithAccount(legoUser, func(c *lego.Config) error {
+		c.UserAgent = app.AppUserAgent
 		c.Certificate.KeyType = legoKeyType
+		c.Certificate.DisableCommonName = obtainReq.NoCommonName
 		return nil
 	})
 	if err != nil {
@@ -351,7 +422,7 @@ func (ne *bizApplyNodeExecutor) executeObtain(execCtx *NodeExecutionContext, nod
 	}
 
 	// 执行申请证书请求
-	obtainResp, err := legoClient.ObtainCertificate(execCtx.ctx, obtainReq)
+	obtainResp, err := legoClient.ObtainCertificate(execCtx.Context(), obtainReq)
 	if err != nil {
 		ne.logger.Warn("could not obtain certificate")
 		return nil, err
@@ -365,16 +436,16 @@ func (ne *bizApplyNodeExecutor) setOuputsOfResult(execCtx *NodeExecutionContext,
 		key := "certificate"
 		value := fmt.Sprintf("%s#%s", domain.CollectionNameCertificate, certificate.Id)
 		if persistent {
-			execRes.AddOutputWithPersistent(stateIOTypeRef, key, value, "string")
+			execRes.AddOutputWithPersistent(stateIOTypeRef, key, value, stateValTypeString)
 		} else {
-			execRes.AddOutput(stateIOTypeRef, key, value, "string")
+			execRes.AddOutput(stateIOTypeRef, key, value, stateValTypeString)
 		}
 	}
 }
 
 func (ne *bizApplyNodeExecutor) setVariablesOfResult(execCtx *NodeExecutionContext, execRes *NodeExecutionResult, certificate *domain.Certificate) {
-	var vDomain string
-	var vDomains string
+	var vCommonName string
+	var vSubjectAltNames string
 	var vNotBefore time.Time
 	var vNotAfter time.Time
 	var vHoursLeft int32
@@ -382,8 +453,8 @@ func (ne *bizApplyNodeExecutor) setVariablesOfResult(execCtx *NodeExecutionConte
 	var vValidity bool
 
 	if certificate != nil {
-		vDomain = strings.Split(certificate.SubjectAltNames, ";")[0]
-		vDomains = certificate.SubjectAltNames
+		vCommonName = strings.Split(certificate.SubjectAltNames, ";")[0]
+		vSubjectAltNames = certificate.SubjectAltNames
 		vNotBefore = certificate.ValidityNotBefore
 		vNotAfter = certificate.ValidityNotAfter
 		vHoursLeft = int32(math.Floor(time.Until(certificate.ValidityNotAfter).Hours()))
@@ -391,20 +462,24 @@ func (ne *bizApplyNodeExecutor) setVariablesOfResult(execCtx *NodeExecutionConte
 		vValidity = certificate.ValidityNotAfter.After(time.Now())
 	}
 
-	execRes.AddVariable(stateVarKeyCertificateDomain, vDomain, "string")
-	execRes.AddVariable(stateVarKeyCertificateDomains, vDomains, "string")
-	execRes.AddVariable(stateVarKeyCertificateNotBefore, vNotBefore, "datetime")
-	execRes.AddVariable(stateVarKeyCertificateNotAfter, vNotAfter, "datetime")
-	execRes.AddVariable(stateVarKeyCertificateHoursLeft, vHoursLeft, "number")
-	execRes.AddVariable(stateVarKeyCertificateDaysLeft, vDaysLeft, "number")
-	execRes.AddVariable(stateVarKeyCertificateValidity, vValidity, "boolean")
-	execRes.AddVariableWithScope(execCtx.Node.Id, stateVarKeyCertificateDomain, vDomain, "string")
-	execRes.AddVariableWithScope(execCtx.Node.Id, stateVarKeyCertificateDomains, vDomains, "string")
-	execRes.AddVariableWithScope(execCtx.Node.Id, stateVarKeyCertificateNotBefore, vNotBefore, "datetime")
-	execRes.AddVariableWithScope(execCtx.Node.Id, stateVarKeyCertificateNotAfter, vNotAfter, "datetime")
-	execRes.AddVariableWithScope(execCtx.Node.Id, stateVarKeyCertificateHoursLeft, vHoursLeft, "number")
-	execRes.AddVariableWithScope(execCtx.Node.Id, stateVarKeyCertificateDaysLeft, vDaysLeft, "number")
-	execRes.AddVariableWithScope(execCtx.Node.Id, stateVarKeyCertificateValidity, vValidity, "boolean")
+	execRes.AddVariable(stateVarKeyCertificateDomain, vCommonName, stateValTypeString)
+	execRes.AddVariable(stateVarKeyCertificateDomains, vSubjectAltNames, stateValTypeString)
+	execRes.AddVariable(stateVarKeyCertificateCommonName, vCommonName, stateValTypeString)
+	execRes.AddVariable(stateVarKeyCertificateSubjectAltNames, vSubjectAltNames, stateValTypeString)
+	execRes.AddVariable(stateVarKeyCertificateNotBefore, vNotBefore, stateValTypeDateTime)
+	execRes.AddVariable(stateVarKeyCertificateNotAfter, vNotAfter, stateValTypeDateTime)
+	execRes.AddVariable(stateVarKeyCertificateHoursLeft, vHoursLeft, stateValTypeNumber)
+	execRes.AddVariable(stateVarKeyCertificateDaysLeft, vDaysLeft, stateValTypeNumber)
+	execRes.AddVariable(stateVarKeyCertificateValidity, vValidity, stateValTypeBoolean)
+	execRes.AddVariableWithScope(execCtx.Node.Id, stateVarKeyCertificateDomain, vCommonName, stateValTypeString)
+	execRes.AddVariableWithScope(execCtx.Node.Id, stateVarKeyCertificateDomains, vSubjectAltNames, stateValTypeString)
+	execRes.AddVariableWithScope(execCtx.Node.Id, stateVarKeyCertificateCommonName, vCommonName, stateValTypeString)
+	execRes.AddVariableWithScope(execCtx.Node.Id, stateVarKeyCertificateSubjectAltNames, vSubjectAltNames, stateValTypeString)
+	execRes.AddVariableWithScope(execCtx.Node.Id, stateVarKeyCertificateNotBefore, vNotBefore, stateValTypeDateTime)
+	execRes.AddVariableWithScope(execCtx.Node.Id, stateVarKeyCertificateNotAfter, vNotAfter, stateValTypeDateTime)
+	execRes.AddVariableWithScope(execCtx.Node.Id, stateVarKeyCertificateHoursLeft, vHoursLeft, stateValTypeNumber)
+	execRes.AddVariableWithScope(execCtx.Node.Id, stateVarKeyCertificateDaysLeft, vDaysLeft, stateValTypeNumber)
+	execRes.AddVariableWithScope(execCtx.Node.Id, stateVarKeyCertificateValidity, vValidity, stateValTypeBoolean)
 }
 
 func newBizApplyNodeExecutor() NodeExecutor {

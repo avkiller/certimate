@@ -6,14 +6,14 @@ import (
 	"strconv"
 )
 
-type apiResponse interface {
+type sdkResponse interface {
 	GetStatusCode() string
 	GetMessage() string
 	GetError() string
 	GetErrorMessage() string
 }
 
-type apiResponseBase struct {
+type sdkResponseBase struct {
 	StatusCode   json.RawMessage `json:"statusCode,omitempty"`
 	Message      *string         `json:"message,omitempty"`
 	Error        *string         `json:"error,omitempty"`
@@ -21,7 +21,7 @@ type apiResponseBase struct {
 	RequestId    *string         `json:"requestId,omitempty"`
 }
 
-func (r *apiResponseBase) GetStatusCode() string {
+func (r *sdkResponseBase) GetStatusCode() string {
 	if r.StatusCode == nil {
 		return ""
 	}
@@ -44,7 +44,7 @@ func (r *apiResponseBase) GetStatusCode() string {
 	}
 }
 
-func (r *apiResponseBase) GetMessage() string {
+func (r *sdkResponseBase) GetMessage() string {
 	if r.Message == nil {
 		return ""
 	}
@@ -52,7 +52,7 @@ func (r *apiResponseBase) GetMessage() string {
 	return *r.Message
 }
 
-func (r *apiResponseBase) GetError() string {
+func (r *sdkResponseBase) GetError() string {
 	if r.Error == nil {
 		return ""
 	}
@@ -60,7 +60,7 @@ func (r *apiResponseBase) GetError() string {
 	return *r.Error
 }
 
-func (r *apiResponseBase) GetErrorMessage() string {
+func (r *sdkResponseBase) GetErrorMessage() string {
 	if r.ErrorMessage == nil {
 		return ""
 	}
@@ -68,7 +68,7 @@ func (r *apiResponseBase) GetErrorMessage() string {
 	return *r.ErrorMessage
 }
 
-var _ apiResponse = (*apiResponseBase)(nil)
+var _ sdkResponse = (*sdkResponseBase)(nil)
 
 type CertRecord struct {
 	Id          int64    `json:"id"`
@@ -89,6 +89,15 @@ type CertDetail struct {
 	Key   string `json:"key"`
 }
 
+type DomainRecord struct {
+	Domain      string `json:"domain"`
+	Cname       string `json:"cname"`
+	ProductCode string `json:"product_code"`
+	ProductName string `json:"product_name"`
+	Status      int32  `json:"status"`
+	AreaScope   int32  `json:"area_scope"`
+}
+
 type DomainOriginConfig struct {
 	Origin string `json:"origin"`
 	Role   string `json:"role"`
@@ -102,6 +111,6 @@ type DomainOriginConfigWithWeight struct {
 }
 
 type DomainHttpsBasicConfig struct {
-	HttpsForce  string `json:"https_force"`
-	ForceStatus string `json:"force_status"`
+	HttpsForce  string `json:"https_force,omitempty"`
+	ForceStatus string `json:"force_status,omitempty"`
 }

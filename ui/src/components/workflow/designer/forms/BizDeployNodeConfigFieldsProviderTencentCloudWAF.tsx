@@ -3,7 +3,7 @@ import { Form, Input } from "antd";
 import { createSchemaFieldRule } from "antd-zod";
 import { z } from "zod";
 
-import { validDomainName } from "@/utils/validators";
+import { isDomain } from "@/utils/validator";
 
 import { useFormNestedFieldsContext } from "./_context";
 
@@ -44,7 +44,6 @@ const BizDeployNodeConfigFieldsProviderTencentCloudWAF = () => {
         initialValue={initialValues.domain}
         label={t("workflow_node.deploy.form.tencentcloud_waf_domain.label")}
         rules={[formRule]}
-        tooltip={<span dangerouslySetInnerHTML={{ __html: t("workflow_node.deploy.form.tencentcloud_waf_domain.tooltip") }}></span>}
       >
         <Input placeholder={t("workflow_node.deploy.form.tencentcloud_waf_domain.placeholder")} />
       </Form.Item>
@@ -87,7 +86,7 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
   return z.object({
     endpoint: z.string().nullish(),
     region: z.string().nonempty(t("workflow_node.deploy.form.tencentcloud_waf_region.placeholder")),
-    domain: z.string().refine((v) => validDomainName(v), t("common.errmsg.domain_invalid")),
+    domain: z.string().refine((v) => isDomain(v), t("common.errmsg.domain_invalid")),
     domainId: z.string().nonempty(t("workflow_node.deploy.form.tencentcloud_waf_domain_id.placeholder")),
     instanceId: z.string().nonempty(t("workflow_node.deploy.form.tencentcloud_waf_instance_id.placeholder")),
   });

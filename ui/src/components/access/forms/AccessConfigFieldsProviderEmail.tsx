@@ -1,9 +1,10 @@
 import { getI18n, useTranslation } from "react-i18next";
-import { Form, Input, InputNumber, Switch } from "antd";
+import { Form, Input, InputNumber, Select, Switch } from "antd";
 import { createSchemaFieldRule } from "antd-zod";
 import { z } from "zod";
 
-import { validEmailAddress, validPortNumber } from "@/utils/validators";
+import Show from "@/components/Show";
+import { isEmail, isHostname, isPortNumber } from "@/utils/validator";
 
 import { useFormNestedFieldsContext } from "./_context";
 
@@ -18,13 +19,7 @@ const AccessConfigFormFieldsProviderEmail = () => {
   const formInst = Form.useFormInstance();
   const initialValues = getInitialValues();
 
-  const handleTlsSwitchChange = (checked: boolean) => {
-    const oldPort = formInst.getFieldValue([parentNamePath, "smtpPort"]);
-    const newPort = checked && (oldPort == null || oldPort === 25) ? 465 : !checked && (oldPort == null || oldPort === 465) ? 25 : oldPort;
-    if (newPort !== oldPort) {
-      formInst.setFieldValue([parentNamePath, "smtpPort"], newPort);
-    }
-  };
+  const fieldSmtpTls = Form.useWatch<boolean>([parentNamePath, "smtpTls"], formInst);
 
   return (
     <>
@@ -52,9 +47,29 @@ const AccessConfigFormFieldsProviderEmail = () => {
         </div>
       </div>
 
-      <Form.Item name={[parentNamePath, "smtpTls"]} initialValue={initialValues.smtpTls} label={t("access.form.email_smtp_tls.label")} rules={[formRule]}>
-        <Switch onChange={handleTlsSwitchChange} />
-      </Form.Item>
+      <div className="flex space-x-8">
+        <div className={fieldSmtpTls ? "w-1/2" : "w-3/5"}>
+          <Form.Item name={[parentNamePath, "smtpTls"]} initialValue={initialValues.smtpTls} label={t("access.form.email_smtp_tls.label")} rules={[formRule]}>
+            <Select placeholder={t("access.form.email_smtp_tls.placeholder")}>
+              <Select.Option value={true}>{t("access.form.email_smtp_tls.option.true.label")}</Select.Option>
+              <Select.Option value={false}>{t("access.form.email_smtp_tls.option.false.label")}</Select.Option>
+            </Select>
+          </Form.Item>
+        </div>
+
+        <Show when={fieldSmtpTls}>
+          <div className="w-1/2">
+            <Form.Item
+              name={[parentNamePath, "allowInsecureConnections"]}
+              initialValue={initialValues.allowInsecureConnections}
+              label={t("access.form.shared_allow_insecure_conns.label")}
+              rules={[formRule]}
+            >
+              <Switch />
+            </Form.Item>
+          </div>
+        </Show>
+      </div>
 
       <Form.Item name={[parentNamePath, "username"]} initialValue={initialValues.username} label={t("access.form.email_username.label")} rules={[formRule]}>
         <Input autoComplete="new-password" placeholder={t("access.form.email_username.placeholder")} />
@@ -112,23 +127,11 @@ const getSchema = ({ i18n = getI18n() }: { i18n: ReturnType<typeof getI18n> }) =
   const { t } = i18n;
 
   return z.object({
-    smtpHost: z
-      .string()
-      .min(1, t("access.form.email_smtp_host.placeholder"))
-      .max(256, t("common.errmsg.string_max", { max: 256 })),
-    smtpPort: z.preprocess(
-      (v) => Number(v),
-      z.number().refine((v) => validPortNumber(v), t("common.errmsg.port_invalid"))
-    ),
+    smtpHost: z.string().refine((v) => isHostname(v), t("common.errmsg.host_invalid")),
+    smtpPort: z.coerce.number().refine((v) => isPortNumber(v), t("common.errmsg.port_invalid")),
     smtpTls: z.boolean().nullish(),
-    username: z
-      .string()
-      .min(1, t("access.form.email_username.placeholder"))
-      .max(256, t("common.errmsg.string_max", { max: 256 })),
-    password: z
-      .string()
-      .min(1, t("access.form.email_password.placeholder"))
-      .max(256, t("common.errmsg.string_max", { max: 256 })),
+    username: z.string().nonempty(t("access.form.email_username.placeholder")),
+    password: z.string().nonempty(t("access.form.email_password.placeholder")),
     senderAddress: z.email(t("common.errmsg.email_invalid")),
     senderName: z.string().nullish(),
     receiverAddress: z
@@ -136,8 +139,9 @@ const getSchema = ({ i18n = getI18n() }: { i18n: ReturnType<typeof getI18n> }) =
       .nullish()
       .refine((v) => {
         if (!v) return true;
-        return validEmailAddress(v);
+        return isEmail(v);
       }, t("common.errmsg.email_invalid")),
+    allowInsecureConnections: z.boolean().nullish(),
   });
 };
 

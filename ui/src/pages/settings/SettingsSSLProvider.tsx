@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { App, Button, Card, Form, Input, Select, Skeleton } from "antd";
+import { useMount } from "ahooks";
+import { App, Button, Card, Divider, Form, Input, Select, Skeleton } from "antd";
 import { createSchemaFieldRule } from "antd-zod";
 import { produce } from "immer";
 import { z } from "zod";
@@ -8,47 +9,74 @@ import { z } from "zod";
 import Show from "@/components/Show";
 import Tips from "@/components/Tips";
 import { type CAProviderType, CA_PROVIDERS } from "@/domain/provider";
-import { SETTINGS_NAMES, type SSLProviderSettingsContent, type SettingsModel } from "@/domain/settings";
-import { useAntdForm } from "@/hooks";
-import { get as getSettings, save as saveSettings } from "@/repository/settings";
+import { type SSLProviderSettingsContent } from "@/domain/settings";
+import { useAntdForm, useZustandShallowSelector } from "@/hooks";
+import { useSSLProviderSettingsStore } from "@/stores/settings";
 import { mergeCls } from "@/utils/css";
-import { getErrMsg } from "@/utils/error";
+import { unwrapErrMsg } from "@/utils/error";
 
 const SettingsSSLProvider = () => {
   const { t } = useTranslation();
 
   const { message, notification } = App.useApp();
 
-  const [formInst] = Form.useForm<{ provider?: string }>();
-  const [formPending, setFormPending] = useState(false);
+  const { settings, loading, loadSettings, saveSettings } = useSSLProviderSettingsStore(
+    useZustandShallowSelector(["settings", "loading", "loadSettings", "saveSettings"])
+  );
+  useMount(() => loadSettings());
 
-  const [settings, setSettings] = useState<SettingsModel<SSLProviderSettingsContent>>();
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
+  const updateContextSettings = async (settings: SSLProviderSettingsContent) => {
+    try {
+      await saveSettings(settings);
 
-      const settings = await getSettings<SSLProviderSettingsContent>(SETTINGS_NAMES.SSL_PROVIDER);
-      setSettings(settings);
-      setProviderValue(settings.content?.provider);
+      message.success(t("common.text.operation_succeeded"));
+    } catch (err) {
+      notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
+    }
+  };
 
-      setLoading(false);
-    };
+  return (
+    <InternalSettingsContext.Provider
+      value={{
+        loading: loading,
+        settings: settings!,
+        updateSettings: updateContextSettings,
+      }}
+    >
+      <h2>{t("settings.sslprovider.ca.title")}</h2>
+      <SettingsSSLProviderCA />
 
-    fetchData();
-  }, []);
+      <Divider />
+
+      <h2>{t("settings.sslprovider.others.title")}</h2>
+      <SettingsSSLProviderOthers className="md:max-w-160" />
+    </InternalSettingsContext.Provider>
+  );
+};
+
+const SettingsSSLProviderCA = ({ className, style }: { className?: string; style?: React.CSSProperties }) => {
+  const { t } = useTranslation();
+
+  const { loading, settings } = useContext(InternalSettingsContext);
+
+  const formSchema = z.object({
+    provider: z.string().nonempty(),
+    configs: z.object().nullish(),
+  });
+  const formRule = createSchemaFieldRule(formSchema);
+  const [formInst] = Form.useForm<z.infer<typeof formSchema>>();
 
   const providers = [
     [CA_PROVIDERS.LETSENCRYPT, "provider.letsencrypt", "letsencrypt.org", "/imgs/providers/letsencrypt.svg"],
     [CA_PROVIDERS.LETSENCRYPTSTAGING, "provider.letsencryptstaging", "letsencrypt.org", "/imgs/providers/letsencrypt.svg"],
     [CA_PROVIDERS.ACTALISSSL, "provider.actalisssl", "actalis.com", "/imgs/providers/actalisssl.png"],
-    [CA_PROVIDERS.BUYPASS, "provider.buypass", "buypass.com", "/imgs/providers/buypass.png"],
     [CA_PROVIDERS.GLOBALSIGNATLAS, "provider.globalsignatlas", "atlas.globalsign.com", "/imgs/providers/globalsignatlas.png"],
     [CA_PROVIDERS.GOOGLETRUSTSERVICES, "provider.googletrustservices", "pki.goog", "/imgs/providers/google.svg"],
     [CA_PROVIDERS.SECTIGO, "provider.sectigo", "sectigo.com", "/imgs/providers/sectigo.svg"],
     [CA_PROVIDERS.SSLCOM, "provider.sslcom", "ssl.com", "/imgs/providers/sslcom.svg"],
     [CA_PROVIDERS.ZEROSSL, "provider.zerossl", "zerossl.com", "/imgs/providers/zerossl.svg"],
-    [CA_PROVIDERS.ACMECA, "provider.acmeca", "\u00A0", "/imgs/providers/acmeca.svg"],
+    [CA_PROVIDERS.LITESSL, "provider.litessl", "litessl.cn (freessl.cn)", "/imgs/providers/litessl.svg"],
+    [CA_PROVIDERS.ACMECA, "provider.acmeca", "ACME v2 (RFC 8555)", "/imgs/providers/acmeca.svg"],
   ].map(([value, name, description, icon]) => {
     return {
       value: value as CAProviderType,
@@ -57,64 +85,51 @@ const SettingsSSLProvider = () => {
       icon,
     };
   });
-  const [providerValue, setProviderValue] = useState<CAProviderType>(CA_PROVIDERS.LETSENCRYPT);
-  const providerFormEl = useMemo(() => {
+  const [providerValue, setProviderValue] = useState(settings.provider);
+
+  const renderSiblingFieldProviderComponent = useMemo(() => {
     switch (providerValue) {
       case CA_PROVIDERS.LETSENCRYPT:
-        return <InternalSettingsFormProviderLetsEncrypt />;
+        return <InternalCASettingsFormProviderLetsEncrypt />;
       case CA_PROVIDERS.LETSENCRYPTSTAGING:
-        return <InternalSettingsFormProviderLetsEncryptStaging />;
+        return <InternalCASettingsFormProviderLetsEncryptStaging />;
       case CA_PROVIDERS.ACTALISSSL:
-        return <InternalSettingsFormProviderActalisSSL />;
-      case CA_PROVIDERS.BUYPASS:
-        return <InternalSettingsFormProviderBuypass />;
+        return <InternalCASettingsFormProviderActalisSSL />;
       case CA_PROVIDERS.GLOBALSIGNATLAS:
-        return <InternalSettingsFormProviderGlobalSignAtlas />;
+        return <InternalCASettingsFormProviderGlobalSignAtlas />;
       case CA_PROVIDERS.GOOGLETRUSTSERVICES:
-        return <InternalSettingsFormProviderGoogleTrustServices />;
+        return <InternalCASettingsFormProviderGoogleTrustServices />;
+      case CA_PROVIDERS.LITESSL:
+        return <InternalCASettingsFormProviderLiteSSL />;
       case CA_PROVIDERS.SECTIGO:
-        return <InternalSettingsFormProviderSectigo />;
+        return <InternalCASettingsFormProviderSectigo />;
       case CA_PROVIDERS.SSLCOM:
-        return <InternalSettingsFormProviderSSLCom />;
+        return <InternalCASettingsFormProviderSSLCom />;
       case CA_PROVIDERS.ZEROSSL:
-        return <InternalSettingsFormProviderZeroSSL />;
+        return <InternalCASettingsFormProviderZeroSSL />;
       case CA_PROVIDERS.ACMECA:
-        return <InternalSettingsFormProviderACMECA />;
+        return <InternalCASettingsFormProviderACMECA />;
     }
   }, [providerValue]);
 
-  const updateContextSettings = async (settings: MaybeModelRecordWithId<SettingsModel<SSLProviderSettingsContent>>) => {
-    setFormPending(true);
-
-    try {
-      const resp = await saveSettings(settings);
-      setSettings(resp);
-      setProviderValue(resp.content?.provider);
-
-      message.success(t("common.text.operation_succeeded"));
-    } catch (err) {
-      notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
-    } finally {
-      setFormPending(false);
-    }
-  };
+  useEffect(() => {
+    setProviderValue(settings.provider);
+  }, [settings.provider]);
 
   return (
-    <InternalSettingsContext.Provider
-      value={{
-        pending: formPending,
-        settings: settings!,
-        updateSettings: updateContextSettings,
-      }}
-    >
-      <h2>{t("settings.sslprovider.ca.title")}</h2>
+    <div className={className} style={style}>
       <Show when={!loading} fallback={<Skeleton active />}>
-        <Form form={formInst} disabled={formPending} layout="vertical" initialValues={{ provider: providerValue }}>
+        <Form form={formInst} layout="vertical" initialValues={{ provider: providerValue }}>
           <Form.Item>
             <Tips message={<span dangerouslySetInnerHTML={{ __html: t("settings.sslprovider.ca.tips") }}></span>} />
           </Form.Item>
 
-          <Form.Item name="provider" label={t("settings.sslprovider.form.provider.label")} extra={t("settings.sslprovider.form.provider.help")}>
+          <Form.Item
+            name="provider"
+            label={t("settings.sslprovider.ca.form.provider.label")}
+            extra={t("settings.sslprovider.ca.form.provider.help")}
+            rules={[formRule]}
+          >
             <div className="flex w-full flex-wrap items-center gap-4">
               {providers.map((provider) => (
                 <Card
@@ -145,56 +160,125 @@ const SettingsSSLProvider = () => {
           </Form.Item>
         </Form>
 
-        <div className="md:max-w-160">{providerFormEl}</div>
+        <div className="md:max-w-160">{renderSiblingFieldProviderComponent}</div>
       </Show>
-    </InternalSettingsContext.Provider>
+    </div>
   );
 };
 
-const InternalSettingsContext = createContext(
-  {} as {
-    pending: boolean;
-    settings: SettingsModel<SSLProviderSettingsContent>;
-    updateSettings: (settings: MaybeModelRecordWithId<SettingsModel<SSLProviderSettingsContent>>) => Promise<void>;
-  }
-);
-
-const InternalSharedForm = ({ children, provider }: { children?: React.ReactNode; provider: CAProviderType }) => {
+const SettingsSSLProviderOthers = ({ className, style }: { className?: string; style?: React.CSSProperties }) => {
   const { t } = useTranslation();
 
-  const { pending, settings, updateSettings } = useContext(InternalSettingsContext);
+  const { loading, settings, updateSettings } = useContext(InternalSettingsContext);
 
-  const { form: formInst, formProps } = useAntdForm<NonNullable<unknown>>({
-    initialValues: settings?.content?.config?.[provider],
+  const formSchema = z.object({
+    timeout: z.union([z.string(), z.number().int().positive()]).nullish(),
+  });
+  const formRule = createSchemaFieldRule(formSchema);
+  const { form: formInst, formProps } = useAntdForm<z.infer<typeof formSchema>>({
+    initialValues: { timeout: settings.timeout },
     onSubmit: async (values) => {
-      const newSettings = produce(settings, (draft) => {
-        draft.content ??= {} as SSLProviderSettingsContent;
-        draft.content.provider = provider;
+      setFormPending(true);
 
-        draft.content.config ??= {} as SSLProviderSettingsContent["config"];
-        draft.content.config[provider] = values;
-      });
-      await updateSettings(newSettings);
+      try {
+        const newSettings = produce(settings, (draft) => {
+          draft.timeout = +values.timeout!;
+        });
+        await updateSettings(newSettings);
+      } finally {
+        setFormPending(false);
+      }
 
       setFormChanged(false);
     },
   });
-
+  const [formPending, setFormPending] = useState(false);
   const [formChanged, setFormChanged] = useState(false);
-  useEffect(() => {
-    setFormChanged(provider !== settings?.content?.provider);
-  }, [provider, settings?.content?.provider]);
 
   const handleFormChange = () => {
     setFormChanged(true);
   };
 
   return (
-    <Form {...formProps} form={formInst} disabled={pending} layout="vertical" onValuesChange={handleFormChange}>
+    <div className={className} style={style}>
+      <Show when={!loading} fallback={<Skeleton active />}>
+        <Form {...formProps} form={formInst} disabled={formPending} layout="vertical" onValuesChange={handleFormChange}>
+          <Form.Item
+            name="timeout"
+            label={t("settings.sslprovider.others.form.timeout.label")}
+            rules={[formRule]}
+            tooltip={<span dangerouslySetInnerHTML={{ __html: t("settings.sslprovider.others.form.timeout.tooltip") }}></span>}
+          >
+            <Input
+              type="number"
+              allowClear
+              min={0}
+              max={3600}
+              placeholder={t("settings.sslprovider.others.form.timeout.placeholder")}
+              suffix={t("settings.sslprovider.others.form.timeout.unit")}
+            />
+          </Form.Item>
+
+          <Form.Item>
+            <Button type="primary" htmlType="submit" disabled={!formChanged} loading={formPending}>
+              {t("common.button.save")}
+            </Button>
+          </Form.Item>
+        </Form>
+      </Show>
+    </div>
+  );
+};
+
+const InternalSettingsContext = createContext(
+  {} as {
+    loading: boolean;
+    settings: SSLProviderSettingsContent;
+    updateSettings: (settings: SSLProviderSettingsContent) => Promise<void>;
+  }
+);
+
+const InternalCASharedForm = ({ children, provider }: { children?: React.ReactNode; provider: CAProviderType }) => {
+  const { t } = useTranslation();
+
+  const { settings, updateSettings } = useContext(InternalSettingsContext);
+
+  const { form: formInst, formProps } = useAntdForm<NonNullable<unknown>>({
+    initialValues: settings?.configs?.[provider],
+    onSubmit: async (values) => {
+      setFormPending(true);
+
+      try {
+        const newSettings = produce(settings, (draft) => {
+          draft.provider = provider;
+          draft.configs ??= {} as SSLProviderSettingsContent["configs"];
+          draft.configs[provider] = values;
+        });
+        await updateSettings(newSettings);
+      } finally {
+        setFormPending(false);
+      }
+
+      setFormChanged(false);
+    },
+  });
+  const [formPending, setFormPending] = useState(false);
+  const [formChanged, setFormChanged] = useState(false);
+
+  useEffect(() => {
+    setFormChanged(provider !== settings?.provider);
+  }, [provider, settings?.provider]);
+
+  const handleFormChange = () => {
+    setFormChanged(true);
+  };
+
+  return (
+    <Form {...formProps} form={formInst} disabled={formPending} layout="vertical" onValuesChange={handleFormChange}>
       {children}
 
       <Form.Item>
-        <Button type="primary" htmlType="submit" disabled={!formChanged} loading={pending}>
+        <Button type="primary" htmlType="submit" disabled={!formChanged} loading={formPending}>
           {t("common.button.save")}
         </Button>
       </Form.Item>
@@ -202,21 +286,15 @@ const InternalSharedForm = ({ children, provider }: { children?: React.ReactNode
   );
 };
 
-const InternalSharedFormEabFields = ({ i18nKey }: { i18nKey: string }) => {
+const InternalCASharedFormEabFields = ({ i18nKey }: { i18nKey: string }) => {
   const { t, i18n } = useTranslation();
 
   const hasGuide = i18n.exists(`access.form.${i18nKey}_eab.guide`);
 
   const formSchema = z.object({
     endpoint: z.url(t("common.errmsg.url_invalid")),
-    eabKid: z
-      .string(t("access.form.shared_acme_eab_kid.label"))
-      .min(1, t("access.form.shared_acme_eab_kid.placeholder"))
-      .max(256, t("common.errmsg.string_max", { max: 256 })),
-    eabHmacKey: z
-      .string(t("access.form.shared_acme_eab_hmac_key.label"))
-      .min(1, t("access.form.shared_acme_eab_hmac_key.placeholder"))
-      .max(256, t("common.errmsg.string_max", { max: 256 })),
+    eabKid: z.string(t("access.form.shared_acme_eab_kid.label")).nonempty(t("access.form.shared_acme_eab_kid.placeholder")),
+    eabHmacKey: z.string(t("access.form.shared_acme_eab_hmac_key.label")).nonempty(t("access.form.shared_acme_eab_hmac_key.placeholder")),
   });
   const formRule = createSchemaFieldRule(formSchema);
 
@@ -237,51 +315,55 @@ const InternalSharedFormEabFields = ({ i18nKey }: { i18nKey: string }) => {
   );
 };
 
-const InternalSettingsFormProviderLetsEncrypt = () => {
-  return <InternalSharedForm provider={CA_PROVIDERS.LETSENCRYPT} />;
+const InternalCASettingsFormProviderLetsEncrypt = () => {
+  return <InternalCASharedForm provider={CA_PROVIDERS.LETSENCRYPT} />;
 };
 
-const InternalSettingsFormProviderLetsEncryptStaging = () => {
+const InternalCASettingsFormProviderLetsEncryptStaging = () => {
   const { t } = useTranslation();
 
   return (
-    <InternalSharedForm provider={CA_PROVIDERS.LETSENCRYPTSTAGING}>
+    <InternalCASharedForm provider={CA_PROVIDERS.LETSENCRYPTSTAGING}>
       <Form.Item>
-        <Tips message={<span dangerouslySetInnerHTML={{ __html: t("settings.sslprovider.form.letsencryptstaging_alert") }}></span>} />
+        <Tips message={<span dangerouslySetInnerHTML={{ __html: t("settings.sslprovider.ca.form.letsencryptstaging_alert") }}></span>} />
       </Form.Item>
-    </InternalSharedForm>
+    </InternalCASharedForm>
   );
 };
 
-const InternalSettingsFormProviderActalisSSL = () => {
+const InternalCASettingsFormProviderActalisSSL = () => {
   return (
-    <InternalSharedForm provider={CA_PROVIDERS.ACTALISSSL}>
-      <InternalSharedFormEabFields i18nKey="actalisssl" />
-    </InternalSharedForm>
+    <InternalCASharedForm provider={CA_PROVIDERS.ACTALISSSL}>
+      <InternalCASharedFormEabFields i18nKey="actalisssl" />
+    </InternalCASharedForm>
   );
 };
 
-const InternalSettingsFormProviderBuypass = () => {
-  return <InternalSharedForm provider={CA_PROVIDERS.BUYPASS} />;
-};
-
-const InternalSettingsFormProviderGlobalSignAtlas = () => {
+const InternalCASettingsFormProviderGlobalSignAtlas = () => {
   return (
-    <InternalSharedForm provider={CA_PROVIDERS.GLOBALSIGNATLAS}>
-      <InternalSharedFormEabFields i18nKey="globalsignatlas" />
-    </InternalSharedForm>
+    <InternalCASharedForm provider={CA_PROVIDERS.GLOBALSIGNATLAS}>
+      <InternalCASharedFormEabFields i18nKey="globalsignatlas" />
+    </InternalCASharedForm>
   );
 };
 
-const InternalSettingsFormProviderGoogleTrustServices = () => {
+const InternalCASettingsFormProviderGoogleTrustServices = () => {
   return (
-    <InternalSharedForm provider={CA_PROVIDERS.GOOGLETRUSTSERVICES}>
-      <InternalSharedFormEabFields i18nKey="googletrustservices" />
-    </InternalSharedForm>
+    <InternalCASharedForm provider={CA_PROVIDERS.GOOGLETRUSTSERVICES}>
+      <InternalCASharedFormEabFields i18nKey="googletrustservices" />
+    </InternalCASharedForm>
   );
 };
 
-const InternalSettingsFormProviderSectigo = () => {
+const InternalCASettingsFormProviderLiteSSL = () => {
+  return (
+    <InternalCASharedForm provider={CA_PROVIDERS.LITESSL}>
+      <InternalCASharedFormEabFields i18nKey="litessl" />
+    </InternalCASharedForm>
+  );
+};
+
+const InternalCASettingsFormProviderSectigo = () => {
   const { t } = useTranslation();
 
   const formSchema = z.object({
@@ -290,7 +372,7 @@ const InternalSettingsFormProviderSectigo = () => {
   const formRule = createSchemaFieldRule(formSchema);
 
   return (
-    <InternalSharedForm provider={CA_PROVIDERS.SECTIGO}>
+    <InternalCASharedForm provider={CA_PROVIDERS.SECTIGO}>
       <Form.Item name="validationType" initialValue="dv" label={t("access.form.sectigo_validation_type.label")} rules={[formRule]}>
         <Select
           options={["dv", "ov", "ev"].map((s) => ({
@@ -302,45 +384,39 @@ const InternalSettingsFormProviderSectigo = () => {
         />
       </Form.Item>
 
-      <InternalSharedFormEabFields i18nKey="sectigo" />
-    </InternalSharedForm>
+      <InternalCASharedFormEabFields i18nKey="sectigo" />
+    </InternalCASharedForm>
   );
 };
 
-const InternalSettingsFormProviderSSLCom = () => {
+const InternalCASettingsFormProviderSSLCom = () => {
   return (
-    <InternalSharedForm provider={CA_PROVIDERS.SSLCOM}>
-      <InternalSharedFormEabFields i18nKey="sslcom" />
-    </InternalSharedForm>
+    <InternalCASharedForm provider={CA_PROVIDERS.SSLCOM}>
+      <InternalCASharedFormEabFields i18nKey="sslcom" />
+    </InternalCASharedForm>
   );
 };
 
-const InternalSettingsFormProviderZeroSSL = () => {
+const InternalCASettingsFormProviderZeroSSL = () => {
   return (
-    <InternalSharedForm provider={CA_PROVIDERS.ZEROSSL}>
-      <InternalSharedFormEabFields i18nKey="zerossl" />
-    </InternalSharedForm>
+    <InternalCASharedForm provider={CA_PROVIDERS.ZEROSSL}>
+      <InternalCASharedFormEabFields i18nKey="zerossl" />
+    </InternalCASharedForm>
   );
 };
 
-const InternalSettingsFormProviderACMECA = () => {
+const InternalCASettingsFormProviderACMECA = () => {
   const { t } = useTranslation();
 
   const formSchema = z.object({
     endpoint: z.url(t("common.errmsg.url_invalid")),
-    eabKid: z
-      .string(t("access.form.acmeca_eab_kid.placeholder"))
-      .max(256, t("common.errmsg.string_max", { max: 256 }))
-      .nullish(),
-    eabHmacKey: z
-      .string(t("access.form.acmeca_eab_hmac_key.placeholder"))
-      .max(256, t("common.errmsg.string_max", { max: 256 }))
-      .nullish(),
+    eabKid: z.string(t("access.form.acmeca_eab_kid.placeholder")).nullish(),
+    eabHmacKey: z.string(t("access.form.acmeca_eab_hmac_key.placeholder")).nullish(),
   });
   const formRule = createSchemaFieldRule(formSchema);
 
   return (
-    <InternalSharedForm provider={CA_PROVIDERS.ACMECA}>
+    <InternalCASharedForm provider={CA_PROVIDERS.ACMECA}>
       <Form.Item
         name="endpoint"
         label={t("access.form.acmeca_endpoint.label")}
@@ -367,7 +443,7 @@ const InternalSettingsFormProviderACMECA = () => {
       >
         <Input.Password autoComplete="new-password" placeholder={t("access.form.acmeca_eab_hmac_key.placeholder")} />
       </Form.Item>
-    </InternalSharedForm>
+    </InternalCASharedForm>
   );
 };
 

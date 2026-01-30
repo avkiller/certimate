@@ -3,7 +3,8 @@ import { Form, Input } from "antd";
 import { createSchemaFieldRule } from "antd-zod";
 import { z } from "zod/v4";
 
-import TextFileInput from "@/components/TextFileInput";
+import FileTextInput from "@/components/FileTextInput";
+import { isJsonObject } from "@/utils/validator";
 
 import { useFormNestedFieldsContext } from "./_context";
 
@@ -25,7 +26,7 @@ const AccessConfigFieldsProviderACMEDNS = () => {
         label={t("access.form.acmedns_server_url.label")}
         rules={[formRule]}
       >
-        <Input placeholder={t("access.form.acmedns_server_url.placeholder")} />
+        <Input type="url" placeholder={t("access.form.acmedns_server_url.placeholder")} />
       </Form.Item>
 
       <Form.Item
@@ -35,7 +36,7 @@ const AccessConfigFieldsProviderACMEDNS = () => {
         rules={[formRule]}
         tooltip={<span dangerouslySetInnerHTML={{ __html: t("access.form.acmedns_credentials.tooltip") }}></span>}
       >
-        <TextFileInput autoSize={{ minRows: 3, maxRows: 10 }} placeholder={t("access.form.acmedns_credentials.placeholder")} />
+        <FileTextInput autoSize={{ minRows: 3, maxRows: 10 }} placeholder={t("access.form.acmedns_credentials.placeholder")} />
       </Form.Item>
     </>
   );
@@ -53,19 +54,7 @@ const getSchema = ({ i18n = getI18n() }: { i18n: ReturnType<typeof getI18n> }) =
 
   return z.object({
     serverUrl: z.url(t("common.errmsg.url_invalid")),
-    credentials: z
-      .string()
-      .max(20480, t("common.errmsg.string_max", { max: 20480 }))
-      .refine((v) => {
-        if (!v) return false;
-
-        try {
-          const obj = JSON.parse(v);
-          return typeof obj === "object" && !Array.isArray(obj);
-        } catch {
-          return false;
-        }
-      }, t("access.form.acmedns_credentials.errmsg.json_invalid")),
+    credentials: z.string().refine((v) => isJsonObject(v), t("common.errmsg.json_invalid")),
   });
 };
 

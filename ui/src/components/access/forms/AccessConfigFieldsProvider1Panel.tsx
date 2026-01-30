@@ -24,7 +24,7 @@ const AccessConfigFormFieldsProvider1Panel = () => {
         extra={t("access.form.1panel_server_url.help")}
         rules={[formRule]}
       >
-        <Input placeholder={t("access.form.1panel_server_url.placeholder")} />
+        <Input type="url" placeholder={t("access.form.1panel_server_url.placeholder")} />
       </Form.Item>
 
       <Form.Item
@@ -52,10 +52,7 @@ const AccessConfigFormFieldsProvider1Panel = () => {
         label={t("access.form.shared_allow_insecure_conns.label")}
         rules={[formRule]}
       >
-        <Switch
-          checkedChildren={t("access.form.shared_allow_insecure_conns.switch.on")}
-          unCheckedChildren={t("access.form.shared_allow_insecure_conns.switch.off")}
-        />
+        <Switch />
       </Form.Item>
     </>
   );
@@ -75,10 +72,7 @@ const getSchema = ({ i18n = getI18n() }: { i18n: ReturnType<typeof getI18n> }) =
   return z.object({
     serverUrl: z.url(t("common.errmsg.url_invalid")),
     apiVersion: z.string().nonempty(t("access.form.1panel_api_version.placeholder")),
-    apiKey: z
-      .string()
-      .min(1, t("access.form.1panel_api_key.placeholder"))
-      .max(64, t("common.errmsg.string_max", { max: 64 })),
+    apiKey: z.string().nonempty(t("access.form.1panel_api_key.placeholder")),
     allowInsecureConnections: z.boolean().nullish(),
   });
 };

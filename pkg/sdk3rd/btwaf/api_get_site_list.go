@@ -6,13 +6,13 @@ import (
 )
 
 type GetSiteListRequest struct {
+	SiteName *string `json:"site_name,omitempty"`
 	Page     *int32  `json:"p,omitempty"`
 	PageSize *int32  `json:"p_size,omitempty"`
-	SiteName *string `json:"site_name,omitempty"`
 }
 
 type GetSiteListResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
 	Result *struct {
 		List  []*SiteRecord `json:"list"`

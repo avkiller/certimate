@@ -9,14 +9,14 @@ const CollectionNameWorkflowLog = "workflow_logs"
 
 type WorkflowLog struct {
 	Meta
-	WorkflowId string         `json:"workflowId" db:"workflowRef"`
-	RunId      string         `json:"runId" db:"runRef"`
-	NodeId     string         `json:"nodeId" db:"nodeId"`
-	NodeName   string         `json:"nodeName" db:"nodeName"`
-	Timestamp  int64          `json:"timestamp" db:"timestamp"` // 毫秒级时间戳
-	Level      int32          `json:"level" db:"level"`
-	Message    string         `json:"message" db:"message"`
-	Data       map[string]any `json:"data" db:"data"`
+	WorkflowId     string         `db:"workflowRef" json:"workflowId"`
+	RunId          string         `db:"runRef"      json:"runId"`
+	NodeId         string         `db:"nodeId"      json:"nodeId"`
+	NodeName       string         `db:"nodeName"    json:"nodeName"`
+	TimestampMilli int64          `db:"timestamp"   json:"timestamp"`
+	Level          int32          `db:"level"       json:"level"`
+	Message        string         `db:"message"     json:"message"`
+	Data           map[string]any `db:"data"        json:"data"`
 }
 
 type WorkflowLogs []WorkflowLog

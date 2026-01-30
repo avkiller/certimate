@@ -4,26 +4,26 @@ import (
 	"encoding/json"
 )
 
-type apiResponse interface {
-	GetData() *apiResponseBaseData
+type sdkResponse interface {
+	GetData() *sdkResponseBaseData
 }
 
-type apiResponseBase struct {
-	Data *apiResponseBaseData `json:"data,omitempty"`
+type sdkResponseBase struct {
+	Data *sdkResponseBaseData `json:"data,omitempty"`
 }
 
-func (r *apiResponseBase) GetData() *apiResponseBaseData {
+func (r *sdkResponseBase) GetData() *sdkResponseBaseData {
 	return r.Data
 }
 
-var _ apiResponse = (*apiResponseBase)(nil)
+var _ sdkResponse = (*sdkResponseBase)(nil)
 
-type apiResponseBaseData struct {
+type sdkResponseBaseData struct {
 	ErrorCode json.Number `json:"error_code,omitempty"`
 	Message   string      `json:"message,omitempty"`
 }
 
-func (r *apiResponseBaseData) GetErrorCode() int32 {
+func (r *sdkResponseBaseData) GetErrorCode() int {
 	if r.ErrorCode.String() == "" {
 		return 0
 	}
@@ -33,9 +33,9 @@ func (r *apiResponseBaseData) GetErrorCode() int32 {
 		return -1
 	}
 
-	return int32(errcode)
+	return int(errcode)
 }
 
-func (r *apiResponseBaseData) GetMessage() string {
+func (r *sdkResponseBaseData) GetMessage() string {
 	return r.Message
 }

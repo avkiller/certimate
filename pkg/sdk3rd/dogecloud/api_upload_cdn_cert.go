@@ -12,7 +12,7 @@ type UploadCdnCertRequest struct {
 }
 
 type UploadCdnCertResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
 	Data *struct {
 		Id int64 `json:"id"`

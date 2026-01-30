@@ -3,34 +3,20 @@ package cdn
 import (
 	"context"
 	"net/http"
+
+	qs "github.com/google/go-querystring/query"
 )
 
 type QueryDomainDetailRequest struct {
-	Domain        *string `json:"domain,omitempty"`
-	ProductCode   *string `json:"product_code,omitempty"`
-	FunctionNames *string `json:"function_names,omitempty"`
+	Domain        *string `json:"domain,omitempty"         url:"domain,omitempty"`
+	ProductCode   *string `json:"product_code,omitempty"   url:"product_code,omitempty"`
+	FunctionNames *string `json:"function_names,omitempty" url:"function_names,omitempty"`
 }
 
 type QueryDomainDetailResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
-	ReturnObj *struct {
-		Domain      string `json:"domain"`
-		ProductCode string `json:"product_code"`
-		Status      int32  `json:"status"`
-		AreaScope   int32  `json:"area_scope"`
-		Cname       string `json:"cname"`
-		HttpsStatus string `json:"https_status"`
-		HttpsBasic  *struct {
-			HttpsForce     string `json:"https_force"`
-			HttpForce      string `json:"http_force"`
-			ForceStatus    string `json:"force_status"`
-			OriginProtocol string `json:"origin_protocol"`
-		} `json:"https_basic,omitempty"`
-		CertName    string `json:"cert_name"`
-		Ssl         string `json:"ssl"`
-		SslStapling string `json:"ssl_stapling"`
-	} `json:"returnObj,omitempty"`
+	ReturnObj *DomainDetail `json:"returnObj,omitempty"`
 }
 
 func (c *Client) QueryDomainDetail(req *QueryDomainDetailRequest) (*QueryDomainDetailResponse, error) {
@@ -42,16 +28,12 @@ func (c *Client) QueryDomainDetailWithContext(ctx context.Context, req *QueryDom
 	if err != nil {
 		return nil, err
 	} else {
-		if req.Domain != nil {
-			httpreq.SetQueryParam("domain", *req.Domain)
-		}
-		if req.ProductCode != nil {
-			httpreq.SetQueryParam("product_code", *req.ProductCode)
-		}
-		if req.FunctionNames != nil {
-			httpreq.SetQueryParam("function_names", *req.FunctionNames)
+		values, err := qs.Values(req)
+		if err != nil {
+			return nil, err
 		}
 
+		httpreq.SetQueryParamsFromValues(values)
 		httpreq.SetContext(ctx)
 	}
 

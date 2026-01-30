@@ -1,24 +1,21 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { IconBrowserShare, IconCertificate, IconDots, IconExternalLink, IconReload, IconTrash } from "@tabler/icons-react";
-import { useRequest } from "ahooks";
+import { IconBrowserShare, IconCertificate, IconDots, IconExternalLink, IconReload, IconShieldCancel, IconTrash } from "@tabler/icons-react";
+import { useMount, useRequest } from "ahooks";
 import { App, Button, Dropdown, Input, Segmented, Skeleton, Table, type TableProps, Typography, theme } from "antd";
 import dayjs from "dayjs";
 import { ClientResponseError } from "pocketbase";
 
+import { revoke as revokeCertificate } from "@/api/certificates";
 import CertificateDetailDrawer from "@/components/certificate/CertificateDetailDrawer";
 import Empty from "@/components/Empty";
 import Show from "@/components/Show";
-import { type CertificateModel } from "@/domain/certificate";
-import { useAppSettings } from "@/hooks";
-import {
-  get as getCertificate,
-  list as listCertificates,
-  type ListRequest as listCertificatesRequest,
-  remove as removeCertificate,
-} from "@/repository/certificate";
-import { getErrMsg } from "@/utils/error";
+import { CERTIFICATE_SOURCES, type CertificateModel } from "@/domain/certificate";
+import { useAppSettings, useZustandShallowSelector } from "@/hooks";
+import { get as getCertificate, list as listCertificates, remove as removeCertificate } from "@/repository/certificate";
+import { usePersistenceSettingsStore } from "@/stores/settings";
+import { unwrapErrMsg } from "@/utils/error";
 
 const CertificateList = () => {
   const navigate = useNavigate();
@@ -28,9 +25,19 @@ const CertificateList = () => {
 
   const { token: themeToken } = theme.useToken();
 
-  const { modal, notification } = App.useApp();
+  const { message, modal, notification } = App.useApp();
 
   const { appSettings: globalAppSettings } = useAppSettings();
+
+  const { settings: persistenceSettings, loadSettings: loadPersistenceSettings } = usePersistenceSettingsStore(
+    useZustandShallowSelector(["settings", "loadSettings"])
+  );
+  useMount(() => loadPersistenceSettings(false));
+
+  const [expiryThreshold, setExpiryThreshold] = useState(() => persistenceSettings.certificatesWarningDaysBeforeExpire || 0);
+  useEffect(() => {
+    setExpiryThreshold(persistenceSettings.certificatesWarningDaysBeforeExpire || 0);
+  }, [persistenceSettings.certificatesWarningDaysBeforeExpire]);
 
   const [filters, setFilters] = useState<Record<string, unknown>>(() => {
     return {
@@ -51,7 +58,7 @@ const CertificateList = () => {
     {
       key: "name",
       title: t("certificate.props.subject_alt_names"),
-      render: (_, record) => <Typography.Text>{record.subjectAltNames}</Typography.Text>,
+      render: (_, record) => <Typography.Text delete={record.isRevoked}>{record.subjectAltNames}</Typography.Text>,
     },
     {
       key: "validity",
@@ -60,14 +67,15 @@ const CertificateList = () => {
       sortOrder: sorter.columnKey === "validity" ? sorter.order : void 0,
       render: (_, record) => {
         const total = dayjs(record.validityNotAfter).diff(dayjs(record.created), "d") + 1;
+        const isRevoked = record.isRevoked;
         const isExpired = dayjs().isAfter(dayjs(record.validityNotAfter));
         const leftHours = dayjs(record.validityNotAfter).diff(dayjs(), "h");
         const leftDays = Math.round(leftHours / 24);
 
         return (
           <div className="flex max-w-full flex-col gap-1 truncate">
-            {!isExpired ? (
-              leftDays >= 20 ? (
+            {!isRevoked && !isExpired ? (
+              leftDays >= expiryThreshold ? (
                 <Typography.Text ellipsis type="success">
                   <span className="mr-2 inline-block size-2 rounded-full bg-success leading-2">&nbsp;</span>
                   {t("certificate.props.validity.left_days", { left: leftDays, total })}
@@ -83,7 +91,7 @@ const CertificateList = () => {
             ) : (
               <Typography.Text ellipsis type="danger">
                 <span className="mr-2 inline-block size-2 rounded-full bg-error leading-2">&nbsp;</span>
-                {t("certificate.props.validity.expired")}
+                {isRevoked ? t("certificate.props.revoked") : t("certificate.props.validity.expired")}
               </Typography.Text>
             )}
 
@@ -122,7 +130,7 @@ const CertificateList = () => {
                 }
               }}
             >
-              {record.expand?.workflowRef?.name ?? <span className="font-mono">{t(`#${workflowId}`)}</span>}
+              {record.expand?.workflowRef?.name ?? <span className="font-mono">{`#${workflowId}`}</span>}
             </Typography.Link>
           </div>
         );
@@ -155,6 +163,20 @@ const CertificateList = () => {
                 ),
                 onClick: () => {
                   handleRecordDetailClick(record);
+                },
+              },
+              {
+                key: "revoke",
+                label: t("certificate.action.revoke.menu"),
+                danger: true,
+                disabled: record.source !== CERTIFICATE_SOURCES.REQUEST || record.isRevoked,
+                icon: (
+                  <span className="anticon scale-125">
+                    <IconShieldCancel size="1em" />
+                  </span>
+                ),
+                onClick: () => {
+                  handleRecordRevokeClick(record);
                 },
               },
               {
@@ -223,20 +245,21 @@ const CertificateList = () => {
     () => {
       const { columnKey: sorterKey, order: sorterOrder } = sorter;
       let sort: string | undefined;
-      sort = sorterKey === "validity" ? "validityNotAfter" : "";
+      sort = sorterKey === "validity" ? "validityNotAfter" : void 0;
       sort = sort && (sorterOrder === "ascend" ? `${sort}` : sorterOrder === "descend" ? `-${sort}` : void 0);
 
       return listCertificates({
         keyword: filters["keyword"] as string,
-        state: filters["state"] as listCertificatesRequest["state"],
+        state: filters["state"] as Parameters<typeof listCertificates>[0]["state"],
+        stateThreshold: expiryThreshold,
         sort: sort,
         page: page,
         perPage: pageSize,
       });
     },
     {
-      refreshDeps: [filters, sorter, page, pageSize],
-      onBefore: () => {
+      refreshDeps: [expiryThreshold, filters, sorter, page, pageSize],
+      onBefore: async () => {
         setSearchParams((prev) => {
           if (filters["keyword"]) {
             prev.set("keyword", filters["keyword"] as string);
@@ -267,7 +290,7 @@ const CertificateList = () => {
         }
 
         console.error(err);
-        notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
+        notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
 
         throw err;
       },
@@ -299,6 +322,33 @@ const CertificateList = () => {
     });
   };
 
+  const handleRecordRevokeClick = (certificate: CertificateModel) => {
+    modal.confirm({
+      title: <span className="text-error">{t("certificate.action.revoke.modal.title", { name: certificate.subjectAltNames })}</span>,
+      content: <span dangerouslySetInnerHTML={{ __html: t("certificate.action.revoke.modal.content") }} />,
+      icon: (
+        <span className="anticon" role="img">
+          <IconShieldCancel className="text-error" size="1em" />
+        </span>
+      ),
+      okText: t("common.button.confirm"),
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          const resp = await revokeCertificate(certificate.id);
+          if (resp) {
+            message.success(t("common.text.operation_succeeded"));
+            setTableData((prev) => prev.map((item) => (item.id === certificate.id ? { ...item, isRevoked: true } : item)));
+            refreshData();
+          }
+        } catch (err) {
+          console.error(err);
+          notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
+        }
+      },
+    });
+  };
+
   const handleRecordDeleteClick = (certificate: CertificateModel) => {
     modal.confirm({
       title: <span className="text-error">{t("certificate.action.delete.modal.title", { name: certificate.subjectAltNames })}</span>,
@@ -321,7 +371,7 @@ const CertificateList = () => {
           }
         } catch (err) {
           console.error(err);
-          notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
+          notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
         }
       },
     });
@@ -353,7 +403,7 @@ const CertificateList = () => {
           }
         } catch (err) {
           console.error(err);
-          notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
+          notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
         }
       },
     });
@@ -412,8 +462,8 @@ const CertificateList = () => {
               ) : (
                 <Empty
                   className="py-24"
-                  title={t("certificate.nodata.title")}
-                  description={loadError ? getErrMsg(loadError) : t("certificate.nodata.description")}
+                  title={loadError ? t("common.text.nodata_failed") : t("certificate.nodata.title")}
+                  description={loadError ? unwrapErrMsg(loadError) : t("certificate.nodata.description")}
                   icon={<IconCertificate size={24} />}
                   extra={
                     loadError ? (

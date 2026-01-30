@@ -13,7 +13,7 @@ type UpdateSiteRequest struct {
 }
 
 type UpdateSiteResponse struct {
-	apiResponseBase
+	sdkResponseBase
 }
 
 func (c *Client) UpdateSite(siteId string, req *UpdateSiteRequest) (*UpdateSiteResponse, error) {

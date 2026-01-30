@@ -11,7 +11,7 @@ type SetDomainConfigRequest struct {
 }
 
 type SetDomainConfigResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
 	Data *struct {
 		Config *DomainConfig `json:"config"`

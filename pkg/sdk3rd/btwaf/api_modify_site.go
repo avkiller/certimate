@@ -12,7 +12,7 @@ type ModifySiteRequest struct {
 }
 
 type ModifySiteResponse struct {
-	apiResponseBase
+	sdkResponseBase
 }
 
 func (c *Client) ModifySite(req *ModifySiteRequest) (*ModifySiteResponse, error) {

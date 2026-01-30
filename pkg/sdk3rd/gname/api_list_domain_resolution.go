@@ -12,7 +12,7 @@ type ListDomainResolutionRequest struct {
 }
 
 type ListDomainResolutionResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
 	Count    int32                        `json:"count"`
 	Data     []*DomainResolutionRecordord `json:"data"`

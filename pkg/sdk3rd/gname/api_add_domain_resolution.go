@@ -16,7 +16,7 @@ type AddDomainResolutionRequest struct {
 }
 
 type AddDomainResolutionResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
 	Data json.Number `json:"data"`
 }

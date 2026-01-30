@@ -36,11 +36,11 @@ func (c *Client) doRequest(req *resty.Request) (*resty.Response, error) {
 	return c.client.DoRequest(req)
 }
 
-func (c *Client) doRequestWithResult(req *resty.Request, res apiResponse) (*resty.Response, error) {
+func (c *Client) doRequestWithResult(req *resty.Request, res sdkResponse) (*resty.Response, error) {
 	resp, err := c.client.DoRequestWithResult(req, res)
 	if err == nil {
 		if tcode := res.GetStatusCode(); tcode != "" && tcode != "100000" {
-			return resp, fmt.Errorf("sdkerr: api error, code='%s', message='%s', errorCode='%s', errorMessage='%s'", tcode, res.GetMessage(), res.GetMessage(), res.GetErrorMessage())
+			return resp, fmt.Errorf("sdkerr: api error: code='%s', message='%s', errorCode='%s', errorMessage='%s'", tcode, res.GetMessage(), res.GetMessage(), res.GetErrorMessage())
 		}
 	}
 

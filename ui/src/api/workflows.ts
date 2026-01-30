@@ -6,13 +6,12 @@ import { getPocketBase } from "@/repository/_pocketbase";
 export const getStats = async () => {
   const pb = getPocketBase();
 
-  const resp = await pb.send<
-    BaseResponse<{
-      concurrency: number;
-      pendingRunIds: string[];
-      processingRunIds: string[];
-    }>
-  >(`/api/workflows/stats`, {
+  type RespData = {
+    concurrency: number;
+    pendingRunIds: string[];
+    processingRunIds: string[];
+  };
+  const resp = await pb.send<BaseResponse<RespData>>(`/api/workflows/stats`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",

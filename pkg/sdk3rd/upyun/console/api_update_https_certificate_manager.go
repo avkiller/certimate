@@ -13,10 +13,10 @@ type UpdateHttpsCertificateManagerRequest struct {
 }
 
 type UpdateHttpsCertificateManagerResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
 	Data *struct {
-		apiResponseBaseData
+		sdkResponseBaseData
 
 		Status bool `json:"status"`
 	} `json:"data,omitempty"`

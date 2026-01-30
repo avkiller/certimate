@@ -4,11 +4,12 @@ import { Avatar, Select, Tag, Typography, theme } from "antd";
 
 import Show from "@/components/Show";
 import { ACCESS_USAGES, type AccessProvider, type AccessUsageType, accessProvidersMap } from "@/domain/provider";
+import { matchSearchOption } from "@/utils/search";
 
 import { type SharedSelectProps } from "./_shared";
 
 export interface AccessProviderSelectProps extends SharedSelectProps<AccessProvider> {
-  showOptionTags?: boolean | { [key in AccessUsageType]?: boolean };
+  showOptionTags?: boolean | { [key in AccessUsageType | "builtin"]?: boolean };
 }
 
 const AccessProviderSelect = ({ showOptionTags, onFilter, ...props }: AccessProviderSelectProps = { showOptionTags: true }) => {
@@ -27,6 +28,9 @@ const AccessProviderSelect = ({ showOptionTags, onFilter, ...props }: AccessProv
   }, [showOptionTags]);
   const showOptionTagForNotification = useMemo(() => {
     return typeof showOptionTags === "object" ? !!showOptionTags?.[ACCESS_USAGES.NOTIFICATION] : !!showOptionTags;
+  }, [showOptionTags]);
+  const showOptionTagForBuiltin = useMemo(() => {
+    return typeof showOptionTags === "object" ? !!showOptionTags?.["builtin"] : !!showOptionTags;
   }, [showOptionTags]);
 
   const options = useMemo<Array<{ key: string; value: string; label: string; data: AccessProvider }>>(() => {
@@ -57,21 +61,21 @@ const AccessProviderSelect = ({ showOptionTags, onFilter, ...props }: AccessProv
             {t(provider.name)}
           </Typography.Text>
         </div>
-        <div className="origin-right scale-75 whitespace-nowrap">
-          <Show when={provider.builtin}>
-            <Tag>{t("access.props.provider.builtin")}</Tag>
+        <div className="flex origin-right scale-80 items-center justify-center gap-1 whitespace-nowrap">
+          <Show when={showOptionTagForBuiltin && provider.builtin}>
+            <Tag color="default">{t("access.props.provider.builtin")}</Tag>
           </Show>
           <Show when={showOptionTagForDNS && provider.usages.includes(ACCESS_USAGES.DNS)}>
-            <Tag color="orange">{t("access.props.provider.usage.dns")}</Tag>
+            <Tag color="#d93f0b">{t("access.props.provider.usage.dns")}</Tag>
           </Show>
           <Show when={showOptionTagForHosting && provider.usages.includes(ACCESS_USAGES.HOSTING)}>
-            <Tag color="geekblue">{t("access.props.provider.usage.hosting")}</Tag>
+            <Tag color="#0052cc">{t("access.props.provider.usage.hosting")}</Tag>
           </Show>
           <Show when={showOptionTagForCA && provider.usages.includes(ACCESS_USAGES.CA)}>
-            <Tag color="magenta">{t("access.props.provider.usage.ca")}</Tag>
+            <Tag color="#0e8a16">{t("access.props.provider.usage.ca")}</Tag>
           </Show>
           <Show when={showOptionTagForNotification && provider.usages.includes(ACCESS_USAGES.NOTIFICATION)}>
-            <Tag color="cyan">{t("access.props.provider.usage.notification")}</Tag>
+            <Tag color="#1d76db">{t("access.props.provider.usage.notification")}</Tag>
           </Show>
         </div>
       </div>
@@ -81,12 +85,6 @@ const AccessProviderSelect = ({ showOptionTags, onFilter, ...props }: AccessProv
   return (
     <Select
       {...props}
-      filterOption={(inputValue, option) => {
-        if (!option) return false;
-
-        const value = inputValue.toLowerCase();
-        return option.value.toLowerCase().includes(value) || option.label.toLowerCase().includes(value);
-      }}
       labelRender={({ value }) => {
         if (value != null) {
           return renderOption(value as string);
@@ -95,9 +93,12 @@ const AccessProviderSelect = ({ showOptionTags, onFilter, ...props }: AccessProv
         return <span style={{ color: themeToken.colorTextPlaceholder }}>{props.placeholder}</span>;
       }}
       options={options}
-      optionFilterProp={void 0}
       optionLabelProp={void 0}
       optionRender={(option) => renderOption(option.data.value)}
+      showSearch={{
+        filterOption: (inputValue, option) => matchSearchOption(inputValue, option!),
+        optionFilterProp: "label",
+      }}
     />
   );
 };

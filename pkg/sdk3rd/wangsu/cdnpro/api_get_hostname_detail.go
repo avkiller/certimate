@@ -8,7 +8,7 @@ import (
 )
 
 type GetHostnameDetailResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
 	Hostname             string                `json:"hostname"`
 	PropertyInProduction *HostnamePropertyInfo `json:"propertyInProduction,omitempty"`

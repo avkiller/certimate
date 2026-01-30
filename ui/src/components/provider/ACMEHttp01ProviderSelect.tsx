@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Avatar, Select, Typography, theme } from "antd";
 
 import { type ACMEHttp01Provider, acmeHttp01ProvidersMap } from "@/domain/provider";
+import { matchSearchOption } from "@/utils/search";
 
 import { type SharedSelectProps, useSelectDataSource } from "./_shared";
 
@@ -56,14 +57,6 @@ const ACMEHttp01ProviderSelect = ({ showAvailability, onFilter, ...props }: ACME
   return (
     <Select
       {...props}
-      filterOption={(inputValue, option) => {
-        if (!option) return false;
-        if (!option.label) return false;
-        if (!option.value) return false;
-
-        const value = inputValue.toLowerCase();
-        return String(option.value).toLowerCase().includes(value) || String(option.label).toLowerCase().includes(value);
-      }}
       labelRender={({ value }) => {
         if (value != null) {
           return renderOption(value as string);
@@ -72,9 +65,11 @@ const ACMEHttp01ProviderSelect = ({ showAvailability, onFilter, ...props }: ACME
         return <span style={{ color: themeToken.colorTextPlaceholder }}>{props.placeholder}</span>;
       }}
       options={options}
-      optionFilterProp={void 0}
       optionLabelProp={void 0}
       optionRender={(option) => renderOption(option.data.value as string)}
+      showSearch={{
+        filterOption: (inputValue, option) => matchSearchOption(inputValue, option!),
+      }}
     />
   );
 };

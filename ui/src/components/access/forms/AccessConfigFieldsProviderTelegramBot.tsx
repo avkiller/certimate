@@ -51,10 +51,7 @@ const getSchema = ({ i18n = getI18n() }: { i18n: ReturnType<typeof getI18n> }) =
   const { t } = i18n;
 
   return z.object({
-    botToken: z
-      .string()
-      .min(1, t("access.form.telegrambot_token.placeholder"))
-      .max(256, t("common.errmsg.string_max", { max: 256 })),
+    botToken: z.string().nonempty(t("access.form.telegrambot_token.placeholder")),
     chatId: z
       .preprocess(
         (v) => (v == null || v === "" ? void 0 : Number(v)),

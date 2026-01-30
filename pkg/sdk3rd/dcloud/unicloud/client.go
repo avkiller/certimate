@@ -15,6 +15,8 @@ import (
 	"time"
 
 	"github.com/go-resty/resty/v2"
+
+	"github.com/certimate-go/certimate/internal/app"
 )
 
 type Client struct {
@@ -59,12 +61,12 @@ func NewClient(username, password string) (*Client, error) {
 	client.serverlessClient = resty.New().
 		SetHeader("Accept", "application/json").
 		SetHeader("Content-Type", "application/json").
-		SetHeader("User-Agent", "certimate")
+		SetHeader("User-Agent", app.AppUserAgent)
 	client.apiClient = resty.New().
 		SetBaseURL("https://unicloud-api.dcloud.net.cn/unicloud/api").
 		SetHeader("Accept", "application/json").
 		SetHeader("Content-Type", "application/json").
-		SetHeader("User-Agent", "certimate").
+		SetHeader("User-Agent", app.AppUserAgent).
 		SetPreRequestHook(func(c *resty.Client, req *http.Request) error {
 			if client.apiUserToken != "" {
 				req.Header.Set("Token", client.apiUserToken)
@@ -86,12 +88,12 @@ func (c *Client) buildServerlessClientInfo(appId string) (_clientInfo map[string
 		"PLATFORM":           "web",
 		"OS":                 strings.ToUpper(runtime.GOOS),
 		"APPID":              appId,
-		"DEVICEID":           "certimate",
+		"DEVICEID":           app.AppName,
 		"LOCALE":             "zh-Hans",
 		"osName":             runtime.GOOS,
 		"appId":              appId,
 		"appName":            "uniCloud",
-		"deviceId":           "certimate",
+		"deviceId":           app.AppName,
 		"deviceType":         "pc",
 		"uniPlatform":        "web",
 		"uniCompilerVersion": "4.45",
@@ -175,13 +177,13 @@ func (c *Client) invokeServerless(endpoint, clientSecret, appId, spaceId, target
 	if err != nil {
 		return resp, fmt.Errorf("unicloud api error: failed to send request: %w", err)
 	} else if resp.IsError() {
-		return resp, fmt.Errorf("unicloud api error: unexpected status code: %d, resp: %s", resp.StatusCode(), resp.String())
+		return resp, fmt.Errorf("unicloud api error: unexpected status code: %d (resp: %s)", resp.StatusCode(), resp.String())
 	}
 
 	return resp, nil
 }
 
-func (c *Client) invokeServerlessWithResult(endpoint, clientSecret, appId, spaceId, target, method, action string, params, data interface{}, result apiResponse) error {
+func (c *Client) invokeServerlessWithResult(endpoint, clientSecret, appId, spaceId, target, method, action string, params, data interface{}, result sdkResponse) error {
 	resp, err := c.invokeServerless(endpoint, clientSecret, appId, spaceId, target, method, action, params, data)
 	if err != nil {
 		if resp != nil {
@@ -223,13 +225,13 @@ func (c *Client) sendRequest(method string, path string, params interface{}) (*r
 	if err != nil {
 		return resp, fmt.Errorf("unicloud api error: failed to send request: %w", err)
 	} else if resp.IsError() {
-		return resp, fmt.Errorf("unicloud api error: unexpected status code: %d, resp: %s", resp.StatusCode(), resp.String())
+		return resp, fmt.Errorf("unicloud api error: unexpected status code: %d (resp: %s)", resp.StatusCode(), resp.String())
 	}
 
 	return resp, nil
 }
 
-func (c *Client) sendRequestWithResult(method string, path string, params interface{}, result apiResponse) error {
+func (c *Client) sendRequestWithResult(method string, path string, params interface{}, result sdkResponse) error {
 	resp, err := c.sendRequest(method, path, params)
 	if err != nil {
 		if resp != nil {
@@ -266,7 +268,7 @@ func (c *Client) ensureServerlessJwtTokenExists() error {
 	}
 
 	type loginResponse struct {
-		apiResponseBase
+		sdkResponseBase
 		Data *struct {
 			Code     int32  `json:"errCode"`
 			UID      string `json:"uid"`
@@ -305,7 +307,7 @@ func (c *Client) ensureApiUserTokenExists() error {
 	}
 
 	type getUserTokenResponse struct {
-		apiResponseBase
+		sdkResponseBase
 		Data *struct {
 			Code int32 `json:"code"`
 			Data *struct {

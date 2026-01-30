@@ -4,7 +4,7 @@ import { createSchemaFieldRule } from "antd-zod";
 import { z } from "zod";
 
 import Tips from "@/components/Tips";
-import { validDomainName } from "@/utils/validators";
+import { isDomain } from "@/utils/validator";
 
 import { useFormNestedFieldsContext } from "./_context";
 
@@ -75,7 +75,7 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
   return z.object({
     spaceProvider: z.string().nonempty(t("workflow_node.deploy.form.unicloud_webhost_space_provider.placeholder")),
     spaceId: z.string().nonempty(t("workflow_node.deploy.form.unicloud_webhost_space_id.placeholder")),
-    domain: z.string().refine((v) => validDomainName(v), t("common.errmsg.domain_invalid")),
+    domain: z.string().refine((v) => isDomain(v), t("common.errmsg.domain_invalid")),
   });
 };
 

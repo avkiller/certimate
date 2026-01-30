@@ -16,18 +16,18 @@ const CollectionNameWorkflow = "workflow"
 
 type Workflow struct {
 	Meta
-	Name          string                `json:"name" db:"name"`
-	Description   string                `json:"description" db:"description"`
-	Trigger       WorkflowTriggerType   `json:"trigger" db:"trigger"`
-	TriggerCron   string                `json:"triggerCron" db:"triggerCron"`
-	Enabled       bool                  `json:"enabled" db:"enabled"`
-	GraphDraft    *WorkflowGraph        `json:"graphDraft" db:"graphDraft"`
-	GraphContent  *WorkflowGraph        `json:"graphContent" db:"graphContent"`
-	HasDraft      bool                  `json:"hasDraft" db:"hasDraft"`
-	HasContent    bool                  `json:"hasContent" db:"hasContent"`
-	LastRunId     string                `json:"lastRunId" db:"lastRunRef"`
-	LastRunStatus WorkflowRunStatusType `json:"lastRunStatus" db:"lastRunStatus"`
-	LastRunTime   time.Time             `json:"lastRunTime" db:"lastRunTime"`
+	Name          string                `db:"name"          json:"name"`
+	Description   string                `db:"description"   json:"description"`
+	Trigger       WorkflowTriggerType   `db:"trigger"       json:"trigger"`
+	TriggerCron   string                `db:"triggerCron"   json:"triggerCron"`
+	Enabled       bool                  `db:"enabled"       json:"enabled"`
+	GraphDraft    *WorkflowGraph        `db:"graphDraft"    json:"graphDraft"`
+	GraphContent  *WorkflowGraph        `db:"graphContent"  json:"graphContent"`
+	HasDraft      bool                  `db:"hasDraft"      json:"hasDraft"`
+	HasContent    bool                  `db:"hasContent"    json:"hasContent"`
+	LastRunId     string                `db:"lastRunRef"    json:"lastRunId"`
+	LastRunStatus WorkflowRunStatusType `db:"lastRunStatus" json:"lastRunStatus"`
+	LastRunTime   time.Time             `db:"lastRunTime"   json:"lastRunTime"`
 }
 
 type WorkflowGraph struct {
@@ -114,7 +114,7 @@ type WorkflowNodeConfig map[string]any
 
 func (c WorkflowNodeConfig) AsDelay() WorkflowNodeConfigForDelay {
 	return WorkflowNodeConfigForDelay{
-		Wait: xmaps.GetInt32(c, "wait"),
+		Wait: xmaps.GetInt(c, "wait"),
 	}
 }
 
@@ -137,29 +137,35 @@ func (c WorkflowNodeConfig) AsBranchBlock() WorkflowNodeConfigForBranchBlock {
 
 func (c WorkflowNodeConfig) AsBizApply() WorkflowNodeConfigForBizApply {
 	domains := lo.Filter(strings.Split(xmaps.GetString(c, "domains"), ";"), func(s string, _ int) bool { return s != "" })
+	ipaddrs := lo.Filter(strings.Split(xmaps.GetString(c, "ipaddrs"), ";"), func(s string, _ int) bool { return s != "" })
 	nameservers := lo.Filter(strings.Split(xmaps.GetString(c, "nameservers"), ";"), func(s string, _ int) bool { return s != "" })
 
 	return WorkflowNodeConfigForBizApply{
 		Domains:               domains,
+		IPAddrs:               ipaddrs,
 		ContactEmail:          xmaps.GetString(c, "contactEmail"),
 		ChallengeType:         xmaps.GetString(c, "challengeType"),
 		Provider:              xmaps.GetString(c, "provider"),
 		ProviderAccessId:      xmaps.GetString(c, "providerAccessId"),
 		ProviderConfig:        xmaps.GetKVMapAny(c, "providerConfig"),
+		KeySource:             xmaps.GetOrDefaultString(c, "keySource", "auto"),
 		KeyAlgorithm:          xmaps.GetOrDefaultString(c, "keyAlgorithm", string(CertificateKeyAlgorithmTypeRSA2048)),
+		KeyContent:            xmaps.GetString(c, "keyContent"),
 		CAProvider:            xmaps.GetString(c, "caProvider"),
 		CAProviderAccessId:    xmaps.GetString(c, "caProviderAccessId"),
 		CAProviderConfig:      xmaps.GetKVMapAny(c, "caProviderConfig"),
 		ValidityLifetime:      xmaps.GetString(c, "validityLifetime"),
+		PreferredChain:        xmaps.GetString(c, "preferredChain"),
 		ACMEProfile:           xmaps.GetString(c, "acmeProfile"),
 		Nameservers:           nameservers,
-		DnsPropagationWait:    xmaps.GetInt32(c, "dnsPropagationWait"),
-		DnsPropagationTimeout: xmaps.GetInt32(c, "dnsPropagationTimeout"),
-		DnsTTL:                xmaps.GetInt32(c, "dnsTTL"),
-		HttpDelayWait:         xmaps.GetInt32(c, "httpDelayWait"),
+		DnsPropagationWait:    xmaps.GetInt(c, "dnsPropagationWait"),
+		DnsPropagationTimeout: xmaps.GetInt(c, "dnsPropagationTimeout"),
+		DnsTTL:                xmaps.GetInt(c, "dnsTTL"),
+		HttpDelayWait:         xmaps.GetInt(c, "httpDelayWait"),
+		DisableCommonName:     xmaps.GetBool(c, "disableCommonName"),
 		DisableFollowCNAME:    xmaps.GetBool(c, "disableFollowCNAME"),
 		DisableARI:            xmaps.GetBool(c, "disableARI"),
-		SkipBeforeExpiryDays:  xmaps.GetInt32(c, "skipBeforeExpiryDays"),
+		SkipBeforeExpiryDays:  xmaps.GetInt(c, "skipBeforeExpiryDays"),
 	}
 }
 
@@ -203,7 +209,7 @@ func (c WorkflowNodeConfig) AsBizNotify() WorkflowNodeConfigForBizNotify {
 }
 
 type WorkflowNodeConfigForDelay struct {
-	Wait int32 `json:"wait"` // 等待时间
+	Wait int `json:"wait"` // 等待时间
 }
 
 type WorkflowNodeConfigForBranchBlock struct {
@@ -212,6 +218,7 @@ type WorkflowNodeConfigForBranchBlock struct {
 
 type WorkflowNodeConfigForBizApply struct {
 	Domains               []string       `json:"domains"`                         // 域名列表，以半角分号分隔
+	IPAddrs               []string       `json:"ipaddrs"`                         // IP 地址列表，以半角分号分隔
 	ContactEmail          string         `json:"contactEmail"`                    // 联系邮箱
 	ChallengeType         string         `json:"challengeType"`                   // 质询方式
 	Provider              string         `json:"provider"`                        // 质询提供商
@@ -220,21 +227,25 @@ type WorkflowNodeConfigForBizApply struct {
 	CAProvider            string         `json:"caProvider,omitempty"`            // CA 提供商（零值时使用全局配置）
 	CAProviderAccessId    string         `json:"caProviderAccessId,omitempty"`    // CA 提供商授权记录 ID
 	CAProviderConfig      map[string]any `json:"caProviderConfig,omitempty"`      // CA 提供商额外配置
-	KeyAlgorithm          string         `json:"keyAlgorithm,omitempty"`          // 证书算法
-	ValidityLifetime      string         `json:"validityLifetime,omitempty"`      // 证书有效期，形如 "30d"、"6h"
+	KeySource             string         `json:"keySource"`                       // 私钥来源，可取值 "auto"、"reuse"、"custom"（零值时默认值 "auto"）
+	KeyAlgorithm          string         `json:"keyAlgorithm,omitempty"`          // 私钥算法
+	KeyContent            string         `json:"keyContent,omitempty"`            // 私钥内容
+	ValidityLifetime      string         `json:"validityLifetime,omitempty"`      // 有效期，形如 "30d"、"6h"
+	PreferredChain        string         `json:"preferredChain,omitempty"`        // 首选证书链
 	ACMEProfile           string         `json:"acmeProfile,omitempty"`           // ACME Profiles Extension
-	Nameservers           []string       `json:"nameservers,omitempty"`           // DNS 服务器列表，以半角分号分隔
-	DnsPropagationWait    int32          `json:"dnsPropagationWait,omitempty"`    // DNS 传播等待时间，等同于 lego 的 `--dns-propagation-wait` 参数
-	DnsPropagationTimeout int32          `json:"dnsPropagationTimeout,omitempty"` // DNS 传播检查超时时间（零值时使用提供商的默认值）
-	DnsTTL                int32          `json:"dnsTTL,omitempty"`                // DNS 解析记录 TTL（零值时使用提供商的默认值）
-	HttpDelayWait         int32          `json:"httpDelayWait,omitempty"`         // HTTP 等待时间
+	Nameservers           []string       `json:"nameservers,omitempty"`           // DNS 服务器列表，以半角分号分隔。等同于 lego 的 `--dns.resolvers` 参数
+	DnsPropagationWait    int            `json:"dnsPropagationWait,omitempty"`    // DNS 传播等待时间。等同于 lego 的 `--dns.propagation-wait` 参数
+	DnsPropagationTimeout int            `json:"dnsPropagationTimeout,omitempty"` // DNS 传播检查超时时间。等同于 lego 的 `--dns-timeout` 参数
+	DnsTTL                int            `json:"dnsTTL,omitempty"`                // DNS 解析记录 TTL
+	HttpDelayWait         int            `json:"httpDelayWait,omitempty"`         // HTTP 等待时间。等同于 lego 的 `--http.delay` 参数
+	DisableCommonName     bool           `json:"disableCommonName,omitempty"`     // 是否不包含 CommonName。等同于 lego 的 `--disable-cn` 参数
 	DisableFollowCNAME    bool           `json:"disableFollowCNAME,omitempty"`    // 是否关闭 CNAME 跟随
 	DisableARI            bool           `json:"disableARI,omitempty"`            // 是否关闭 ARI
-	SkipBeforeExpiryDays  int32          `json:"skipBeforeExpiryDays,omitempty"`  // 证书到期前多少天前跳过续期
+	SkipBeforeExpiryDays  int            `json:"skipBeforeExpiryDays,omitempty"`  // 证书到期前多少天前跳过续期
 }
 
 type WorkflowNodeConfigForBizUpload struct {
-	Source      string `json:"source"`      // 证书来源（零值时默认值 "form"）
+	Source      string `json:"source"`      // 证书来源，可取值 "form"、"local"、"url"（零值时默认值 "form"）
 	Certificate string `json:"certificate"` // 证书，根据证书来源决定是 PEM 内容 / 文件路径 / URL
 	PrivateKey  string `json:"privateKey"`  // 私钥，根据证书来源决定是 PEM 内容 / 文件路径 / URL
 }

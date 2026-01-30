@@ -13,7 +13,7 @@ import AppVersion from "@/components/AppVersion";
 import { useAntdForm, useBrowserTheme } from "@/hooks";
 
 import { authWithPassword } from "@/repository/admin";
-import { getErrMsg } from "@/utils/error";
+import { unwrapErrMsg } from "@/utils/error";
 
 const Login = () => {
   const navigage = useNavigate();
@@ -59,7 +59,7 @@ const Login = () => {
         await authWithPassword(values.username, values.password);
         await navigage("/");
       } catch (err) {
-        notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
+        notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
 
         throw err;
       }
@@ -79,26 +79,25 @@ const Login = () => {
 
             <Form {...formProps} form={formInst} disabled={formPending} layout="vertical" validateTrigger="onBlur">
               <Form.Item name="username" label={t("login.username.label")} rules={[formRule]}>
-                <Input
-                  addonBefore={<IconMail size="1.25em" />}
-                  autoComplete="new-password"
-                  autoFocus
-                  placeholder={t("login.username.placeholder")}
-                  size="large"
-                />
+                <Space.Compact block>
+                  <Space.Addon>
+                    <IconMail size="1.25em" />
+                  </Space.Addon>
+                  <Input autoComplete="new-password" autoFocus placeholder={t("login.username.placeholder")} size="large" />
+                </Space.Compact>
               </Form.Item>
 
               <Form.Item name="password" label={t("login.password.label")} rules={[formRule]}>
-                <Input.Password
-                  addonBefore={<IconLock size="1.25em" />}
-                  autoComplete="new-password"
-                  placeholder={t("login.password.placeholder")}
-                  size="large"
-                />
+                <Space.Compact block>
+                  <Space.Addon>
+                    <IconLock size="1.25em" />
+                  </Space.Addon>
+                  <Input.Password autoComplete="new-password" placeholder={t("login.password.placeholder")} size="large" />
+                </Space.Compact>
               </Form.Item>
 
               <Form.Item className="mt-8 mb-0">
-                <Button block type="primary" htmlType="submit" icon={<IconArrowRight size="1.25em" />} iconPosition="end" loading={formPending} size="large">
+                <Button block type="primary" htmlType="submit" icon={<IconArrowRight size="1.25em" />} iconPlacement="end" loading={formPending} size="large">
                   {t("login.submit")}
                 </Button>
               </Form.Item>
@@ -107,7 +106,7 @@ const Login = () => {
             <div className="mt-12">
               <div className="block max-sm:hidden">
                 <div className="flex items-center justify-center">
-                  <Space align="center" split={<Divider type="vertical" />} size={4}>
+                  <Space align="center" separator={<Divider orientation="vertical" />} size={4}>
                     <AppLocale.LinkButton />
                     <AppTheme.LinkButton />
                     <AppDocument.LinkButton />
@@ -117,14 +116,14 @@ const Login = () => {
               </div>
               <div className="hidden max-sm:block">
                 <div className="flex items-center justify-center">
-                  <Space align="center" split={<Divider type="vertical" />} size={4}>
+                  <Space align="center" separator={<Divider orientation="vertical" />} size={4}>
                     <AppLocale.LinkButton />
                     <AppTheme.LinkButton />
                     <AppDocument.LinkButton />
                   </Space>
                 </div>
                 <div className="mt-6 flex items-center justify-center">
-                  <Space align="center" split={<Divider type="vertical" />} size={4}>
+                  <Space align="center" separator={<Divider orientation="vertical" />} size={4}>
                     <AppVersion.LinkButton />
                   </Space>
                 </div>

@@ -1,18 +1,16 @@
 package domain
 
-import (
-	"time"
-)
+import "time"
 
 const CollectionNameAccess = "access"
 
 type Access struct {
 	Meta
-	Name      string         `json:"name" db:"name"`
-	Provider  string         `json:"provider" db:"provider"`
-	Config    map[string]any `json:"config" db:"config"`
-	Reserve   string         `json:"reserve,omitempty" db:"reserve"`
-	DeletedAt *time.Time     `json:"deleted" db:"deleted"`
+	Name      string         `db:"name"     json:"name"`
+	Provider  string         `db:"provider" json:"provider"`
+	Config    map[string]any `db:"config"   json:"config"`
+	Reserve   string         `db:"reserve"  json:"reserve,omitempty"`
+	DeletedAt *time.Time     `db:"deleted" json:"deleted"`
 }
 
 type AccessConfigFor1Panel struct {
@@ -20,6 +18,16 @@ type AccessConfigFor1Panel struct {
 	ApiVersion               string `json:"apiVersion"`
 	ApiKey                   string `json:"apiKey"`
 	AllowInsecureConnections bool   `json:"allowInsecureConnections,omitempty"`
+}
+
+type AccessConfigFor35cn struct {
+	Username    string `json:"username"`
+	ApiPassword string `json:"apiPassword"`
+}
+
+type AccessConfigFor51DNScom struct {
+	ApiKey    string `json:"apiKey"`
+	ApiSecret string `json:"apiSecret"`
 }
 
 type AccessConfigForACMEExternalAccountBinding struct {
@@ -48,6 +56,13 @@ type AccessConfigForActalisSSL struct {
 	AccessConfigForACMEExternalAccountBinding
 }
 
+type AccessConfigForAkamai struct {
+	Host         string `json:"host"`
+	ClientToken  string `json:"clientToken"`
+	ClientSecret string `json:"clientSecret"`
+	AccessToken  string `json:"accessToken"`
+}
+
 type AccessConfigForAliyun struct {
 	AccessKeyId     string `json:"accessKeyId"`
 	AccessKeySecret string `json:"accessKeySecret"`
@@ -60,16 +75,22 @@ type AccessConfigForAPISIX struct {
 	AllowInsecureConnections bool   `json:"allowInsecureConnections,omitempty"`
 }
 
+type AccessConfigForArvanCloud struct {
+	ApiKey string `json:"apiKey"`
+}
+
 type AccessConfigForAWS struct {
 	AccessKeyId     string `json:"accessKeyId"`
 	SecretAccessKey string `json:"secretAccessKey"`
 }
 
 type AccessConfigForAzure struct {
-	TenantId     string `json:"tenantId"`
-	ClientId     string `json:"clientId"`
-	ClientSecret string `json:"clientSecret"`
-	CloudName    string `json:"cloudName,omitempty"`
+	TenantId          string `json:"tenantId"`
+	ClientId          string `json:"clientId"`
+	ClientSecret      string `json:"clientSecret"`
+	SubscriptionId    string `json:"subscriptionId,omitempty"`
+	ResourceGroupName string `json:"resourceGroupName,omitempty"`
+	CloudName         string `json:"cloudName,omitempty"`
 }
 
 type AccessConfigForBaiduCloud struct {
@@ -87,19 +108,30 @@ type AccessConfigForBaotaPanel struct {
 	AllowInsecureConnections bool   `json:"allowInsecureConnections,omitempty"`
 }
 
+type AccessConfigForBaotaPanelGo struct {
+	ServerUrl                string `json:"serverUrl"`
+	ApiKey                   string `json:"apiKey"`
+	AllowInsecureConnections bool   `json:"allowInsecureConnections,omitempty"`
+}
+
 type AccessConfigForBaotaWAF struct {
 	ServerUrl                string `json:"serverUrl"`
 	ApiKey                   string `json:"apiKey"`
 	AllowInsecureConnections bool   `json:"allowInsecureConnections,omitempty"`
 }
 
-type AccessConfigForBytePlus struct {
-	AccessKey string `json:"accessKey"`
-	SecretKey string `json:"secretKey"`
+type AccessConfigForBookMyName struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
 }
 
 type AccessConfigForBunny struct {
 	ApiKey string `json:"apiKey"`
+}
+
+type AccessConfigForBytePlus struct {
+	AccessKey string `json:"accessKey"`
+	SecretKey string `json:"secretKey"`
 }
 
 type AccessConfigForCacheFly struct {
@@ -133,6 +165,13 @@ type AccessConfigForConstellix struct {
 	SecretKey string `json:"secretKey"`
 }
 
+type AccessConfigForCPanel struct {
+	ServerUrl                string `json:"serverUrl"`
+	Username                 string `json:"username"`
+	ApiToken                 string `json:"apiToken"`
+	AllowInsecureConnections bool   `json:"allowInsecureConnections,omitempty"`
+}
+
 type AccessConfigForCTCCCloud struct {
 	AccessKeyId     string `json:"accessKeyId"`
 	SecretAccessKey string `json:"secretAccessKey"`
@@ -147,8 +186,9 @@ type AccessConfigForDigitalOcean struct {
 }
 
 type AccessConfigForDingTalkBot struct {
-	WebhookUrl string `json:"webhookUrl"`
-	Secret     string `json:"secret"`
+	WebhookUrl    string `json:"webhookUrl"`
+	Secret        string `json:"secret,omitempty"`
+	CustomPayload string `json:"customPayload,omitempty"`
 }
 
 type AccessConfigForDiscordBot struct {
@@ -156,8 +196,17 @@ type AccessConfigForDiscordBot struct {
 	ChannelId string `json:"channelId,omitempty"`
 }
 
+type AccessConfigForDNSExit struct {
+	ApiKey string `json:"apiKey"`
+}
+
 type AccessConfigForDNSLA struct {
 	ApiId     string `json:"apiId"`
+	ApiSecret string `json:"apiSecret"`
+}
+
+type AccessConfigForDNSMadeEasy struct {
+	ApiKey    string `json:"apiKey"`
 	ApiSecret string `json:"apiSecret"`
 }
 
@@ -166,28 +215,34 @@ type AccessConfigForDogeCloud struct {
 	SecretKey string `json:"secretKey"`
 }
 
+type AccessConfigForDokploy struct {
+	ServerUrl                string `json:"serverUrl"`
+	ApiKey                   string `json:"apiKey"`
+	AllowInsecureConnections bool   `json:"allowInsecureConnections,omitempty"`
+}
+
 type AccessConfigForDuckDNS struct {
 	Token string `json:"token"`
+}
+
+type AccessConfigForDynu struct {
+	ApiKey string `json:"apiKey"`
 }
 
 type AccessConfigForDynv6 struct {
 	HttpToken string `json:"httpToken"`
 }
 
-type AccessConfigForEdgio struct {
-	ClientId     string `json:"clientId"`
-	ClientSecret string `json:"clientSecret"`
-}
-
 type AccessConfigForEmail struct {
-	SmtpHost        string `json:"smtpHost"`
-	SmtpPort        int32  `json:"smtpPort"`
-	SmtpTls         bool   `json:"smtpTls"`
-	Username        string `json:"username"`
-	Password        string `json:"password"`
-	SenderAddress   string `json:"senderAddress"`
-	SenderName      string `json:"senderName"`
-	ReceiverAddress string `json:"receiverAddress,omitempty"`
+	SmtpHost                 string `json:"smtpHost"`
+	SmtpPort                 int32  `json:"smtpPort"`
+	SmtpTls                  bool   `json:"smtpTls"`
+	Username                 string `json:"username"`
+	Password                 string `json:"password"`
+	SenderAddress            string `json:"senderAddress"`
+	SenderName               string `json:"senderName"`
+	ReceiverAddress          string `json:"receiverAddress,omitempty"`
+	AllowInsecureConnections bool   `json:"allowInsecureConnections,omitempty"`
 }
 
 type AccessConfigForFlexCDN struct {
@@ -198,8 +253,21 @@ type AccessConfigForFlexCDN struct {
 	AllowInsecureConnections bool   `json:"allowInsecureConnections,omitempty"`
 }
 
+type AccessConfigForGandinet struct {
+	PersonalAccessToken string `json:"personalAccessToken"`
+}
+
 type AccessConfigForGcore struct {
 	ApiToken string `json:"apiToken"`
+}
+
+type AccessConfigForGlobalSectigo struct {
+	AccessConfigForACMEExternalAccountBinding
+	ValidationType string `json:"validationType"`
+}
+
+type AccessConfigForGlobalSignAtlas struct {
+	AccessConfigForACMEExternalAccountBinding
 }
 
 type AccessConfigForGname struct {
@@ -220,10 +288,6 @@ type AccessConfigForGoEdge struct {
 	AllowInsecureConnections bool   `json:"allowInsecureConnections,omitempty"`
 }
 
-type AccessConfigForGlobalSignAtlas struct {
-	AccessConfigForACMEExternalAccountBinding
-}
-
 type AccessConfigForGoogleTrustServices struct {
 	AccessConfigForACMEExternalAccountBinding
 }
@@ -232,10 +296,27 @@ type AccessConfigForHetzner struct {
 	ApiToken string `json:"apiToken"`
 }
 
+type AccessConfigForHostingde struct {
+	ApiKey string `json:"apiKey"`
+}
+
+type AccessConfigForHostinger struct {
+	ApiToken string `json:"apiToken"`
+}
+
 type AccessConfigForHuaweiCloud struct {
 	AccessKeyId         string `json:"accessKeyId"`
 	SecretAccessKey     string `json:"secretAccessKey"`
 	EnterpriseProjectId string `json:"enterpriseProjectId,omitempty"`
+}
+
+type AccessConfigForInfomaniak struct {
+	AccessToken string `json:"accessToken"`
+}
+
+type AccessConfigForIONOS struct {
+	ApiKeyPublicPrefix string `json:"apiKeyPublicPrefix"`
+	ApiKeySecret       string `json:"apiKeySecret"`
 }
 
 type AccessConfigForJDCloud struct {
@@ -253,8 +334,15 @@ type AccessConfigForKubernetes struct {
 	KubeConfig string `json:"kubeConfig,omitempty"`
 }
 
+type AccessConfigForKsyun struct {
+	AccessKeyId     string `json:"accessKeyId"`
+	SecretAccessKey string `json:"secretAccessKey"`
+}
+
 type AccessConfigForLarkBot struct {
-	WebhookUrl string `json:"webhookUrl"`
+	WebhookUrl    string `json:"webhookUrl"`
+	Secret        string `json:"secret,omitempty"`
+	CustomPayload string `json:"customPayload,omitempty"`
 }
 
 type AccessConfigForLeCDN struct {
@@ -266,11 +354,24 @@ type AccessConfigForLeCDN struct {
 	AllowInsecureConnections bool   `json:"allowInsecureConnections,omitempty"`
 }
 
+type AccessConfigForLinode struct {
+	AccessToken string `json:"accessToken"`
+}
+
+type AccessConfigForLiteSSL struct {
+	AccessConfigForACMEExternalAccountBinding
+}
+
 type AccessConfigForMattermost struct {
 	ServerUrl string `json:"serverUrl"`
 	Username  string `json:"username"`
 	Password  string `json:"password"`
 	ChannelId string `json:"channelId,omitempty"`
+}
+
+type AccessConfigForMohua struct {
+	Username    string `json:"username"`
+	ApiPassword string `json:"apiPassword"`
 }
 
 type AccessConfigForNamecheap struct {
@@ -297,8 +398,27 @@ type AccessConfigForNetlify struct {
 	ApiToken string `json:"apiToken"`
 }
 
+type AccessConfigForNginxProxyManager struct {
+	ServerUrl                string `json:"serverUrl"`
+	AuthMethod               string `json:"authMethod"`
+	Username                 string `json:"username,omitempty"`
+	Password                 string `json:"password,omitempty"`
+	ApiToken                 string `json:"apiToken,omitempty"`
+	AllowInsecureConnections bool   `json:"allowInsecureConnections,omitempty"`
+}
+
 type AccessConfigForNS1 struct {
 	ApiKey string `json:"apiKey"`
+}
+
+type AccessConfigForOVHcloud struct {
+	Endpoint          string `json:"endpoint"`
+	AuthMethod        string `json:"authMethod"`
+	ApplicationKey    string `json:"applicationKey,omitempty"`
+	ApplicationSecret string `json:"applicationSecret,omitempty"`
+	ConsumerKey       string `json:"consumerKey,omitempty"`
+	ClientId          string `json:"clientId,omitempty"`
+	ClientSecret      string `json:"clientSecret,omitempty"`
 }
 
 type AccessConfigForPorkbun struct {
@@ -319,6 +439,11 @@ type AccessConfigForProxmoxVE struct {
 	AllowInsecureConnections bool   `json:"allowInsecureConnections,omitempty"`
 }
 
+type AccessConfigForQingCloud struct {
+	AccessKeyId     string `json:"accessKeyId"`
+	SecretAccessKey string `json:"secretAccessKey"`
+}
+
 type AccessConfigForQiniu struct {
 	AccessKey string `json:"accessKey"`
 	SecretKey string `json:"secretKey"`
@@ -330,8 +455,25 @@ type AccessConfigForRainYun struct {
 
 type AccessConfigForRatPanel struct {
 	ServerUrl                string `json:"serverUrl"`
-	AccessTokenId            int32  `json:"accessTokenId"`
+	AccessTokenId            int64  `json:"accessTokenId"`
 	AccessToken              string `json:"accessToken"`
+	AllowInsecureConnections bool   `json:"allowInsecureConnections,omitempty"`
+}
+
+type AccessConfigForRFC2136 struct {
+	Host          string `json:"host"`
+	Port          int32  `json:"port"`
+	TsigAlgorithm string `json:"tsigAlgorithm,omitempty"`
+	TsigKey       string `json:"tsigKey,omitempty"`
+	TsigSecret    string `json:"tsigSecret,omitempty"`
+}
+
+type AccessConfigForS3 struct {
+	Endpoint                 string `json:"endpoint"`
+	AccessKey                string `json:"accessKey"`
+	SecretKey                string `json:"secretKey"`
+	SignatureVersion         string `json:"signatureVersion,omitempty"`
+	UsePathStyle             bool   `json:"usePathStyle,omitempty"`
 	AllowInsecureConnections bool   `json:"allowInsecureConnections,omitempty"`
 }
 
@@ -339,11 +481,6 @@ type AccessConfigForSafeLine struct {
 	ServerUrl                string `json:"serverUrl"`
 	ApiToken                 string `json:"apiToken"`
 	AllowInsecureConnections bool   `json:"allowInsecureConnections,omitempty"`
-}
-
-type AccessConfigForGlobalSectigo struct {
-	AccessConfigForACMEExternalAccountBinding
-	ValidationType string `json:"validationType"`
 }
 
 type AccessConfigForSlackBot struct {
@@ -359,16 +496,16 @@ type AccessConfigForSpaceship struct {
 type AccessConfigForSSH struct {
 	Host          string `json:"host"`
 	Port          int32  `json:"port"`
-	AuthMethod    string `json:"authMethod,omitempty"`
-	Username      string `json:"username,omitempty"`
+	AuthMethod    string `json:"authMethod"`
+	Username      string `json:"username"`
 	Password      string `json:"password,omitempty"`
 	Key           string `json:"key,omitempty"`
 	KeyPassphrase string `json:"keyPassphrase,omitempty"`
 	JumpServers   []struct {
 		Host          string `json:"host"`
 		Port          int32  `json:"port"`
-		AuthMethod    string `json:"authMethod,omitempty"`
-		Username      string `json:"username,omitempty"`
+		AuthMethod    string `json:"authMethod"`
+		Username      string `json:"username"`
 		Password      string `json:"password,omitempty"`
 		Key           string `json:"key,omitempty"`
 		KeyPassphrase string `json:"keyPassphrase,omitempty"`
@@ -379,9 +516,23 @@ type AccessConfigForSSLCom struct {
 	AccessConfigForACMEExternalAccountBinding
 }
 
+type AccessConfigForSynologyDSM struct {
+	ServerUrl                string `json:"serverUrl"`
+	Username                 string `json:"username"`
+	Password                 string `json:"password"`
+	TotpSecret               string `json:"totpSecret,omitempty"`
+	AllowInsecureConnections bool   `json:"allowInsecureConnections,omitempty"`
+}
+
+type AccessConfigForTechnitiumDNS struct {
+	ServerUrl                string `json:"serverUrl"`
+	ApiToken                 string `json:"apiToken"`
+	AllowInsecureConnections bool   `json:"allowInsecureConnections,omitempty"`
+}
+
 type AccessConfigForTelegramBot struct {
 	BotToken string `json:"botToken"`
-	ChatId   int64  `json:"chatId,omitempty"`
+	ChatId   string `json:"chatId,omitempty"`
 }
 
 type AccessConfigForTencentCloud struct {
@@ -434,11 +585,17 @@ type AccessConfigForWebhook struct {
 }
 
 type AccessConfigForWeComBot struct {
-	WebhookUrl string `json:"webhookUrl"`
+	WebhookUrl    string `json:"webhookUrl"`
+	CustomPayload string `json:"customPayload,omitempty"`
 }
 
 type AccessConfigForWestcn struct {
 	Username    string `json:"username"`
+	ApiPassword string `json:"apiPassword"`
+}
+
+type AccessConfigForXinnet struct {
+	AgentId     string `json:"agentId"`
 	ApiPassword string `json:"apiPassword"`
 }
 

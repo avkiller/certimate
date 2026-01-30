@@ -24,7 +24,7 @@ func (c *USSLClient) NewDownloadCertificateRequest() *DownloadCertificateRequest
 
 	c.Client.SetupRequest(req)
 
-	req.SetRetryable(false)
+	req.SetRetryable(true)
 	return req
 }
 

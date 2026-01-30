@@ -1,4 +1,4 @@
-﻿package engine
+package engine
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"maps"
 	"strings"
 
-	"github.com/certimate-go/certimate/internal/certdeploy"
+	"github.com/certimate-go/certimate/internal/certmgmt"
 	"github.com/certimate-go/certimate/internal/domain"
 	"github.com/certimate-go/certimate/internal/repository"
 )
@@ -36,6 +36,10 @@ func (ne *bizDeployNodeExecutor) Execute(execCtx *NodeExecutionContext) (*NodeEx
 	lastOutput, err := ne.getLastOutputArtifacts(execCtx)
 	if err != nil {
 		return execRes, err
+	} else {
+		if lastOutput != nil {
+			ne.logger.Info(fmt.Sprintf("found last node output #%s record", lastOutput.RunId))
+		}
 	}
 
 	// 获取前序节点输出证书
@@ -44,7 +48,7 @@ func (ne *bizDeployNodeExecutor) Execute(execCtx *NodeExecutionContext) (*NodeEx
 		if inputStateValue, ok := inputState.Value.(string); ok {
 			s := strings.Split(inputStateValue, "#")
 			if len(s) == 2 {
-				certificate, err := ne.certificateRepo.GetById(execCtx.ctx, s[1])
+				certificate, err := ne.certificateRepo.GetById(execCtx.Context(), s[1])
 				if err != nil {
 					ne.logger.Warn("could not get input certificate")
 					return execRes, err
@@ -63,21 +67,21 @@ func (ne *bizDeployNodeExecutor) Execute(execCtx *NodeExecutionContext) (*NodeEx
 		if skippable, reason := ne.checkCanSkip(execCtx, lastOutput); skippable {
 			ne.logger.Info(fmt.Sprintf("skip this deployment, because %s", reason))
 
-			execRes.AddVariableWithScope(execCtx.Node.Id, stateVarKeyNodeSkipped, true, "boolean")
+			execRes.AddVariableWithScope(execCtx.Node.Id, stateVarKeyNodeSkipped, true, stateValTypeBoolean)
 			return execRes, nil
 		} else if reason != "" {
 			ne.logger.Info(fmt.Sprintf("re-deploy, because %s", reason))
 
-			execRes.AddVariableWithScope(execCtx.Node.Id, stateVarKeyNodeSkipped, false, "boolean")
+			execRes.AddVariableWithScope(execCtx.Node.Id, stateVarKeyNodeSkipped, false, stateValTypeBoolean)
 		}
 	} else {
-		execRes.AddVariableWithScope(execCtx.Node.Id, stateVarKeyNodeSkipped, false, "boolean")
+		execRes.AddVariableWithScope(execCtx.Node.Id, stateVarKeyNodeSkipped, false, stateValTypeBoolean)
 	}
 
 	// 读取部署提供商授权
 	providerAccessConfig := make(map[string]any)
 	if nodeCfg.ProviderAccessId != "" {
-		if access, err := ne.accessRepo.GetById(execCtx.ctx, nodeCfg.ProviderAccessId); err != nil {
+		if access, err := ne.accessRepo.GetById(execCtx.Context(), nodeCfg.ProviderAccessId); err != nil {
 			return nil, fmt.Errorf("failed to get access #%s record: %w", nodeCfg.ProviderAccessId, err)
 		} else {
 			providerAccessConfig = access.Config
@@ -85,15 +89,15 @@ func (ne *bizDeployNodeExecutor) Execute(execCtx *NodeExecutionContext) (*NodeEx
 	}
 
 	// 部署证书
-	deployer := certdeploy.NewClient(certdeploy.WithLogger(ne.logger))
-	deployReq := &certdeploy.DeployCertificateRequest{
+	deployer := certmgmt.NewClient(certmgmt.WithLogger(ne.logger))
+	deployReq := &certmgmt.DeployCertificateRequest{
 		Provider:               nodeCfg.Provider,
 		ProviderAccessConfig:   providerAccessConfig,
 		ProviderExtendedConfig: nodeCfg.ProviderConfig,
 		Certificate:            inputCertificate.Certificate,
 		PrivateKey:             inputCertificate.PrivateKey,
 	}
-	if _, err := deployer.DeployCertificate(execCtx.ctx, deployReq); err != nil {
+	if _, err := deployer.DeployCertificate(execCtx.Context(), deployReq); err != nil {
 		ne.logger.Warn("could not deploy certificate")
 		return execRes, err
 	}
@@ -106,7 +110,7 @@ func (ne *bizDeployNodeExecutor) Execute(execCtx *NodeExecutionContext) (*NodeEx
 }
 
 func (ne *bizDeployNodeExecutor) getLastOutputArtifacts(execCtx *NodeExecutionContext) (*domain.WorkflowOutput, error) {
-	lastOutput, err := ne.wfoutputRepo.GetByNodeId(execCtx.ctx, execCtx.Node.Id)
+	lastOutput, err := ne.wfoutputRepo.GetByWorkflowIdAndNodeId(execCtx.Context(), execCtx.WorkflowId, execCtx.Node.Id)
 	if err != nil && !domain.IsRecordNotFoundError(err) {
 		return nil, fmt.Errorf("failed to get last output record of node #%s: %w", execCtx.Node.Id, err)
 	}

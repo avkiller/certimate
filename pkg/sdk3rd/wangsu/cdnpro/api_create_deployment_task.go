@@ -13,7 +13,7 @@ type CreateDeploymentTaskRequest struct {
 }
 
 type CreateDeploymentTaskResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
 	DeploymentTaskLocation string `json:"location,omitempty"`
 }

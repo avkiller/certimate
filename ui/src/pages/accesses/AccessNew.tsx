@@ -1,16 +1,17 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useMount } from "ahooks";
 import { App, Button, Flex, Form } from "antd";
 
 import AccessForm, { type AccessFormUsages } from "@/components/access/AccessForm";
-import AccessProviderPicker from "@/components/provider/AccessProviderPicker";
+import AccessProviderPicker, { type AccessProviderPickerInstance } from "@/components/provider/AccessProviderPicker";
 import Show from "@/components/Show";
 import { type AccessModel } from "@/domain/access";
 import { ACCESS_USAGES } from "@/domain/provider";
 import { useZustandShallowSelector } from "@/hooks";
 import { useAccessesStore } from "@/stores/access";
-import { getErrMsg } from "@/utils/error";
+import { unwrapErrMsg } from "@/utils/error";
 
 const AccessNew = () => {
   const navigate = useNavigate();
@@ -25,6 +26,13 @@ const AccessNew = () => {
   const providerUsage = useMemo(() => searchParams.get("usage") as AccessFormUsages, [searchParams]);
   const providerFilter = AccessForm.useProviderFilterByUsage(providerUsage);
 
+  const providerPickerRef = useRef<AccessProviderPickerInstance>(null);
+  useMount(() => {
+    setTimeout(() => {
+      providerPickerRef.current?.inputRef?.focus();
+    }, 1);
+  });
+
   const [formInst] = Form.useForm();
   const [formPending, setFormPending] = useState(false);
 
@@ -35,22 +43,23 @@ const AccessNew = () => {
   };
 
   const handleSubmitClick = async () => {
+    let formValues: AccessModel;
+
     setFormPending(true);
     try {
-      await formInst.validateFields();
+      formValues = await formInst.validateFields();
+      formValues.reserve = providerUsage === "ca" ? "ca" : providerUsage === "notification" ? "notif" : void 0;
     } catch (err) {
       setFormPending(false);
       throw err;
     }
 
     try {
-      const values: AccessModel = formInst.getFieldsValue(true);
-      values.reserve = providerUsage === "ca" ? "ca" : providerUsage === "notification" ? "notif" : void 0;
-      await createAccess(values);
+      await createAccess(formValues);
 
       navigate(`/accesses?usage=${providerUsage}`, { replace: true });
     } catch (err) {
-      notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
+      notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
 
       throw err;
     } finally {
@@ -72,10 +81,13 @@ const AccessNew = () => {
       <div className="container">
         <Show when={!fieldProvider}>
           <AccessProviderPicker
-            autoFocus
+            ref={providerPickerRef}
             gap="large"
             placeholder={t("access.form.provider.search.placeholder")}
-            showOptionTags={providerUsage == null || (providerUsage === "dns-hosting" ? { [ACCESS_USAGES.DNS]: true, [ACCESS_USAGES.HOSTING]: true } : false)}
+            showOptionTags={
+              providerUsage == null ||
+              (providerUsage === "dns-hosting" ? { ["builtin"]: true, [ACCESS_USAGES.DNS]: true, [ACCESS_USAGES.HOSTING]: true } : { ["builtin"]: true })
+            }
             showSearch
             onFilter={providerFilter}
             onSelect={handleProviderPick}

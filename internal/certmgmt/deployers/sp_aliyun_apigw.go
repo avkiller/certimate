@@ -1,0 +1,32 @@
+package deployers
+
+import (
+	"fmt"
+
+	"github.com/certimate-go/certimate/internal/domain"
+	"github.com/certimate-go/certimate/pkg/core/deployer"
+	aliyunapigw "github.com/certimate-go/certimate/pkg/core/deployer/providers/aliyun-apigw"
+	xmaps "github.com/certimate-go/certimate/pkg/utils/maps"
+)
+
+func init() {
+	Registries.MustRegister(domain.DeploymentProviderTypeAliyunAPIGW, func(options *ProviderFactoryOptions) (deployer.Provider, error) {
+		credentials := domain.AccessConfigForAliyun{}
+		if err := xmaps.Populate(options.ProviderAccessConfig, &credentials); err != nil {
+			return nil, fmt.Errorf("failed to populate provider access config: %w", err)
+		}
+
+		provider, err := aliyunapigw.NewDeployer(&aliyunapigw.DeployerConfig{
+			AccessKeyId:        credentials.AccessKeyId,
+			AccessKeySecret:    credentials.AccessKeySecret,
+			ResourceGroupId:    credentials.ResourceGroupId,
+			Region:             xmaps.GetString(options.ProviderExtendedConfig, "region"),
+			ServiceType:        xmaps.GetString(options.ProviderExtendedConfig, "serviceType"),
+			GatewayId:          xmaps.GetString(options.ProviderExtendedConfig, "gatewayId"),
+			GroupId:            xmaps.GetString(options.ProviderExtendedConfig, "groupId"),
+			DomainMatchPattern: xmaps.GetString(options.ProviderExtendedConfig, "domainMatchPattern"),
+			Domain:             xmaps.GetString(options.ProviderExtendedConfig, "domain"),
+		})
+		return provider, err
+	})
+}

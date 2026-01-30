@@ -11,7 +11,7 @@ type BindCdnCertRequest struct {
 }
 
 type BindCdnCertResponse struct {
-	apiResponseBase
+	sdkResponseBase
 }
 
 func (c *Client) BindCdnCert(req *BindCdnCertRequest) (*BindCdnCertResponse, error) {

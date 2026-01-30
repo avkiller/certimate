@@ -6,11 +6,11 @@ import { type SelectProps } from "antd";
 
 import { useZustandShallowSelector } from "@/hooks";
 import { useAccessesStore } from "@/stores/access";
+import { matchSearchString } from "@/utils/search";
 
 type Provider = { type: string; name: string };
 
-export interface SharedSelectProps<T extends Provider>
-  extends Omit<SelectProps, "filterOption" | "filterSort" | "labelRender" | "options" | "optionFilterProp" | "optionLabelProp" | "optionRender"> {
+export interface SharedSelectProps<T extends Provider> extends Omit<SelectProps, "labelRender" | "options" | "optionLabelProp" | "optionRender"> {
   className?: string;
   style?: React.CSSProperties;
   onFilter?: (value: string, option: T) => boolean;
@@ -19,14 +19,16 @@ export interface SharedSelectProps<T extends Provider>
 export const useSelectDataSource = <T extends Provider>({
   dataSource,
   filters,
-  deps,
+  deps = [],
 }: {
   dataSource: T[];
   filters?: Array<(value: string, option: T) => boolean>;
   deps?: React.DependencyList;
 }) => {
   const { accesses, fetchAccesses } = useAccessesStore(useZustandShallowSelector(["accesses", "fetchAccesses"]));
-  useMount(() => fetchAccesses(false));
+  useMount(() => {
+    fetchAccesses(false);
+  });
 
   const filteredDataSource = useMemo(() => {
     return dataSource.filter((provider) => {
@@ -39,7 +41,7 @@ export const useSelectDataSource = <T extends Provider>({
 
       return true;
     });
-  }, [dataSource, filters, ...(deps ?? [])]);
+  }, [dataSource, filters, deps]);
 
   const availableDataSource = useMemo(() => {
     return filteredDataSource.filter((provider) => {
@@ -49,11 +51,11 @@ export const useSelectDataSource = <T extends Provider>({
         return access.provider === provider.type;
       });
     });
-  }, [accesses, filteredDataSource, ...(deps ?? [])]);
+  }, [accesses, filteredDataSource, deps]);
 
   const unavailableDataSource = useMemo(() => {
     return filteredDataSource.filter((item) => !availableDataSource.includes(item));
-  }, [filteredDataSource, availableDataSource, ...(deps ?? [])]);
+  }, [filteredDataSource, availableDataSource, deps]);
 
   return {
     raw: dataSource,
@@ -66,7 +68,6 @@ export const useSelectDataSource = <T extends Provider>({
 export interface SharedPickerProps<T extends Provider> {
   className?: string;
   style?: React.CSSProperties;
-  autoFocus?: boolean;
   gap?: number | "small" | "middle" | "large";
   placeholder?: string;
   showSearch?: boolean;
@@ -82,7 +83,7 @@ export const usePickerWrapperCols = (width: number) => {
     const wWidth = wrapperSize?.width ?? document.body.clientWidth - 256;
     const wCols = Math.floor(wWidth / width);
     return Math.min(9, Math.max(1, wCols));
-  }, [wrapperSize, width]);
+  }, [wrapperSize?.width, width]);
 
   return {
     wrapperElRef,
@@ -94,7 +95,7 @@ export const usePickerDataSource = <T extends Provider>({
   dataSource,
   filters,
   keyword,
-  deps,
+  deps = [],
 }: {
   dataSource: T[];
   filters?: Array<(value: string, option: T) => boolean>;
@@ -104,7 +105,9 @@ export const usePickerDataSource = <T extends Provider>({
   const { t } = useTranslation();
 
   const { accesses, fetchAccesses } = useAccessesStore(useZustandShallowSelector(["accesses", "fetchAccesses"]));
-  useMount(() => fetchAccesses(false));
+  useMount(() => {
+    fetchAccesses(false);
+  });
 
   const filteredDataSource = useMemo(() => {
     return dataSource
@@ -120,13 +123,12 @@ export const usePickerDataSource = <T extends Provider>({
       })
       .filter((provider) => {
         if (keyword) {
-          const value = keyword.toLowerCase();
-          return provider.type.toLowerCase().includes(value) || t(provider.name).toLowerCase().includes(value);
+          return matchSearchString(keyword, provider.type) || matchSearchString(keyword, t(provider.name));
         }
 
         return true;
       });
-  }, [dataSource, filters, keyword, ...(deps ?? [])]);
+  }, [dataSource, filters, keyword, deps]);
 
   const availableDataSource = useMemo(() => {
     return filteredDataSource.filter((provider) => {
@@ -136,11 +138,11 @@ export const usePickerDataSource = <T extends Provider>({
         return access.provider === provider.type;
       });
     });
-  }, [accesses, filteredDataSource, ...(deps ?? [])]);
+  }, [accesses, filteredDataSource, deps]);
 
   const unavailableDataSource = useMemo(() => {
     return filteredDataSource.filter((item) => !availableDataSource.includes(item));
-  }, [filteredDataSource, availableDataSource, ...(deps ?? [])]);
+  }, [filteredDataSource, availableDataSource, deps]);
 
   return {
     raw: dataSource,

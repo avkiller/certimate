@@ -3,20 +3,22 @@ package elb
 import (
 	"context"
 	"net/http"
+
+	qs "github.com/google/go-querystring/query"
 )
 
 type ListListenersRequest struct {
-	ClientToken     *string `json:"clientToken,omitempty"`
-	RegionID        *string `json:"regionID,omitempty"`
-	ProjectID       *string `json:"projectID,omitempty"`
-	IDs             *string `json:"IDs,omitempty"`
-	Name            *string `json:"name,omitempty"`
-	LoadBalancerID  *string `json:"loadBalancerID,omitempty"`
-	AccessControlID *string `json:"accessControlID,omitempty"`
+	ClientToken     *string `json:"clientToken,omitempty"     url:"clientToken,omitempty"`
+	RegionID        *string `json:"regionID,omitempty"        url:"regionID,omitempty"`
+	ProjectID       *string `json:"projectID,omitempty"       url:"projectID,omitempty"`
+	IDs             *string `json:"IDs,omitempty"             url:"IDs,omitempty"`
+	Name            *string `json:"name,omitempty"            url:"name,omitempty"`
+	LoadBalancerID  *string `json:"loadBalancerID,omitempty"  url:"loadBalancerID,omitempty"`
+	AccessControlID *string `json:"accessControlID,omitempty" url:"accessControlID,omitempty"`
 }
 
 type ListListenersResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
 	ReturnObj []*ListenerRecord `json:"returnObj,omitempty"`
 }
@@ -30,28 +32,12 @@ func (c *Client) ListListenersWithContext(ctx context.Context, req *ListListener
 	if err != nil {
 		return nil, err
 	} else {
-		if req.ClientToken != nil {
-			httpreq.SetQueryParam("clientToken", *req.ClientToken)
-		}
-		if req.RegionID != nil {
-			httpreq.SetQueryParam("regionID", *req.RegionID)
-		}
-		if req.ProjectID != nil {
-			httpreq.SetQueryParam("projectID", *req.ProjectID)
-		}
-		if req.IDs != nil {
-			httpreq.SetQueryParam("IDs", *req.IDs)
-		}
-		if req.Name != nil {
-			httpreq.SetQueryParam("name", *req.Name)
-		}
-		if req.LoadBalancerID != nil {
-			httpreq.SetQueryParam("loadBalancerID", *req.LoadBalancerID)
-		}
-		if req.LoadBalancerID != nil {
-			httpreq.SetQueryParam("accessControlID", *req.AccessControlID)
+		values, err := qs.Values(req)
+		if err != nil {
+			return nil, err
 		}
 
+		httpreq.SetQueryParamsFromValues(values)
 		httpreq.SetContext(ctx)
 	}
 

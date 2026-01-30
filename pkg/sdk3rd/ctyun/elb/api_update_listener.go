@@ -17,7 +17,7 @@ type UpdateListenerRequest struct {
 }
 
 type UpdateListenerResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
 	ReturnObj []*ListenerRecord `json:"returnObj,omitempty"`
 }

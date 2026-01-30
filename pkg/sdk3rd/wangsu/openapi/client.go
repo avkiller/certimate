@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/go-resty/resty/v2"
+
+	"github.com/certimate-go/certimate/internal/app"
 )
 
 type Client struct {
@@ -36,7 +38,7 @@ func NewClient(accessKey, secretKey string) (*Client, error) {
 		SetHeader("Accept", "application/json").
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Host", "open.chinanetcenter.com").
-		SetHeader("User-Agent", "certimate").
+		SetHeader("User-Agent", app.AppUserAgent).
 		SetPreRequestHook(func(c *resty.Client, req *http.Request) error {
 			// Step 1: Get request method
 			method := req.Method
@@ -162,13 +164,13 @@ func (c *Client) DoRequest(req *resty.Request) (*resty.Response, error) {
 	if err != nil {
 		return resp, fmt.Errorf("sdkerr: failed to send request: %w", err)
 	} else if resp.IsError() {
-		return resp, fmt.Errorf("sdkerr: unexpected status code: %d, resp: %s", resp.StatusCode(), resp.String())
+		return resp, fmt.Errorf("sdkerr: unexpected status code: %d (resp: %s)", resp.StatusCode(), resp.String())
 	}
 
 	return resp, nil
 }
 
-func (c *Client) DoRequestWithResult(req *resty.Request, res any) (*resty.Response, error) {
+func (c *Client) DoRequestWithResult(req *resty.Request, res interface{}) (*resty.Response, error) {
 	if req == nil {
 		return nil, fmt.Errorf("sdkerr: nil request")
 	}
@@ -183,7 +185,7 @@ func (c *Client) DoRequestWithResult(req *resty.Request, res any) (*resty.Respon
 
 	if len(resp.Body()) != 0 {
 		if err := json.Unmarshal(resp.Body(), &res); err != nil {
-			return resp, fmt.Errorf("sdkerr: failed to unmarshal response: %w", err)
+			return resp, fmt.Errorf("sdkerr: failed to unmarshal response: %w (resp: %s)", err, resp.String())
 		}
 	}
 

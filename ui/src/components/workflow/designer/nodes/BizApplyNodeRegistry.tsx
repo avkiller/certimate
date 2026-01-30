@@ -4,7 +4,7 @@ import { IconContract } from "@tabler/icons-react";
 import { Avatar } from "antd";
 
 import { acmeDns01ProvidersMap, acmeHttp01ProvidersMap } from "@/domain/provider";
-import { newNode } from "@/domain/workflow";
+import { type WorkflowNodeConfigForBizApply, newNode } from "@/domain/workflow";
 
 import { BaseNode } from "./_shared";
 import { NodeKindType, type NodeRegistry, NodeType } from "./typings";
@@ -16,7 +16,6 @@ export const BizApplyNodeRegistry: NodeRegistry = {
   kind: NodeKindType.Business,
 
   meta: {
-    helpText: getI18n().t("workflow_node.apply.help"),
     labelText: getI18n().t("workflow_node.apply.label"),
 
     icon: IconContract,
@@ -53,9 +52,10 @@ export const BizApplyNodeRegistry: NodeRegistry = {
         <BaseNode
           description={
             <div className="flex items-center justify-between gap-1">
-              <Field<string> name="config.domains">
+              <Field<WorkflowNodeConfigForBizApply> name="config">
                 {({ field: { value } }) => {
-                  return <div className="flex-1 truncate">{value || t("workflow.detail.design.editor.placeholder")}</div>;
+                  const displayText = value.identifier === "domain" ? value.domains : value.identifier === "ip" ? value.ipaddrs : void 0;
+                  return <div className="flex-1 truncate">{displayText || t("workflow.detail.design.editor.placeholder")}</div>;
                 }}
               </Field>
               <Field<string> name="config.provider">

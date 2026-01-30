@@ -30,7 +30,7 @@ func (c *USSLClient) NewGetCertificateListRequest() *GetCertificateListRequest {
 
 	c.Client.SetupRequest(req)
 
-	req.SetRetryable(false)
+	req.SetRetryable(true)
 	return req
 }
 

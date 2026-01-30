@@ -4,10 +4,10 @@ import { Button, Collapse, Form, Input, InputNumber, Radio } from "antd";
 import { createSchemaFieldRule } from "antd-zod";
 import { z } from "zod";
 
+import FileTextInput from "@/components/FileTextInput";
 import Show from "@/components/Show";
-import TextFileInput from "@/components/TextFileInput";
 import { mergeCls } from "@/utils/css";
-import { validDomainName, validIPv4Address, validIPv6Address, validPortNumber } from "@/utils/validators";
+import { isHostname, isPortNumber } from "@/utils/validator";
 
 import { useFormNestedFieldsContext } from "./_context";
 
@@ -26,8 +26,8 @@ const AccessConfigFormFieldsProviderSSH = ({ disabled }: { disabled?: boolean })
   const formInst = Form.useFormInstance();
   const initialValues = getInitialValues();
 
-  const fieldAuthMethod = Form.useWatch([parentNamePath, "authMethod"], formInst);
-  const fieldJumpServers = Form.useWatch([parentNamePath, "jumpServers"], formInst);
+  const fieldAuthMethod = Form.useWatch<string>([parentNamePath, "authMethod"], formInst);
+  const fieldJumpServers = Form.useWatch<any[]>([parentNamePath, "jumpServers"], formInst);
 
   return (
     <>
@@ -70,7 +70,7 @@ const AccessConfigFormFieldsProviderSSH = ({ disabled }: { disabled?: boolean })
 
       <Show when={fieldAuthMethod === AUTH_METHOD_KEY}>
         <Form.Item name={[parentNamePath, "key"]} initialValue={initialValues.key} label={t("access.form.ssh_key.label")} rules={[formRule]}>
-          <TextFileInput autoSize={{ minRows: 1, maxRows: 5 }} placeholder={t("access.form.ssh_key.placeholder")} />
+          <FileTextInput autoSize={{ minRows: 1, maxRows: 5 }} placeholder={t("access.form.ssh_key.placeholder")} />
         </Form.Item>
 
         <Form.Item
@@ -176,21 +176,35 @@ const AccessConfigFormFieldsProviderSSH = ({ disabled }: { disabled?: boolean })
                           <Input autoComplete="new-password" placeholder={t("access.form.ssh_username.placeholder")} />
                         </Form.Item>
 
-                        <Show when={subfieldAuthMethod === AUTH_METHOD_PASSWORD}>
-                          <Form.Item name={[index, "password"]} label={t("access.form.ssh_password.label")} shouldUpdate rules={[formRule]}>
-                            <Input.Password allowClear autoComplete="new-password" placeholder={t("access.form.ssh_password.placeholder")} />
-                          </Form.Item>
-                        </Show>
+                        <Form.Item
+                          name={[index, "password"]}
+                          hidden={subfieldAuthMethod !== AUTH_METHOD_PASSWORD}
+                          label={t("access.form.ssh_password.label")}
+                          shouldUpdate
+                          rules={[formRule]}
+                        >
+                          <Input.Password allowClear autoComplete="new-password" placeholder={t("access.form.ssh_password.placeholder")} />
+                        </Form.Item>
 
-                        <Show when={subfieldAuthMethod === AUTH_METHOD_KEY}>
-                          <Form.Item name={[index, "key"]} label={t("access.form.ssh_key.label")} shouldUpdate rules={[formRule]}>
-                            <TextFileInput allowClear autoSize={{ minRows: 1, maxRows: 5 }} placeholder={t("access.form.ssh_key.placeholder")} />
-                          </Form.Item>
+                        <Form.Item
+                          name={[index, "key"]}
+                          hidden={subfieldAuthMethod !== AUTH_METHOD_KEY}
+                          label={t("access.form.ssh_key.label")}
+                          shouldUpdate
+                          rules={[formRule]}
+                        >
+                          <FileTextInput allowClear autoSize={{ minRows: 1, maxRows: 5 }} placeholder={t("access.form.ssh_key.placeholder")} />
+                        </Form.Item>
 
-                          <Form.Item name={[index, "keyPassphrase"]} label={t("access.form.ssh_key_passphrase.label")} shouldUpdate rules={[formRule]}>
-                            <Input.Password allowClear autoComplete="new-password" placeholder={t("access.form.ssh_key_passphrase.placeholder")} />
-                          </Form.Item>
-                        </Show>
+                        <Form.Item
+                          name={[index, "keyPassphrase"]}
+                          hidden={subfieldAuthMethod !== AUTH_METHOD_KEY}
+                          label={t("access.form.ssh_key_passphrase.label")}
+                          shouldUpdate
+                          rules={[formRule]}
+                        >
+                          <Input.Password allowClear autoComplete="new-password" placeholder={t("access.form.ssh_key_passphrase.placeholder")} />
+                        </Form.Item>
                       </>
                     ),
                   };
@@ -209,7 +223,7 @@ const AccessConfigFormFieldsProviderSSH = ({ disabled }: { disabled?: boolean })
                   }, 0);
                 }}
               >
-                {t("access.form.ssh_jump_servers.add")}
+                {t("access.form.ssh_jump_servers.add.button")}
               </Button>
             </div>
           )}
@@ -234,31 +248,16 @@ const getSchema = ({ i18n = getI18n() }: { i18n: ReturnType<typeof getI18n> }) =
 
   const baseSchema = z
     .object({
-      host: z.string().refine((v) => validDomainName(v) || validIPv4Address(v) || validIPv6Address(v), t("common.errmsg.host_invalid")),
-      port: z.preprocess(
-        (v) => Number(v),
-        z
-          .number()
-          .int(t("access.form.ssh_port.placeholder"))
-          .refine((v) => validPortNumber(v), t("common.errmsg.port_invalid"))
-      ),
+      host: z.string().refine((v) => isHostname(v), t("common.errmsg.host_invalid")),
+      port: z.coerce.number().refine((v) => isPortNumber(v), t("common.errmsg.port_invalid")),
       authMethod: z.literal([AUTH_METHOD_NONE, AUTH_METHOD_PASSWORD, AUTH_METHOD_KEY], t("access.form.ssh_auth_method.placeholder")),
-      username: z
-        .string()
-        .min(1, t("access.form.ssh_username.placeholder"))
-        .max(64, t("common.errmsg.string_max", { max: 64 })),
-      password: z
-        .string()
-        .max(64, t("common.errmsg.string_max", { max: 64 }))
-        .nullish(),
+      username: z.string().nonempty(t("access.form.ssh_username.placeholder")),
+      password: z.string().nullish(),
       key: z
         .string()
         .max(20480, t("common.errmsg.string_max", { max: 20480 }))
         .nullish(),
-      keyPassphrase: z
-        .string()
-        .max(20480, t("common.errmsg.string_max", { max: 20480 }))
-        .nullish(),
+      keyPassphrase: z.string().nullish(),
     })
     .superRefine((values, ctx) => {
       switch (values.authMethod) {

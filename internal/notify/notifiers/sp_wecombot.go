@@ -4,23 +4,22 @@ import (
 	"fmt"
 
 	"github.com/certimate-go/certimate/internal/domain"
-	"github.com/certimate-go/certimate/pkg/core"
+	"github.com/certimate-go/certimate/pkg/core/notifier"
 	"github.com/certimate-go/certimate/pkg/core/notifier/providers/wecombot"
 	xmaps "github.com/certimate-go/certimate/pkg/utils/maps"
 )
 
 func init() {
-	if err := Registries.Register(domain.NotificationProviderTypeWeComBot, func(options *ProviderFactoryOptions) (core.Notifier, error) {
+	Registries.MustRegister(domain.NotificationProviderTypeWeComBot, func(options *ProviderFactoryOptions) (notifier.Provider, error) {
 		credentials := domain.AccessConfigForWeComBot{}
 		if err := xmaps.Populate(options.ProviderAccessConfig, &credentials); err != nil {
 			return nil, fmt.Errorf("failed to populate provider access config: %w", err)
 		}
 
-		provider, err := wecombot.NewNotifierProvider(&wecombot.NotifierProviderConfig{
-			WebhookUrl: credentials.WebhookUrl,
+		provider, err := wecombot.NewNotifier(&wecombot.NotifierConfig{
+			WebhookUrl:    credentials.WebhookUrl,
+			CustomPayload: credentials.CustomPayload,
 		})
 		return provider, err
-	}); err != nil {
-		panic(err)
-	}
+	})
 }

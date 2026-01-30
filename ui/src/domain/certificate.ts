@@ -10,6 +10,8 @@ export interface CertificateModel extends BaseModel {
   keyAlgorithm: string;
   validityNotBefore: ISO8601String;
   validityNotAfter: ISO8601String;
+  isRenewed: boolean;
+  isRevoked: boolean;
   workflowRef: string;
   expand?: {
     workflowRef?: Pick<WorkflowModel, "id" | "name" | "description">;

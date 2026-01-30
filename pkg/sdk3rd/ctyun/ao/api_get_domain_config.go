@@ -11,7 +11,7 @@ type GetDomainConfigRequest struct {
 }
 
 type GetDomainConfigResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
 	ReturnObj *struct {
 		Domain      string                          `json:"domain"`

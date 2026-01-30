@@ -65,7 +65,7 @@ func (r *WorkflowLogRepository) Save(ctx context.Context, workflowLog *domain.Wo
 	record.Set("runRef", workflowLog.RunId)
 	record.Set("nodeId", workflowLog.NodeId)
 	record.Set("nodeName", workflowLog.NodeName)
-	record.Set("timestamp", workflowLog.Timestamp)
+	record.Set("timestamp", workflowLog.TimestampMilli)
 	record.Set("level", workflowLog.Level)
 	record.Set("message", workflowLog.Message)
 	record.Set("data", workflowLog.Data)
@@ -98,14 +98,14 @@ func (r *WorkflowLogRepository) castRecordToModel(record *core.Record) (*domain.
 			CreatedAt: record.GetDateTime("created").Time(),
 			UpdatedAt: record.GetDateTime("updated").Time(),
 		},
-		WorkflowId: record.GetString("workflowRef"),
-		RunId:      record.GetString("runRef"),
-		NodeId:     record.GetString("nodeId"),
-		NodeName:   record.GetString("nodeName"),
-		Timestamp:  int64(record.GetInt("timestamp")),
-		Level:      int32(record.GetInt("level")),
-		Message:    record.GetString("message"),
-		Data:       logdata,
+		WorkflowId:     record.GetString("workflowRef"),
+		RunId:          record.GetString("runRef"),
+		NodeId:         record.GetString("nodeId"),
+		NodeName:       record.GetString("nodeName"),
+		TimestampMilli: int64(record.GetInt("timestamp")),
+		Level:          int32(record.GetInt("level")),
+		Message:        record.GetString("message"),
+		Data:           logdata,
 	}
 	return workflowLog, nil
 }

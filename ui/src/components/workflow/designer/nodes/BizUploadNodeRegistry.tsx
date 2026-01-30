@@ -3,6 +3,7 @@ import { FeedbackLevel, Field } from "@flowgram.ai/fixed-layout-editor";
 import { IconCloudUpload } from "@tabler/icons-react";
 
 import { newNode } from "@/domain/workflow";
+import { getCertificateSubjectAltNames as getX509SubjectAltNames } from "@/utils/x509";
 
 import { BaseNode } from "./_shared";
 import { NodeKindType, type NodeRegistry, NodeType } from "./typings";
@@ -14,7 +15,6 @@ export const BizUploadNodeRegistry: NodeRegistry = {
   kind: NodeKindType.Business,
 
   meta: {
-    helpText: getI18n().t("workflow_node.upload.help"),
     labelText: getI18n().t("workflow_node.upload.label"),
 
     icon: IconCloudUpload,
@@ -48,8 +48,11 @@ export const BizUploadNodeRegistry: NodeRegistry = {
               {({ field: { value: fieldSource } }) => (
                 <>
                   {fieldSource == null || fieldSource === "" || fieldSource === "form" ? (
-                    <Field<string> name="config.domains">
-                      {({ field: { value: fieldDomains } }) => <>{fieldDomains || t("workflow.detail.design.editor.placeholder")}</>}
+                    <Field<string> name="config.certificate">
+                      {({ field: { value: fieldCertificate } }) => {
+                        const displayText = fieldCertificate ? getX509SubjectAltNames(fieldCertificate).join(";") : void 0;
+                        return <>{displayText || t("workflow.detail.design.editor.placeholder")}</>;
+                      }}
                     </Field>
                   ) : (
                     <Field<string> name="config.certificate">

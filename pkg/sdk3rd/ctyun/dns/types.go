@@ -6,14 +6,14 @@ import (
 	"strconv"
 )
 
-type apiResponse interface {
+type sdkResponse interface {
 	GetStatusCode() string
 	GetMessage() string
 	GetError() string
 	GetErrorMessage() string
 }
 
-type apiResponseBase struct {
+type sdkResponseBase struct {
 	StatusCode   json.RawMessage `json:"statusCode,omitempty"`
 	Message      *string         `json:"message,omitempty"`
 	Error        *string         `json:"error,omitempty"`
@@ -21,7 +21,7 @@ type apiResponseBase struct {
 	RequestId    *string         `json:"requestId,omitempty"`
 }
 
-func (r *apiResponseBase) GetStatusCode() string {
+func (r *sdkResponseBase) GetStatusCode() string {
 	if r.StatusCode == nil {
 		return ""
 	}
@@ -44,7 +44,7 @@ func (r *apiResponseBase) GetStatusCode() string {
 	}
 }
 
-func (r *apiResponseBase) GetMessage() string {
+func (r *sdkResponseBase) GetMessage() string {
 	if r.Message == nil {
 		return ""
 	}
@@ -52,7 +52,7 @@ func (r *apiResponseBase) GetMessage() string {
 	return *r.Message
 }
 
-func (r *apiResponseBase) GetError() string {
+func (r *sdkResponseBase) GetError() string {
 	if r.Error == nil {
 		return ""
 	}
@@ -60,7 +60,7 @@ func (r *apiResponseBase) GetError() string {
 	return *r.Error
 }
 
-func (r *apiResponseBase) GetErrorMessage() string {
+func (r *sdkResponseBase) GetErrorMessage() string {
 	if r.ErrorMessage == nil {
 		return ""
 	}
@@ -68,7 +68,7 @@ func (r *apiResponseBase) GetErrorMessage() string {
 	return *r.ErrorMessage
 }
 
-var _ apiResponse = (*apiResponseBase)(nil)
+var _ sdkResponse = (*sdkResponseBase)(nil)
 
 type DnsRecord struct {
 	RecordId int32  `json:"recordId"`

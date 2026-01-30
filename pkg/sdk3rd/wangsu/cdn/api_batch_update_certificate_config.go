@@ -11,7 +11,7 @@ type BatchUpdateCertificateConfigRequest struct {
 }
 
 type BatchUpdateCertificateConfigResponse struct {
-	apiResponseBase
+	sdkResponseBase
 }
 
 func (c *Client) BatchUpdateCertificateConfig(req *BatchUpdateCertificateConfigRequest) (*BatchUpdateCertificateConfigResponse, error) {

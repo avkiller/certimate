@@ -1,16 +1,16 @@
 package rainyun
 
-type apiResponse interface {
-	GetCode() int32
+type sdkResponse interface {
+	GetCode() int
 	GetMessage() string
 }
 
-type apiResponseBase struct {
-	Code    *int32  `json:"code,omitempty"`
+type sdkResponseBase struct {
+	Code    *int    `json:"code,omitempty"`
 	Message *string `json:"message,omitempty"`
 }
 
-func (r *apiResponseBase) GetCode() int32 {
+func (r *sdkResponseBase) GetCode() int {
 	if r.Code == nil {
 		return 0
 	}
@@ -18,7 +18,7 @@ func (r *apiResponseBase) GetCode() int32 {
 	return *r.Code
 }
 
-func (r *apiResponseBase) GetMessage() string {
+func (r *sdkResponseBase) GetMessage() string {
 	if r.Message == nil {
 		return ""
 	}
@@ -26,11 +26,11 @@ func (r *apiResponseBase) GetMessage() string {
 	return *r.Message
 }
 
-var _ apiResponse = (*apiResponseBase)(nil)
+var _ sdkResponse = (*sdkResponseBase)(nil)
 
 type SslRecord struct {
-	ID         int32  `json:"ID"`
-	UID        int32  `json:"UID"`
+	ID         int64  `json:"ID"`
+	UID        int64  `json:"UID"`
 	Domain     string `json:"Domain"`
 	Issuer     string `json:"Issuer"`
 	StartDate  int64  `json:"StartDate"`
@@ -45,5 +45,5 @@ type SslDetail struct {
 	Issuer     string `json:"Issuer"`
 	StartDate  int64  `json:"StartDate"`
 	ExpireDate int64  `json:"ExpDate"`
-	RemainDays int32  `json:"RemainDays"`
+	RemainDays int64  `json:"RemainDays"`
 }

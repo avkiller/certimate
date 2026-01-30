@@ -3,25 +3,19 @@ package lvdn
 import (
 	"context"
 	"net/http"
+
+	qs "github.com/google/go-querystring/query"
 )
 
 type QueryDomainDetailRequest struct {
-	Domain      *string `json:"domain,omitempty"`
-	ProductCode *string `json:"product_code,omitempty"`
+	Domain      *string `json:"domain,omitempty"       url:"domain,omitempty"`
+	ProductCode *string `json:"product_code,omitempty" url:"product_code,omitempty"`
 }
 
 type QueryDomainDetailResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
-	ReturnObj *struct {
-		Domain      string `json:"domain"`
-		ProductCode string `json:"product_code"`
-		Status      int32  `json:"status"`
-		AreaScope   int32  `json:"area_scope"`
-		Cname       string `json:"cname"`
-		HttpsSwitch int32  `json:"https_switch"`
-		CertName    string `json:"cert_name"`
-	} `json:"returnObj,omitempty"`
+	ReturnObj *DomainDetail `json:"returnObj,omitempty"`
 }
 
 func (c *Client) QueryDomainDetail(req *QueryDomainDetailRequest) (*QueryDomainDetailResponse, error) {
@@ -33,13 +27,12 @@ func (c *Client) QueryDomainDetailWithContext(ctx context.Context, req *QueryDom
 	if err != nil {
 		return nil, err
 	} else {
-		if req.Domain != nil {
-			httpreq.SetQueryParam("domain", *req.Domain)
-		}
-		if req.ProductCode != nil {
-			httpreq.SetQueryParam("product_code", *req.ProductCode)
+		values, err := qs.Values(req)
+		if err != nil {
+			return nil, err
 		}
 
+		httpreq.SetQueryParamsFromValues(values)
 		httpreq.SetContext(ctx)
 	}
 

@@ -24,7 +24,7 @@ const AccessConfigFormFieldsProviderBaotaWAF = () => {
         extra={t("access.form.baotawaf_server_url.help")}
         rules={[formRule]}
       >
-        <Input placeholder={t("access.form.baotawaf_server_url.placeholder")} />
+        <Input type="url" placeholder={t("access.form.baotawaf_server_url.placeholder")} />
       </Form.Item>
 
       <Form.Item
@@ -43,10 +43,7 @@ const AccessConfigFormFieldsProviderBaotaWAF = () => {
         label={t("access.form.shared_allow_insecure_conns.label")}
         rules={[formRule]}
       >
-        <Switch
-          checkedChildren={t("access.form.shared_allow_insecure_conns.switch.on")}
-          unCheckedChildren={t("access.form.shared_allow_insecure_conns.switch.off")}
-        />
+        <Switch />
       </Form.Item>
     </>
   );

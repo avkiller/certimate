@@ -1,18 +1,18 @@
 package cdn
 
-type apiResponse interface {
+type sdkResponse interface {
 	GetCode() string
 	GetMessage() string
 }
 
-type apiResponseBase struct {
+type sdkResponseBase struct {
 	Code    *string `json:"code,omitempty"`
 	Message *string `json:"message,omitempty"`
 }
 
-var _ apiResponse = (*apiResponseBase)(nil)
+var _ sdkResponse = (*sdkResponseBase)(nil)
 
-func (r *apiResponseBase) GetCode() string {
+func (r *sdkResponseBase) GetCode() string {
 	if r.Code == nil {
 		return ""
 	}
@@ -20,7 +20,7 @@ func (r *apiResponseBase) GetCode() string {
 	return *r.Code
 }
 
-func (r *apiResponseBase) GetMessage() string {
+func (r *sdkResponseBase) GetMessage() string {
 	if r.Message == nil {
 		return ""
 	}

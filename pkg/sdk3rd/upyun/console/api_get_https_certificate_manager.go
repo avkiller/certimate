@@ -14,10 +14,10 @@ type HttpsCertificateManagerDomain struct {
 }
 
 type GetHttpsCertificateManagerResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
 	Data *struct {
-		apiResponseBaseData
+		sdkResponseBaseData
 
 		AuthenticateNum     int32                           `json:"authenticate_num"`
 		AuthenticateDomains []string                        `json:"authenticate_domain"`

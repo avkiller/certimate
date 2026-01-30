@@ -22,7 +22,7 @@ func (c *USSLClient) NewGetCertificateDetailInfoRequest() *GetCertificateDetailI
 
 	c.Client.SetupRequest(req)
 
-	req.SetRetryable(false)
+	req.SetRetryable(true)
 	return req
 }
 

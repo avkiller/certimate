@@ -6,7 +6,7 @@ import { getPocketBase } from "@/repository/_pocketbase";
 export const get = async () => {
   const pb = getPocketBase();
 
-  const resp = await pb.send<BaseResponse<Statistics>>("/api/statistics/get", {
+  const resp = await pb.send<BaseResponse<Statistics>>("/api/statistics", {
     method: "GET",
   });
 

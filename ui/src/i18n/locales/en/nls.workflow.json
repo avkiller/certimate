@@ -9,7 +9,7 @@
   "workflow.search.placeholder": "Search by workflow name ...",
 
   "workflow.action.create.button": "Create workflow",
-  "workflow.action.edit.menu": "Edit",
+  "workflow.action.modify.menu": "Edit",
   "workflow.action.duplicate.menu": "Duplicate",
   "workflow.action.duplicate.modal.title": "Duplicate \"{{name}}\"",
   "workflow.action.duplicate.modal.content": "Are you sure to duplicate this workflow?",
@@ -51,11 +51,10 @@
   "workflow.new.templates.template.certtest.title": "Monitoring template",
   "workflow.new.templates.template.certtest.description": "A monitoring operating procedure that includes monitoring, and notification steps.",
   "workflow.new.templates.default_name": "Untitled workflow",
-  "workflow.new.templates.default_description": "Created at {{date}}",
+  "workflow.new.templates.default_description": "",
 
   "workflow.detail.baseinfo.name.placeholder": "Please enter workflow name",
   "workflow.detail.baseinfo.description.placeholder": "Please enter workflow description",
-  "workflow.detail.design_legacy.tab": "Orchestration (legacy)",
   "workflow.detail.design.tab": "Orchestration",
   "workflow.detail.design.editor.placeholder": "Please configure",
   "workflow.detail.design.editor.add_node": "Add node",

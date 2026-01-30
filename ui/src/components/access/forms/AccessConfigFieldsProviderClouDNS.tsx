@@ -51,14 +51,8 @@ const getSchema = ({ i18n = getI18n() }: { i18n: ReturnType<typeof getI18n> }) =
   const { t } = i18n;
 
   return z.object({
-    authId: z
-      .string()
-      .min(1, t("access.form.cloudns_auth_id.placeholder"))
-      .max(64, t("common.errmsg.string_max", { max: 64 })),
-    authPassword: z
-      .string()
-      .min(1, t("access.form.cloudns_auth_password.placeholder"))
-      .max(64, t("common.errmsg.string_max", { max: 64 })),
+    authId: z.string().nonempty(t("access.form.cloudns_auth_id.placeholder")),
+    authPassword: z.string().nonempty(t("access.form.cloudns_auth_password.placeholder")),
   });
 };
 

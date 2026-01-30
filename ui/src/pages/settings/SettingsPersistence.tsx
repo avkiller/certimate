@@ -1,43 +1,63 @@
-import { useEffect, useState } from "react";
+import { createContext, useContext, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { App, Button, Form, InputNumber, Skeleton } from "antd";
+import { useMount } from "ahooks";
+import { App, Button, Divider, Form, InputNumber, Skeleton } from "antd";
 import { createSchemaFieldRule } from "antd-zod";
 import { produce } from "immer";
 import { z } from "zod";
 
 import Show from "@/components/Show";
-import { type PersistenceSettingsContent, SETTINGS_NAMES, type SettingsModel } from "@/domain/settings";
-import { useAntdForm } from "@/hooks";
-import { get as getSettings, save as saveSettings } from "@/repository/settings";
-import { getErrMsg } from "@/utils/error";
+import { type PersistenceSettingsContent } from "@/domain/settings";
+import { useAntdForm, useZustandShallowSelector } from "@/hooks";
+import { usePersistenceSettingsStore } from "@/stores/settings";
+import { unwrapErrMsg } from "@/utils/error";
 
 const SettingsPersistence = () => {
   const { t } = useTranslation();
 
   const { message, notification } = App.useApp();
 
-  const [settings, setSettings] = useState<SettingsModel<PersistenceSettingsContent>>();
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
+  const { settings, loading, loadSettings, saveSettings } = usePersistenceSettingsStore(
+    useZustandShallowSelector(["settings", "loading", "loadSettings", "saveSettings"])
+  );
+  useMount(() => loadSettings());
 
-      const settings = await getSettings<PersistenceSettingsContent>(SETTINGS_NAMES.PERSISTENCE);
-      setSettings(settings);
+  const updateContextSettings = async (settings: PersistenceSettingsContent) => {
+    try {
+      await saveSettings(settings);
 
-      setLoading(false);
-    };
+      message.success(t("common.text.operation_succeeded"));
+    } catch (err) {
+      notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
+    }
+  };
 
-    fetchData();
-  }, []);
+  return (
+    <InternalSettingsContext.Provider
+      value={{
+        loading: loading,
+        settings: settings!,
+        updateSettings: updateContextSettings,
+      }}
+    >
+      <h2>{t("settings.persistence.alerting.title")}</h2>
+      <SettingsPersistenceAlerting className="md:max-w-160" />
+
+      <Divider />
+
+      <h2>{t("settings.persistence.data_retention.title")}</h2>
+      <SettingsPersistenceDataRetention className="md:max-w-160" />
+    </InternalSettingsContext.Provider>
+  );
+};
+
+const SettingsPersistenceAlerting = ({ className, style }: { className?: string; style?: React.CSSProperties }) => {
+  const { t } = useTranslation();
+
+  const { loading, settings, updateSettings } = useContext(InternalSettingsContext);
 
   const formSchema = z.object({
-    workflowRunsMaxDaysRetention: z
-      .number(t("settings.persistence.form.workflow_runs_max_days.placeholder"))
-      .gte(0, t("settings.persistence.form.workflow_runs_max_days.placeholder")),
-    expiredCertificatesMaxDaysRetention: z
-      .number(t("settings.persistence.form.expired_certificates_max_days.placeholder"))
-      .gte(0, t("settings.persistence.form.expired_certificates_max_days.placeholder")),
+    certificatesWarningDaysBeforeExpire: z.number().int().positive(),
   });
   const formRule = createSchemaFieldRule(formSchema);
   const {
@@ -46,70 +66,40 @@ const SettingsPersistence = () => {
     formProps,
   } = useAntdForm<z.infer<typeof formSchema>>({
     initialValues: {
-      workflowRunsMaxDaysRetention: settings?.content?.workflowRunsMaxDaysRetention ?? 0,
-      expiredCertificatesMaxDaysRetention: settings?.content?.expiredCertificatesMaxDaysRetention ?? 0,
+      certificatesWarningDaysBeforeExpire: settings?.certificatesWarningDaysBeforeExpire,
     },
     onSubmit: async (values) => {
-      try {
-        await saveSettings(
-          produce(settings!, (draft) => {
-            draft.content ??= {} as PersistenceSettingsContent;
-            draft.content.workflowRunsMaxDaysRetention = values.workflowRunsMaxDaysRetention;
-            draft.content.expiredCertificatesMaxDaysRetention = values.expiredCertificatesMaxDaysRetention;
-          })
-        );
-
-        message.success(t("common.text.operation_succeeded"));
-      } catch (err) {
-        notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
-
-        throw err;
-      }
+      updateSettings(
+        produce(settings!, (draft) => {
+          draft.certificatesWarningDaysBeforeExpire = values.certificatesWarningDaysBeforeExpire;
+        })
+      );
     },
   });
   const [formChanged, setFormChanged] = useState(false);
 
   const handleInputChange = () => {
-    const changed =
-      formInst.getFieldValue("workflowRunsMaxDaysRetention") !== formProps.initialValues?.workflowRunsMaxDaysRetention ||
-      formInst.getFieldValue("expiredCertificatesMaxDaysRetention") !== formProps.initialValues?.workflowRunsMaxDaysRetention;
+    const changed = formInst.getFieldValue("certificatesWarningDaysBeforeExpire") !== formProps.initialValues?.certificatesWarningDaysBeforeExpire;
     setFormChanged(changed);
   };
 
   return (
     <>
-      <h2>{t("settings.persistence.title")}</h2>
-      <Show when={!loading} fallback={<Skeleton active />}>
-        <div className="md:max-w-160">
+      <div className={className} style={style}>
+        <Show when={!loading} fallback={<Skeleton active />}>
           <Form {...formProps} form={formInst} disabled={formPending} layout="vertical">
             <Form.Item
-              name="workflowRunsMaxDaysRetention"
-              label={t("settings.persistence.form.workflow_runs_max_days.label")}
-              extra={<span dangerouslySetInnerHTML={{ __html: t("settings.persistence.form.workflow_runs_max_days.help") }}></span>}
+              name="certificatesWarningDaysBeforeExpire"
+              label={t("settings.persistence.alerting.form.certificates_warning_days_before_expire.label")}
+              extra={<span dangerouslySetInnerHTML={{ __html: t("settings.persistence.alerting.form.certificates_warning_days_before_expire.help") }}></span>}
               rules={[formRule]}
             >
               <InputNumber
                 style={{ width: "100%" }}
-                min={0}
-                max={36500}
-                placeholder={t("settings.persistence.form.workflow_runs_max_days.placeholder")}
-                addonAfter={t("settings.persistence.form.workflow_runs_max_days.unit")}
-                onChange={handleInputChange}
-              />
-            </Form.Item>
-
-            <Form.Item
-              name="expiredCertificatesMaxDaysRetention"
-              label={t("settings.persistence.form.expired_certificates_max_days.label")}
-              extra={<span dangerouslySetInnerHTML={{ __html: t("settings.persistence.form.expired_certificates_max_days.help") }}></span>}
-              rules={[formRule]}
-            >
-              <InputNumber
-                style={{ width: "100%" }}
-                min={0}
-                max={36500}
-                placeholder={t("settings.persistence.form.expired_certificates_max_days.placeholder")}
-                addonAfter={t("settings.persistence.form.expired_certificates_max_days.unit")}
+                min={1}
+                max={365}
+                placeholder={t("settings.persistence.alerting.form.certificates_warning_days_before_expire.placeholder")}
+                suffix={t("settings.persistence.alerting.form.certificates_warning_days_before_expire.unit")}
                 onChange={handleInputChange}
               />
             </Form.Item>
@@ -120,10 +110,104 @@ const SettingsPersistence = () => {
               </Button>
             </Form.Item>
           </Form>
-        </div>
-      </Show>
+        </Show>
+      </div>
     </>
   );
 };
+
+const SettingsPersistenceDataRetention = ({ className, style }: { className?: string; style?: React.CSSProperties }) => {
+  const { t } = useTranslation();
+
+  const { loading, settings, updateSettings } = useContext(InternalSettingsContext);
+
+  const formSchema = z.object({
+    certificatesRetentionMaxDays: z.number().int().nonnegative(),
+    workflowRunsRetentionMaxDays: z.number().int().nonnegative(),
+  });
+  const formRule = createSchemaFieldRule(formSchema);
+  const {
+    form: formInst,
+    formPending,
+    formProps,
+  } = useAntdForm<z.infer<typeof formSchema>>({
+    initialValues: {
+      certificatesRetentionMaxDays: settings?.certificatesRetentionMaxDays,
+      workflowRunsRetentionMaxDays: settings?.workflowRunsRetentionMaxDays,
+    },
+    onSubmit: async (values) => {
+      updateSettings(
+        produce(settings!, (draft) => {
+          draft.certificatesRetentionMaxDays = values.certificatesRetentionMaxDays;
+          draft.workflowRunsRetentionMaxDays = values.workflowRunsRetentionMaxDays;
+        })
+      );
+    },
+  });
+  const [formChanged, setFormChanged] = useState(false);
+
+  const handleInputChange = () => {
+    const changed =
+      formInst.getFieldValue("certificatesRetentionMaxDays") !== formProps.initialValues?.certificatesRetentionMaxDays ||
+      formInst.getFieldValue("workflowRunsRetentionMaxDays") !== formProps.initialValues?.workflowRunsRetentionMaxDays;
+    setFormChanged(changed);
+  };
+
+  return (
+    <>
+      <div className={className} style={style}>
+        <Show when={!loading} fallback={<Skeleton active />}>
+          <Form {...formProps} form={formInst} disabled={formPending} layout="vertical">
+            <Form.Item
+              name="certificatesRetentionMaxDays"
+              label={t("settings.persistence.data_retention.form.certificates_retention_max_days.label")}
+              extra={<span dangerouslySetInnerHTML={{ __html: t("settings.persistence.data_retention.form.certificates_retention_max_days.help") }}></span>}
+              rules={[formRule]}
+            >
+              <InputNumber
+                style={{ width: "100%" }}
+                min={0}
+                max={36500}
+                placeholder={t("settings.persistence.data_retention.form.certificates_retention_max_days.placeholder")}
+                suffix={t("settings.persistence.data_retention.form.certificates_retention_max_days.unit")}
+                onChange={handleInputChange}
+              />
+            </Form.Item>
+
+            <Form.Item
+              name="workflowRunsRetentionMaxDays"
+              label={t("settings.persistence.data_retention.form.workflow_runs_retention_max_days.label")}
+              extra={<span dangerouslySetInnerHTML={{ __html: t("settings.persistence.data_retention.form.workflow_runs_retention_max_days.help") }}></span>}
+              rules={[formRule]}
+            >
+              <InputNumber
+                style={{ width: "100%" }}
+                min={0}
+                max={36500}
+                placeholder={t("settings.persistence.data_retention.form.workflow_runs_retention_max_days.placeholder")}
+                suffix={t("settings.persistence.data_retention.form.workflow_runs_retention_max_days.unit")}
+                onChange={handleInputChange}
+              />
+            </Form.Item>
+
+            <Form.Item>
+              <Button type="primary" htmlType="submit" disabled={!formChanged} loading={formPending}>
+                {t("common.button.save")}
+              </Button>
+            </Form.Item>
+          </Form>
+        </Show>
+      </div>
+    </>
+  );
+};
+
+const InternalSettingsContext = createContext(
+  {} as {
+    loading: boolean;
+    settings: PersistenceSettingsContent;
+    updateSettings: (settings: PersistenceSettingsContent) => Promise<void>;
+  }
+);
 
 export default SettingsPersistence;

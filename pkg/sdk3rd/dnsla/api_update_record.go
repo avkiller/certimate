@@ -6,7 +6,7 @@ import (
 )
 
 type UpdateRecordRequest struct {
-	Id         string  `json:"id"`
+	Id         *string `json:"id"`
 	GroupId    *string `json:"groupId,omitempty"`
 	LineId     *string `json:"lineId,omitempty"`
 	Type       *int32  `json:"type,omitempty"`
@@ -18,7 +18,7 @@ type UpdateRecordRequest struct {
 }
 
 type UpdateRecordResponse struct {
-	apiResponseBase
+	sdkResponseBase
 }
 
 func (c *Client) UpdateRecord(req *UpdateRecordRequest) (*UpdateRecordResponse, error) {

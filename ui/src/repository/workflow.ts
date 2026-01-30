@@ -3,57 +3,61 @@ import { type RecordSubscription } from "pocketbase";
 import { type WorkflowModel } from "@/domain/workflow";
 import { COLLECTION_NAME_WORKFLOW, getPocketBase } from "./_pocketbase";
 
-export type ListRequest = {
+const _commonFields = [
+  "id",
+  "name",
+  "description",
+  "trigger",
+  "triggerCron",
+  "enabled",
+  "hasDraft",
+  "hasContent",
+  "lastRunRef",
+  "lastRunStatus",
+  "lastRunTime",
+  "created",
+  "updated",
+  "deleted",
+];
+const _expandFields = [
+  "expand.lastRunRef.id",
+  "expand.lastRunRef.status",
+  "expand.lastRunRef.trigger",
+  "expand.lastRunRef.startedAt",
+  "expand.lastRunRef.endedAt",
+  "expand.lastRunRef.error",
+];
+
+export const list = async ({
+  keyword,
+  enabled,
+  sort = "-created",
+  page = 1,
+  perPage = 10,
+  expand = false,
+}: {
   keyword?: string;
   enabled?: boolean;
   sort?: string;
   page?: number;
   perPage?: number;
   expand?: boolean;
-};
-
-export const list = async (request: ListRequest) => {
+}) => {
   const pb = getPocketBase();
 
   const filters: string[] = [];
-  if (request.keyword) {
-    filters.push(pb.filter("(id={:keyword} || name~{:keyword})", { keyword: request.keyword }));
+  if (keyword) {
+    filters.push(pb.filter("(id={:keyword} || name~{:keyword})", { keyword: keyword }));
   }
-  if (request.enabled != null) {
-    filters.push(pb.filter("enabled={:enabled}", { enabled: request.enabled }));
+  if (enabled != null) {
+    filters.push(pb.filter("enabled={:enabled}", { enabled: enabled }));
   }
-
-  const sort = request.sort || "-created";
-
-  const page = request.page || 1;
-  const perPage = request.perPage || 10;
 
   return await pb.collection(COLLECTION_NAME_WORKFLOW).getList<WorkflowModel>(page, perPage, {
-    expand: request.expand ? ["lastRunRef"].join(",") : void 0,
-    fields: [
-      "id",
-      "name",
-      "description",
-      "trigger",
-      "triggerCron",
-      "enabled",
-      "hasDraft",
-      "hasContent",
-      "lastRunRef",
-      "lastRunStatus",
-      "lastRunTime",
-      "created",
-      "updated",
-      "deleted",
-      "expand.lastRunRef.id",
-      "expand.lastRunRef.status",
-      "expand.lastRunRef.trigger",
-      "expand.lastRunRef.startedAt",
-      "expand.lastRunRef.endedAt",
-      "expand.lastRunRef.error",
-    ].join(","),
+    expand: expand ? ["lastRunRef"].join(",") : void 0,
+    fields: [..._commonFields, ..._expandFields].join(","),
     filter: filters.join(" && "),
-    sort: sort,
+    sort: sort || "-created",
     requestKey: null,
   });
 };
@@ -63,15 +67,7 @@ export const get = async (id: string) => {
     .collection(COLLECTION_NAME_WORKFLOW)
     .getOne<WorkflowModel>(id, {
       expand: ["lastRunRef"].join(","),
-      fields: [
-        "*",
-        "expand.lastRunRef.id",
-        "expand.lastRunRef.status",
-        "expand.lastRunRef.trigger",
-        "expand.lastRunRef.startedAt",
-        "expand.lastRunRef.endedAt",
-        "expand.lastRunRef.error",
-      ].join(","),
+      fields: ["*", ..._expandFields].join(","),
       requestKey: null,
     });
 };

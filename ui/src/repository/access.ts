@@ -3,12 +3,14 @@ import dayjs from "dayjs";
 import { type AccessModel } from "@/domain/access";
 import { COLLECTION_NAME_ACCESS, getPocketBase } from "./_pocketbase";
 
+const _commonFields = ["id", "name", "provider", "reserve", "created", "updated", "deleted"];
+
 export const list = async () => {
   const list = await getPocketBase()
     .collection(COLLECTION_NAME_ACCESS)
     .getFullList<AccessModel>({
       batch: 65535,
-      fields: ["id", "name", "provider", "reserve", "created", "updated", "deleted"].join(","),
+      fields: [..._commonFields].join(","),
       filter: "deleted=null",
       sort: "-created",
       requestKey: null,

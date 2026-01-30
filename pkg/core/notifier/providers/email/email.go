@@ -3,18 +3,14 @@ package email
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
-	"net"
-	"net/smtp"
-	"strconv"
 
-	"github.com/domodwyer/mailyak/v3"
-
-	"github.com/certimate-go/certimate/pkg/core"
-	xtls "github.com/certimate-go/certimate/pkg/utils/tls"
+	"github.com/certimate-go/certimate/internal/tools/smtp"
+	"github.com/certimate-go/certimate/pkg/core/notifier"
 )
 
-type NotifierProviderConfig struct {
+type NotifierConfig struct {
 	// SMTP 服务器地址。
 	SmtpHost string `json:"smtpHost"`
 	// SMTP 服务器端口。
@@ -32,27 +28,29 @@ type NotifierProviderConfig struct {
 	SenderName string `json:"senderName,omitempty"`
 	// 收件人邮箱。
 	ReceiverAddress string `json:"receiverAddress"`
+	// 是否允许不安全的连接。
+	AllowInsecureConnections bool `json:"allowInsecureConnections,omitempty"`
 }
 
-type NotifierProvider struct {
-	config *NotifierProviderConfig
+type Notifier struct {
+	config *NotifierConfig
 	logger *slog.Logger
 }
 
-var _ core.Notifier = (*NotifierProvider)(nil)
+var _ notifier.Provider = (*Notifier)(nil)
 
-func NewNotifierProvider(config *NotifierProviderConfig) (*NotifierProvider, error) {
+func NewNotifier(config *NotifierConfig) (*Notifier, error) {
 	if config == nil {
 		return nil, errors.New("the configuration of the notifier provider is nil")
 	}
 
-	return &NotifierProvider{
+	return &Notifier{
 		config: config,
 		logger: slog.Default(),
 	}, nil
 }
 
-func (n *NotifierProvider) SetLogger(logger *slog.Logger) {
+func (n *Notifier) SetLogger(logger *slog.Logger) {
 	if logger == nil {
 		n.logger = slog.New(slog.DiscardHandler)
 	} else {
@@ -60,43 +58,34 @@ func (n *NotifierProvider) SetLogger(logger *slog.Logger) {
 	}
 }
 
-func (n *NotifierProvider) Notify(ctx context.Context, subject string, message string) (*core.NotifyResult, error) {
-	var smtpAuth smtp.Auth
-	if n.config.Username != "" || n.config.Password != "" {
-		smtpAuth = smtp.PlainAuth("", n.config.Username, n.config.Password, n.config.SmtpHost)
+func (n *Notifier) Notify(ctx context.Context, subject string, message string) (*notifier.NotifyResult, error) {
+	clientCfg := smtp.NewDefaultConfig()
+	clientCfg.Host = n.config.SmtpHost
+	clientCfg.Port = int(n.config.SmtpPort)
+	clientCfg.Username = n.config.Username
+	clientCfg.Password = n.config.Password
+	clientCfg.UseSsl = n.config.SmtpTls
+	clientCfg.SkipTlsVerify = n.config.AllowInsecureConnections
+	client, err := smtp.NewClient(clientCfg)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create SMTP client: %w", err)
 	}
 
-	var smtpAddr string
-	if n.config.SmtpPort == 0 {
-		if n.config.SmtpTls {
-			smtpAddr = net.JoinHostPort(n.config.SmtpHost, "465")
-		} else {
-			smtpAddr = net.JoinHostPort(n.config.SmtpHost, "25")
-		}
+	defer client.Close()
+
+	msg := smtp.NewMessage()
+	msg.Subject(subject)
+	msg.SetBodyString(smtp.MIMETypeTextPlain, message)
+	if n.config.SenderName == "" {
+		msg.From(n.config.SenderAddress)
 	} else {
-		smtpAddr = net.JoinHostPort(n.config.SmtpHost, strconv.Itoa(int(n.config.SmtpPort)))
+		msg.FromFormat(n.config.SenderName, n.config.SenderAddress)
+	}
+	msg.To(n.config.ReceiverAddress)
+
+	if err := client.Send(ctx, msg); err != nil {
+		return nil, fmt.Errorf("failed to send mail: %w", err)
 	}
 
-	var yak *mailyak.MailYak
-	if n.config.SmtpTls {
-		yakWithTls, err := mailyak.NewWithTLS(smtpAddr, smtpAuth, xtls.NewCompatibleConfig())
-		if err != nil {
-			return nil, err
-		}
-		yak = yakWithTls
-	} else {
-		yak = mailyak.New(smtpAddr, smtpAuth)
-	}
-
-	yak.From(n.config.SenderAddress)
-	yak.FromName(n.config.SenderName)
-	yak.To(n.config.ReceiverAddress)
-	yak.Subject(subject)
-	yak.Plain().Set(message)
-
-	if err := yak.Send(); err != nil {
-		return nil, err
-	}
-
-	return &core.NotifyResult{}, nil
+	return &notifier.NotifyResult{}, nil
 }

@@ -1,17 +1,17 @@
 import { useMemo } from "react";
 import { getI18n, useTranslation } from "react-i18next";
-import { type FlowNodeEntity, getNodeForm } from "@flowgram.ai/fixed-layout-editor";
+import { type FlowNodeEntity } from "@flowgram.ai/fixed-layout-editor";
 import { type AnchorProps, Form, type FormInstance, Input, Radio } from "antd";
 import { createSchemaFieldRule } from "antd-zod";
 import { z } from "zod";
 
-import { validateCertificate, validatePrivateKey } from "@/api/certificates";
+import FileTextInput from "@/components/FileTextInput";
 import Show from "@/components/Show";
-import TextFileInput from "@/components/TextFileInput";
 import Tips from "@/components/Tips";
 import { type WorkflowNodeConfigForBizUpload, defaultNodeConfigForBizUpload } from "@/domain/workflow";
 import { useAntdForm } from "@/hooks";
-import { getErrMsg } from "@/utils/error";
+import { isUrlWithHttpOrHttps } from "@/utils/validator";
+import { getCertificateSubjectAltNames as getX509SubjectAltNames, validatePEMCertificate, validatePEMPrivateKey } from "@/utils/x509";
 
 import { NodeFormContextProvider } from "./_context";
 import { NodeType } from "../nodes/typings";
@@ -33,7 +33,7 @@ const BizUploadNodeConfigForm = ({ node, ...props }: BizUploadNodeConfigFormProp
   const { i18n, t } = useTranslation();
 
   const initialValues = useMemo(() => {
-    return getNodeForm(node)?.getValueIn("config") as WorkflowNodeConfigForBizUpload | undefined;
+    return node.form?.getValueIn("config") as WorkflowNodeConfigForBizUpload | undefined;
   }, [node]);
 
   const formSchema = getSchema({ i18n });
@@ -45,64 +45,22 @@ const BizUploadNodeConfigForm = ({ node, ...props }: BizUploadNodeConfigFormProp
   });
 
   const fieldSource = Form.useWatch("source", { form: formInst, preserve: true });
+  const fieldCertificate = Form.useWatch("certificate", { form: formInst, preserve: true });
+  const fieldName = useMemo(() => {
+    if (!fieldSource || fieldSource === UPLOAD_SOURCE_FORM) {
+      return fieldCertificate ? getX509SubjectAltNames(fieldCertificate).join(";") : void 0;
+    }
+    return void 0;
+  }, [fieldSource, fieldCertificate]);
 
   const handleSourceChange = (value: string) => {
     if (value === initialValues?.source) {
-      formInst.resetFields(["certificate", "privateKey", "domains"]);
+      formInst.resetFields(["certificate", "privateKey"]);
     } else {
       setTimeout(() => {
         formInst.setFieldValue("certificate", "");
         formInst.setFieldValue("privateKey", "");
-        formInst.setFieldValue("domains", "");
       }, 0);
-    }
-  };
-
-  const handleCertificatePEMChange = async (value: string) => {
-    try {
-      const resp = await validateCertificate(value);
-      formInst.setFields([
-        {
-          name: "domains",
-          value: resp.data.domains,
-        },
-        {
-          name: "certificate",
-          value: value,
-        },
-      ]);
-    } catch (e) {
-      formInst.setFields([
-        {
-          name: "domains",
-          value: "",
-        },
-        {
-          name: "certificate",
-          value: value,
-          errors: [getErrMsg(e)],
-        },
-      ]);
-    }
-  };
-
-  const handlePrivateKeyPEMChange = async (value: string) => {
-    try {
-      await validatePrivateKey(value);
-      formInst.setFields([
-        {
-          name: "privateKey",
-          value: value,
-        },
-      ]);
-    } catch (e) {
-      formInst.setFields([
-        {
-          name: "privateKey",
-          value: value,
-          errors: [getErrMsg(e)],
-        },
-      ]);
     }
   };
 
@@ -119,24 +77,16 @@ const BizUploadNodeConfigForm = ({ node, ...props }: BizUploadNodeConfigFormProp
           </Form.Item>
 
           <Show when={fieldSource === UPLOAD_SOURCE_FORM}>
-            <Form.Item name="domains" label={t("workflow_node.upload.form.domains.label")} rules={[formRule]}>
-              <Input variant="filled" placeholder={t("workflow_node.upload.form.domains.placeholder")} readOnly />
+            <Form.Item label={t("workflow_node.upload.form.name.label")}>
+              <Input placeholder={t("workflow_node.upload.form.name.placeholder")} readOnly value={fieldName} variant="filled" />
             </Form.Item>
 
             <Form.Item name="certificate" label={t("workflow_node.upload.form.certificate_pem.label")} rules={[formRule]}>
-              <TextFileInput
-                autoSize={{ minRows: 3, maxRows: 10 }}
-                placeholder={t("workflow_node.upload.form.certificate_pem.placeholder")}
-                onChange={handleCertificatePEMChange}
-              />
+              <FileTextInput autoSize={{ minRows: 3, maxRows: 10 }} placeholder={t("workflow_node.upload.form.certificate_pem.placeholder")} />
             </Form.Item>
 
             <Form.Item name="privateKey" label={t("workflow_node.upload.form.private_key_pem.label")} rules={[formRule]}>
-              <TextFileInput
-                autoSize={{ minRows: 3, maxRows: 10 }}
-                placeholder={t("workflow_node.upload.form.private_key_pem.placeholder")}
-                onChange={handlePrivateKeyPEMChange}
-              />
+              <FileTextInput autoSize={{ minRows: 3, maxRows: 10 }} placeholder={t("workflow_node.upload.form.private_key_pem.placeholder")} />
             </Form.Item>
           </Show>
 
@@ -185,10 +135,9 @@ const getAnchorItems = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n
 
 const getInitialValues = (): Nullish<z.infer<ReturnType<typeof getSchema>>> => {
   return {
-    source: UPLOAD_SOURCE_FORM,
     certificate: "",
     privateKey: "",
-    ...defaultNodeConfigForBizUpload(),
+    ...(defaultNodeConfigForBizUpload() as Nullish<z.infer<ReturnType<typeof getSchema>>>),
   };
 };
 
@@ -197,27 +146,27 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
 
   return z
     .object({
-      source: z.string(t("workflow_node.upload.form.source.placeholder")).nonempty(t("workflow_node.upload.form.source.placeholder")),
-      certificate: z.string().max(20480, t("common.errmsg.string_max", { max: 20480 })),
-      privateKey: z.string().max(20480, t("common.errmsg.string_max", { max: 20480 })),
-      domains: z.string().nullish(),
+      source: z.enum([UPLOAD_SOURCE_FORM, UPLOAD_SOURCE_LOCAL, UPLOAD_SOURCE_URL], t("workflow_node.upload.form.source.placeholder")),
+      name: z.string().nullish(),
+      certificate: z.string().nonempty(),
+      privateKey: z.string().nonempty(),
     })
     .superRefine((values, ctx) => {
       switch (values.source) {
         case UPLOAD_SOURCE_FORM:
           {
-            if (!z.string().nonempty().safeParse(values.certificate).success) {
+            if (!validatePEMCertificate(values.certificate)) {
               ctx.addIssue({
                 code: "custom",
-                message: t("workflow_node.upload.form.certificate_pem.placeholder"),
+                message: t("workflow_node.upload.form.certificate_pem.errmsg.invalid"),
                 path: ["certificate"],
               });
             }
 
-            if (!z.string().nonempty().safeParse(values.privateKey).success) {
+            if (!validatePEMPrivateKey(values.privateKey)) {
               ctx.addIssue({
                 code: "custom",
-                message: t("workflow_node.upload.form.private_key_pem.placeholder"),
+                message: t("workflow_node.upload.form.private_key_pem.errmsg.invalid"),
                 path: ["privateKey"],
               });
             }
@@ -246,7 +195,7 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
 
         case UPLOAD_SOURCE_URL:
           {
-            if (!z.url().safeParse(values.certificate).success) {
+            if (!isUrlWithHttpOrHttps(values.certificate)) {
               ctx.addIssue({
                 code: "custom",
                 message: t("workflow_node.upload.form.certificate_url.placeholder"),
@@ -254,7 +203,7 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
               });
             }
 
-            if (!z.url().safeParse(values.privateKey).success) {
+            if (!isUrlWithHttpOrHttps(values.privateKey)) {
               ctx.addIssue({
                 code: "custom",
                 message: t("workflow_node.upload.form.private_key_url.placeholder"),

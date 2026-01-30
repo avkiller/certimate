@@ -1,8 +1,6 @@
 package domain
 
 import (
-	"crypto/ecdsa"
-	"crypto/rsa"
 	"crypto/x509"
 	"fmt"
 	"strings"
@@ -11,91 +9,51 @@ import (
 	"github.com/go-acme/lego/v4/certcrypto"
 
 	xcert "github.com/certimate-go/certimate/pkg/utils/cert"
+	xcertkey "github.com/certimate-go/certimate/pkg/utils/cert/key"
+	xcertx509 "github.com/certimate-go/certimate/pkg/utils/cert/x509"
 )
 
 const CollectionNameCertificate = "certificate"
 
 type Certificate struct {
 	Meta
-	Source            CertificateSourceType       `json:"source" db:"source"`
-	SubjectAltNames   string                      `json:"subjectAltNames" db:"subjectAltNames"`
-	SerialNumber      string                      `json:"serialNumber" db:"serialNumber"`
-	Certificate       string                      `json:"certificate" db:"certificate"`
-	PrivateKey        string                      `json:"privateKey" db:"privateKey"`
-	IssuerOrg         string                      `json:"issuerOrg" db:"issuerOrg"`
-	IssuerCertificate string                      `json:"issuerCertificate" db:"issuerCertificate"`
-	KeyAlgorithm      CertificateKeyAlgorithmType `json:"keyAlgorithm" db:"keyAlgorithm"`
-	ValidityNotBefore time.Time                   `json:"validityNotBefore" db:"validityNotBefore"`
-	ValidityNotAfter  time.Time                   `json:"validityNotAfter" db:"validityNotAfter"`
-	ACMEAcctUrl       string                      `json:"acmeAcctUrl" db:"acmeAcctUrl"`
-	ACMECertUrl       string                      `json:"acmeCertUrl" db:"acmeCertUrl"`
-	ACMECertStableUrl string                      `json:"acmeCertStableUrl" db:"acmeCertStableUrl"`
-	ACMERenewed       bool                        `json:"acmeRenewed" db:"acmeRenewed"`
-	WorkflowId        string                      `json:"workflowId" db:"workflowRef"`
-	WorkflowRunId     string                      `json:"workflowRunId" db:"workflowRunRef"`
-	WorkflowNodeId    string                      `json:"workflowNodeId" db:"workflowNodeId"`
-	DeletedAt         *time.Time                  `json:"deleted" db:"deleted"`
+	Source            CertificateSourceType       `db:"source"            json:"source"`
+	SubjectAltNames   string                      `db:"subjectAltNames"   json:"subjectAltNames"`
+	SerialNumber      string                      `db:"serialNumber"      json:"serialNumber"`
+	Certificate       string                      `db:"certificate"       json:"certificate"`
+	PrivateKey        string                      `db:"privateKey"        json:"privateKey"`
+	IssuerOrg         string                      `db:"issuerOrg"         json:"issuerOrg"`
+	IssuerCertificate string                      `db:"issuerCertificate" json:"issuerCertificate"`
+	KeyAlgorithm      CertificateKeyAlgorithmType `db:"keyAlgorithm"      json:"keyAlgorithm"`
+	ValidityNotBefore time.Time                   `db:"validityNotBefore" json:"validityNotBefore"`
+	ValidityNotAfter  time.Time                   `db:"validityNotAfter"  json:"validityNotAfter"`
+	ValidityInterval  int32                       `db:"validityInterval"  json:"validityInterval"`
+	ACMEAcctUrl       string                      `db:"acmeAcctUrl"       json:"acmeAcctUrl"`
+	ACMECertUrl       string                      `db:"acmeCertUrl"       json:"acmeCertUrl"`
+	IsRenewed         bool                        `db:"isRenewed"         json:"isRenewed"`
+	IsRevoked         bool                        `db:"isRevoked"         json:"isRevoked"`
+	WorkflowId        string                      `db:"workflowRef"       json:"workflowId"`
+	WorkflowRunId     string                      `db:"workflowRunRef"    json:"workflowRunId"`
+	WorkflowNodeId    string                      `db:"workflowNodeId"    json:"workflowNodeId"`
+	DeletedAt         *time.Time                  `db:"deleted" json:"deleted"`
 }
 
 func (c *Certificate) PopulateFromX509(certX509 *x509.Certificate) *Certificate {
-	c.SubjectAltNames = strings.Join(certX509.DNSNames, ";")
+	c.SubjectAltNames = strings.Join(xcertx509.GetSubjectAltNames(certX509), ";")
 	c.SerialNumber = strings.ToUpper(certX509.SerialNumber.Text(16))
 	c.IssuerOrg = strings.Join(certX509.Issuer.Organization, ";")
 	c.ValidityNotBefore = certX509.NotBefore
 	c.ValidityNotAfter = certX509.NotAfter
+	c.ValidityInterval = int32(certX509.NotAfter.Sub(certX509.NotBefore).Seconds())
 
-	switch certX509.PublicKeyAlgorithm {
+	keyAlgorithm, keySize, _ := xcertkey.GetPublicKeyAlgorithm(certX509.PublicKey)
+	switch keyAlgorithm {
 	case x509.RSA:
-		{
-			len := 0
-			if pubkey, ok := certX509.PublicKey.(*rsa.PublicKey); ok {
-				len = pubkey.N.BitLen()
-			}
-
-			switch len {
-			case 0:
-				c.KeyAlgorithm = CertificateKeyAlgorithmType("RSA")
-			case 2048:
-				c.KeyAlgorithm = CertificateKeyAlgorithmTypeRSA2048
-			case 3072:
-				c.KeyAlgorithm = CertificateKeyAlgorithmTypeRSA3072
-			case 4096:
-				c.KeyAlgorithm = CertificateKeyAlgorithmTypeRSA4096
-			case 8192:
-				c.KeyAlgorithm = CertificateKeyAlgorithmTypeRSA8192
-			default:
-				c.KeyAlgorithm = CertificateKeyAlgorithmType(fmt.Sprintf("RSA%d", len))
-			}
-		}
-
+		c.KeyAlgorithm = CertificateKeyAlgorithmType(fmt.Sprintf("RSA%d", keySize))
 	case x509.ECDSA:
-		{
-			len := 0
-			if pubkey, ok := certX509.PublicKey.(*ecdsa.PublicKey); ok {
-				if pubkey.Curve != nil && pubkey.Curve.Params() != nil {
-					len = pubkey.Curve.Params().BitSize
-				}
-			}
-
-			switch len {
-			case 0:
-				c.KeyAlgorithm = CertificateKeyAlgorithmType("EC")
-			case 256:
-				c.KeyAlgorithm = CertificateKeyAlgorithmTypeEC256
-			case 384:
-				c.KeyAlgorithm = CertificateKeyAlgorithmTypeEC384
-			case 521:
-				c.KeyAlgorithm = CertificateKeyAlgorithmTypeEC512
-			default:
-				c.KeyAlgorithm = CertificateKeyAlgorithmType(fmt.Sprintf("EC%d", len))
-			}
-		}
-
+		c.KeyAlgorithm = CertificateKeyAlgorithmType(fmt.Sprintf("EC%d", keySize))
 	case x509.Ed25519:
-		{
-			c.KeyAlgorithm = CertificateKeyAlgorithmType("ED25519")
-		}
-
+		c.KeyAlgorithm = CertificateKeyAlgorithmType("Ed25519")
 	default:
 		c.KeyAlgorithm = CertificateKeyAlgorithmType("")
 	}
@@ -145,7 +103,6 @@ func (t CertificateKeyAlgorithmType) KeyType() (certcrypto.KeyType, error) {
 		CertificateKeyAlgorithmTypeRSA8192: certcrypto.RSA8192,
 		CertificateKeyAlgorithmTypeEC256:   certcrypto.EC256,
 		CertificateKeyAlgorithmTypeEC384:   certcrypto.EC384,
-		CertificateKeyAlgorithmTypeEC512:   certcrypto.KeyType("P512"),
 	}
 
 	if keyType, ok := keyTypeMap[t]; ok {
@@ -154,3 +111,11 @@ func (t CertificateKeyAlgorithmType) KeyType() (certcrypto.KeyType, error) {
 
 	return certcrypto.RSA2048, fmt.Errorf("unsupported key algorithm type: '%s'", t)
 }
+
+type CertificateFormatType string
+
+const (
+	CertificateFormatTypePEM CertificateFormatType = "PEM"
+	CertificateFormatTypePFX CertificateFormatType = "PFX"
+	CertificateFormatTypeJKS CertificateFormatType = "JKS"
+)

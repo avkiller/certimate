@@ -17,12 +17,35 @@ func NewWorkflowOutputRepository() *WorkflowOutputRepository {
 	return &WorkflowOutputRepository{}
 }
 
-func (r *WorkflowOutputRepository) GetByNodeId(ctx context.Context, workflowNodeId string) (*domain.WorkflowOutput, error) {
+func (r *WorkflowOutputRepository) GetByWorkflowIdAndNodeId(ctx context.Context, workflowId string, workflowNodeId string) (*domain.WorkflowOutput, error) {
 	records, err := app.GetApp().FindRecordsByFilter(
 		domain.CollectionNameWorkflowOutput,
-		"nodeId={:nodeId}",
+		"workflowRef={:workflowId} && nodeId={:nodeId}",
 		"-created",
 		1, 0,
+		dbx.Params{"workflowId": workflowId},
+		dbx.Params{"nodeId": workflowNodeId},
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, domain.ErrRecordNotFound
+		}
+		return nil, err
+	}
+	if len(records) == 0 {
+		return nil, domain.ErrRecordNotFound
+	}
+
+	return r.castRecordToModel(records[0])
+}
+
+func (r *WorkflowOutputRepository) GetByWorkflowRunIdAndNodeId(ctx context.Context, workflowRunId string, workflowNodeId string) (*domain.WorkflowOutput, error) {
+	records, err := app.GetApp().FindRecordsByFilter(
+		domain.CollectionNameWorkflowOutput,
+		"runRef={:workflowRunId} && nodeId={:nodeId}",
+		"-created",
+		1, 0,
+		dbx.Params{"workflowRunId": workflowRunId},
 		dbx.Params{"nodeId": workflowNodeId},
 	)
 	if err != nil {

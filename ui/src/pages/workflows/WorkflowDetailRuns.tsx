@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { IconBrowserShare, IconDots, IconHistory, IconPlayerPause, IconTrash } from "@tabler/icons-react";
+import { IconBox, IconBrowserShare, IconCertificate, IconDots, IconHistory, IconPlayerPause, IconTrash } from "@tabler/icons-react";
 import { useRequest } from "ahooks";
 import { App, Button, Dropdown, Skeleton, Table, type TableProps, theme } from "antd";
 import dayjs from "dayjs";
@@ -17,7 +17,7 @@ import { WORKFLOW_RUN_STATUSES, type WorkflowRunModel } from "@/domain/workflowR
 import { useAppSettings, useZustandShallowSelector } from "@/hooks";
 import { get as getWorkflowRun, list as listWorkflowRuns, remove as removeWorkflowRun, subscribe as subscribeWorkflowRun } from "@/repository/workflowRun";
 import { useWorkflowStore } from "@/stores/workflow";
-import { getErrMsg } from "@/utils/error";
+import { unwrapErrMsg } from "@/utils/error";
 
 const WorkflowDetailRuns = () => {
   const { t } = useTranslation();
@@ -83,6 +83,37 @@ const WorkflowDetailRuns = () => {
       render: (_, record) => {
         if (record.endedAt) {
           return dayjs(record.endedAt).format("YYYY-MM-DD HH:mm:ss");
+        }
+
+        return <></>;
+      },
+    },
+    {
+      key: "artifacts",
+      title: t("workflow_run.props.artifacts"),
+      width: 160,
+      render: (_, record) => {
+        if (record.outputs && record.outputs.length > 0) {
+          const keys = new Set<string>();
+          const icons: React.ReactNode[] = [];
+
+          for (const output of record.outputs) {
+            if (output.type === "ref" && output.value?.split("#")?.at(0) === "certificate") {
+              const KEY = "certificate";
+              if (keys.has(KEY)) continue;
+
+              keys.add(KEY);
+              icons.push(<IconCertificate key={KEY} size="1.25em" />);
+            } else {
+              const KEY = "other";
+              if (keys.has(KEY)) continue;
+
+              keys.add(KEY);
+              icons.push(<IconBox key={KEY} size="1.25em" />);
+            }
+          }
+
+          return <div className="flex items-center gap-2">{icons}</div>;
         }
 
         return <></>;
@@ -211,7 +242,7 @@ const WorkflowDetailRuns = () => {
         }
 
         console.error(err);
-        notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
+        notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
 
         throw err;
       },
@@ -274,7 +305,7 @@ const WorkflowDetailRuns = () => {
           }
         } catch (err) {
           console.error(err);
-          notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
+          notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
         }
       },
     });
@@ -300,7 +331,7 @@ const WorkflowDetailRuns = () => {
           }
         } catch (err) {
           console.error(err);
-          notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
+          notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
         }
       },
     });
@@ -334,7 +365,7 @@ const WorkflowDetailRuns = () => {
           }
         } catch (err) {
           console.error(err);
-          notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
+          notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
         }
       },
     });
@@ -357,8 +388,8 @@ const WorkflowDetailRuns = () => {
               ) : (
                 <Empty
                   className="py-24"
-                  title={t("common.text.nodata")}
-                  description={loadError ? getErrMsg(loadError) : t("workflow_run.nodata.description")}
+                  title={loadError ? t("common.text.nodata_failed") : t("workflow_run.nodata.title")}
+                  description={loadError ? unwrapErrMsg(loadError) : t("workflow_run.nodata.description")}
                   icon={<IconHistory size={24} />}
                 />
               ),

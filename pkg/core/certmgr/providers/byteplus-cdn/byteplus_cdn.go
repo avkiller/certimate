@@ -1,0 +1,141 @@
+package bytepluscdn
+
+import (
+	"context"
+	"crypto/sha1"
+	"crypto/sha256"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"log/slog"
+	"strings"
+	"time"
+
+	bytepluscdn "github.com/byteplus-sdk/byteplus-sdk-golang/service/cdn"
+
+	"github.com/certimate-go/certimate/pkg/core/certmgr"
+	xcert "github.com/certimate-go/certimate/pkg/utils/cert"
+)
+
+type CertmgrConfig struct {
+	// BytePlus AccessKey。
+	AccessKey string `json:"accessKey"`
+	// BytePlus SecretKey。
+	SecretKey string `json:"secretKey"`
+}
+
+type Certmgr struct {
+	config    *CertmgrConfig
+	logger    *slog.Logger
+	sdkClient *bytepluscdn.CDN
+}
+
+var _ certmgr.Provider = (*Certmgr)(nil)
+
+func NewCertmgr(config *CertmgrConfig) (*Certmgr, error) {
+	if config == nil {
+		return nil, errors.New("the configuration of the certmgr provider is nil")
+	}
+
+	client := bytepluscdn.NewInstance()
+	client.Client.SetAccessKey(config.AccessKey)
+	client.Client.SetSecretKey(config.SecretKey)
+
+	return &Certmgr{
+		config:    config,
+		logger:    slog.Default(),
+		sdkClient: client,
+	}, nil
+}
+
+func (c *Certmgr) SetLogger(logger *slog.Logger) {
+	if logger == nil {
+		c.logger = slog.New(slog.DiscardHandler)
+	} else {
+		c.logger = logger
+	}
+}
+
+func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*certmgr.UploadResult, error) {
+	// 解析证书内容
+	certX509, err := xcert.ParseCertificateFromPEM(certPEM)
+	if err != nil {
+		return nil, err
+	}
+
+	// 查询证书列表，避免重复上传
+	// REF: https://docs.byteplus.com/en/docs/byteplus-cdn/reference-listcertinfo
+	listCertInfoPageNum := 1
+	listCertInfoPageSize := 100
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
+
+		listCertInfoReq := &bytepluscdn.ListCertInfoRequest{
+			PageNum:  bytepluscdn.GetInt64Ptr(int64(listCertInfoPageNum)),
+			PageSize: bytepluscdn.GetInt64Ptr(int64(listCertInfoPageSize)),
+			Source:   bytepluscdn.GetStrPtr("cert_center"),
+		}
+		listCertInfoResp, err := c.sdkClient.ListCertInfo(listCertInfoReq)
+		c.logger.Debug("sdk request 'cdn.ListCertInfo'", slog.Any("request", listCertInfoReq), slog.Any("response", listCertInfoResp))
+		if err != nil {
+			return nil, fmt.Errorf("failed to execute sdk request 'cdn.ListCertInfo': %w", err)
+		}
+
+		for _, certItem := range listCertInfoResp.Result.CertInfo {
+			// 对比证书 SHA-1 摘要
+			fingerprintSha1 := sha1.Sum(certX509.Raw)
+			if !strings.EqualFold(hex.EncodeToString(fingerprintSha1[:]), certItem.CertFingerprint.Sha1) {
+				continue
+			}
+
+			// 对比证书 SHA-256 摘要
+			fingerprintSha256 := sha256.Sum256(certX509.Raw)
+			if !strings.EqualFold(hex.EncodeToString(fingerprintSha256[:]), certItem.CertFingerprint.Sha256) {
+				continue
+			}
+
+			// 如果以上信息都一致，则视为已存在相同证书，直接返回
+			c.logger.Info("ssl certificate already exists")
+			return &certmgr.UploadResult{
+				CertId:   certItem.CertId,
+				CertName: certItem.Desc,
+			}, nil
+		}
+
+		if len(listCertInfoResp.Result.CertInfo) < listCertInfoPageSize {
+			break
+		}
+
+		listCertInfoPageNum++
+	}
+
+	// 生成新证书名（需符合 BytePlus 命名规则）
+	certName := fmt.Sprintf("certimate-%d", time.Now().UnixMilli())
+
+	// 上传新证书
+	// REF: https://docs.byteplus.com/en/docs/byteplus-cdn/reference-addcertificate
+	addCertificateReq := &bytepluscdn.AddCertificateRequest{
+		Certificate: certPEM,
+		PrivateKey:  privkeyPEM,
+		Source:      bytepluscdn.GetStrPtr("cert_center"),
+		Desc:        bytepluscdn.GetStrPtr(certName),
+	}
+	addCertificateResp, err := c.sdkClient.AddCertificate(addCertificateReq)
+	c.logger.Debug("sdk request 'cdn.AddCertificate'", slog.Any("request", addCertificateReq), slog.Any("response", addCertificateResp))
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute sdk request 'cdn.AddCertificate': %w", err)
+	}
+
+	return &certmgr.UploadResult{
+		CertId:   addCertificateResp.Result.CertId,
+		CertName: certName,
+	}, nil
+}
+
+func (c *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, privkeyPEM string) (*certmgr.OperateResult, error) {
+	return nil, certmgr.ErrUnsupported
+}

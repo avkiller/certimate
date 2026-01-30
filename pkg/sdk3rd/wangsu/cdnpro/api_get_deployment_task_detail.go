@@ -8,7 +8,7 @@ import (
 )
 
 type GetDeploymentTaskDetailResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
 	Name           string                     `json:"name"`
 	Target         string                     `json:"target"`

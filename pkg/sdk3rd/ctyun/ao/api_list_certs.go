@@ -3,17 +3,18 @@ package ao
 import (
 	"context"
 	"net/http"
-	"strconv"
+
+	qs "github.com/google/go-querystring/query"
 )
 
 type ListCertsRequest struct {
-	Page      *int32 `json:"page,omitempty"`
-	PerPage   *int32 `json:"per_page,omitempty"`
-	UsageMode *int32 `json:"usage_mode,omitempty"`
+	Page      *int32 `json:"page,omitempty"       url:"page,omitempty"`
+	PerPage   *int32 `json:"per_page,omitempty"   url:"per_page,omitempty"`
+	UsageMode *int32 `json:"usage_mode,omitempty" url:"usage_mode,omitempty"`
 }
 
 type ListCertsResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
 	ReturnObj *struct {
 		Results      []*CertRecord `json:"result,omitempty"`
@@ -33,16 +34,12 @@ func (c *Client) ListCertsWithContext(ctx context.Context, req *ListCertsRequest
 	if err != nil {
 		return nil, err
 	} else {
-		if req.Page != nil {
-			httpreq.SetQueryParam("page", strconv.Itoa(int(*req.Page)))
-		}
-		if req.PerPage != nil {
-			httpreq.SetQueryParam("per_page", strconv.Itoa(int(*req.PerPage)))
-		}
-		if req.UsageMode != nil {
-			httpreq.SetQueryParam("usage_mode", strconv.Itoa(int(*req.UsageMode)))
+		values, err := qs.Values(req)
+		if err != nil {
+			return nil, err
 		}
 
+		httpreq.SetQueryParamsFromValues(values)
 		httpreq.SetContext(ctx)
 	}
 

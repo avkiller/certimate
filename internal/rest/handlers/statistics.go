@@ -24,7 +24,9 @@ func NewStatisticsHandler(router *router.RouterGroup[*core.RequestEvent], servic
 	}
 
 	group := router.Group("/statistics")
-	group.GET("/get", handler.get)
+	group.GET("/", handler.get)
+
+	group.GET("/get", handler.get) // 兼容旧版
 }
 
 func (handler *StatisticsHandler) get(e *core.RequestEvent) error {

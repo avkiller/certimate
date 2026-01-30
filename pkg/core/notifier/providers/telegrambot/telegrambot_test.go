@@ -17,22 +17,22 @@ const (
 
 var (
 	fApiToken string
-	fChatId   int64
+	fChatId   string
 )
 
 func init() {
-	argsPrefix := "CERTIMATE_NOTIFIER_TELEGRAMBOT_"
+	argsPrefix := "TELEGRAMBOT_"
 
 	flag.StringVar(&fApiToken, argsPrefix+"APITOKEN", "", "")
-	flag.Int64Var(&fChatId, argsPrefix+"CHATID", 0, "")
+	flag.StringVar(&fChatId, argsPrefix+"CHATID", "", "")
 }
 
 /*
 Shell command to run this test:
 
 	go test -v ./telegrambot_test.go -args \
-	--CERTIMATE_NOTIFIER_TELEGRAMBOT_APITOKEN="your-api-token" \
-	--CERTIMATE_NOTIFIER_TELEGRAMBOT_CHATID=123456
+	--TELEGRAMBOT_APITOKEN="your-api-token" \
+	--TELEGRAMBOT_CHATID="your-chat-id"
 */
 func TestNotify(t *testing.T) {
 	flag.Parse()
@@ -44,7 +44,7 @@ func TestNotify(t *testing.T) {
 			fmt.Sprintf("CHATID: %v", fChatId),
 		}, "\n"))
 
-		notifier, err := provider.NewNotifierProvider(&provider.NotifierProviderConfig{
+		provider, err := provider.NewNotifier(&provider.NotifierConfig{
 			BotToken: fApiToken,
 			ChatId:   fChatId,
 		})
@@ -53,7 +53,7 @@ func TestNotify(t *testing.T) {
 			return
 		}
 
-		res, err := notifier.Notify(context.Background(), mockSubject, mockMessage)
+		res, err := provider.Notify(context.Background(), mockSubject, mockMessage)
 		if err != nil {
 			t.Errorf("err: %+v", err)
 			return

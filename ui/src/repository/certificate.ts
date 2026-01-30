@@ -3,53 +3,59 @@ import dayjs from "dayjs";
 import { type CertificateModel } from "@/domain/certificate";
 import { COLLECTION_NAME_CERTIFICATE, getPocketBase } from "./_pocketbase";
 
-export type ListRequest = {
+const _commonFields = [
+  "id",
+  "source",
+  "subjectAltNames",
+  "serialNumber",
+  "issuerOrg",
+  "keyAlgorithm",
+  "validityNotBefore",
+  "validityNotAfter",
+  "validityInterval",
+  "isRenewed",
+  "isRevoked",
+  "workflowRef",
+  "created",
+  "updated",
+  "deleted",
+];
+const _expandFields = ["expand.workflowRef.id", "expand.workflowRef.name", "expand.workflowRef.description"];
+
+export const list = async ({
+  keyword,
+  state,
+  stateThreshold,
+  sort = "-created",
+  page = 1,
+  perPage = 10,
+}: {
   keyword?: string;
   state?: "expiringSoon" | "expired";
+  stateThreshold?: number;
   sort?: string;
   page?: number;
   perPage?: number;
-};
-
-export const list = async (request: ListRequest) => {
+}) => {
   const pb = getPocketBase();
 
   const filters: string[] = ["deleted=null"];
-  if (request.keyword) {
-    filters.push(pb.filter("(id={:keyword} || serialNumber={:keyword} || subjectAltNames~{:keyword})", { keyword: request.keyword }));
+  if (keyword) {
+    filters.push(pb.filter("(id={:keyword} || serialNumber={:keyword} || subjectAltNames~{:keyword})", { keyword: keyword }));
   }
-  if (request.state === "expiringSoon") {
-    filters.push(pb.filter("validityNotAfter<{:expiredAt} && validityNotAfter>@now", { expiredAt: dayjs().add(20, "d").toDate() }));
-  } else if (request.state === "expired") {
-    filters.push(pb.filter("validityNotAfter<={:expiredAt}", { expiredAt: new Date() }));
+  if (state === "expiringSoon") {
+    filters.push(pb.filter("validityNotAfter<={:expiredAt}", { expiredAt: dayjs().add(stateThreshold!, "d").toDate() }));
+    filters.push(pb.filter("validityNotAfter>@now"));
+    filters.push(pb.filter("isRevoked=0"));
+  } else if (state === "expired") {
+    filters.push(pb.filter("validityNotAfter<=@now"));
   }
-
-  const sort = request.sort || "-created";
-
-  const page = request.page || 1;
-  const perPage = request.perPage || 10;
 
   return pb.collection(COLLECTION_NAME_CERTIFICATE).getList<CertificateModel>(page, perPage, {
     expand: ["workflowRef"].join(","),
-    fields: [
-      "id",
-      "source",
-      "subjectAltNames",
-      "serialNumber",
-      "issuerOrg",
-      "keyAlgorithm",
-      "validityNotBefore",
-      "validityNotAfter",
-      "workflowRef",
-      "created",
-      "updated",
-      "deleted",
-      "expand.workflowRef.id",
-      "expand.workflowRef.name",
-      "expand.workflowRef.description",
-    ].join(","),
+    fields: [..._commonFields, ..._expandFields].join(","),
     filter: filters.join(" && "),
-    sort: sort,
+    sort: sort || "-created",
     requestKey: null,
   });
 };
@@ -59,6 +65,7 @@ export const listByWorkflowRunId = async (workflowRunId: string) => {
 
   const list = await pb.collection(COLLECTION_NAME_CERTIFICATE).getFullList<CertificateModel>({
     batch: 65535,
+    fields: [..._commonFields, ..._expandFields, "certificate", "privateKey"].join(","),
     filter: pb.filter("workflowRunRef={:workflowRunId}", { workflowRunId }),
     sort: "created",
     requestKey: null,
@@ -75,7 +82,7 @@ export const get = async (id: string) => {
     .collection(COLLECTION_NAME_CERTIFICATE)
     .getOne<CertificateModel>(id, {
       expand: ["workflowRef"].join(","),
-      fields: ["*", "expand.workflowRef.id", "expand.workflowRef.name", "expand.workflowRef.description"].join(","),
+      fields: ["*", ..._expandFields].join(","),
       requestKey: null,
     });
 };

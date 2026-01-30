@@ -11,10 +11,10 @@ type UploadHttpsCertificateRequest struct {
 }
 
 type UploadHttpsCertificateResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
 	Data *struct {
-		apiResponseBaseData
+		sdkResponseBaseData
 
 		Status int32 `json:"status"`
 		Result struct {

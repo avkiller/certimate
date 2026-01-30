@@ -13,12 +13,12 @@ const CollectionNameACMEAccount = "acme_accounts"
 
 type ACMEAccount struct {
 	Meta
-	CA          string        `json:"ca" db:"ca"`
-	Email       string        `json:"email" db:"email"`
-	PrivateKey  string        `json:"privateKey" db:"privateKey"`
-	ACMEAccount *acme.Account `json:"acmeAccount" db:"acmeAccount"`
-	ACMEAcctUrl string        `json:"acmeAcctUrl" db:"acmeAcctUrl"`
-	ACMEDirUrl  string        `json:"acmeDirUrl" db:"acmeDirUrl"`
+	CA          string        `db:"ca"          json:"ca"`
+	Email       string        `db:"email"       json:"email"`
+	PrivateKey  string        `db:"privateKey"  json:"privateKey"`
+	ACMEAccount *acme.Account `db:"acmeAccount" json:"acmeAccount"`
+	ACMEAcctUrl string        `db:"acmeAcctUrl" json:"acmeAcctUrl"`
+	ACMEDirUrl  string        `db:"acmeDirUrl"  json:"acmeDirUrl"`
 }
 
 func (a *ACMEAccount) GetEmail() string {
@@ -41,6 +41,6 @@ func (a *ACMEAccount) GetPrivateKey() crypto.PrivateKey {
 		return nil
 	}
 
-	rs, _ := xcert.ParseECPrivateKeyFromPEM(a.PrivateKey)
+	rs, _ := xcert.ParsePrivateKeyFromPEM(a.PrivateKey)
 	return rs
 }

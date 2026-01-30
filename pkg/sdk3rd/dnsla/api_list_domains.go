@@ -3,17 +3,18 @@ package dnsla
 import (
 	"context"
 	"net/http"
-	"strconv"
+
+	qs "github.com/google/go-querystring/query"
 )
 
 type ListDomainsRequest struct {
-	GroupId   *string `json:"groupId,omitempty"`
-	PageIndex *int32  `json:"pageIndex,omitempty"`
-	PageSize  *int32  `json:"pageSize,omitempty"`
+	GroupId   *string `json:"groupId,omitempty"   url:"groupId,omitempty"`
+	PageIndex *int32  `json:"pageIndex,omitempty" url:"pageIndex,omitempty"`
+	PageSize  *int32  `json:"pageSize,omitempty"  url:"pageSize,omitempty"`
 }
 
 type ListDomainsResponse struct {
-	apiResponseBase
+	sdkResponseBase
 	Data *struct {
 		Total   int32           `json:"total"`
 		Results []*DomainRecord `json:"results"`
@@ -29,16 +30,12 @@ func (c *Client) ListDomainsWithContext(ctx context.Context, req *ListDomainsReq
 	if err != nil {
 		return nil, err
 	} else {
-		if req.GroupId != nil {
-			httpreq.SetQueryParam("groupId", *req.GroupId)
-		}
-		if req.PageIndex != nil {
-			httpreq.SetQueryParam("pageIndex", strconv.Itoa(int(*req.PageIndex)))
-		}
-		if req.PageSize != nil {
-			httpreq.SetQueryParam("pageSize", strconv.Itoa(int(*req.PageSize)))
+		values, err := qs.Values(req)
+		if err != nil {
+			return nil, err
 		}
 
+		httpreq.SetQueryParamsFromValues(values)
 		httpreq.SetContext(ctx)
 	}
 

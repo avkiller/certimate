@@ -16,7 +16,7 @@ type CreateCertificateRequest struct {
 }
 
 type CreateCertificateResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
 	CertificateLocation string `json:"location,omitempty"`
 }

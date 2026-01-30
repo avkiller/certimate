@@ -40,10 +40,7 @@ const getSchema = ({ i18n = getI18n() }: { i18n: ReturnType<typeof getI18n> }) =
   const { t } = i18n;
 
   return z.object({
-    httpToken: z
-      .string()
-      .min(1, t("access.form.dynv6_http_token.placeholder"))
-      .max(256, t("common.errmsg.string_max", { max: 256 })),
+    httpToken: z.string().nonempty(t("access.form.dynv6_http_token.placeholder")),
   });
 };
 

@@ -7,16 +7,16 @@ import (
 )
 
 type SslCenterGetResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
 	Data *SslDetail `json:"data,omitempty"`
 }
 
-func (c *Client) SslCenterGet(sslId int32) (*SslCenterGetResponse, error) {
+func (c *Client) SslCenterGet(sslId int64) (*SslCenterGetResponse, error) {
 	return c.SslCenterGetWithContext(context.Background(), sslId)
 }
 
-func (c *Client) SslCenterGetWithContext(ctx context.Context, sslId int32) (*SslCenterGetResponse, error) {
+func (c *Client) SslCenterGetWithContext(ctx context.Context, sslId int64) (*SslCenterGetResponse, error) {
 	if sslId == 0 {
 		return nil, fmt.Errorf("sdkerr: unset sslId")
 	}

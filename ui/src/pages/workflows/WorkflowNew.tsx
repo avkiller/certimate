@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { IconArrowRight, IconCode, IconSquarePlus2 } from "@tabler/icons-react";
+import { IconArrowRight, IconSquarePlus2, IconUpload } from "@tabler/icons-react";
 import { App, Button, Card, Spin, Typography } from "antd";
-import dayjs from "dayjs";
 
 import Show from "@/components/Show";
 import WorkflowGraphImportModal from "@/components/workflow/WorkflowGraphImportModal";
@@ -16,7 +15,7 @@ import {
   newNode,
 } from "@/domain/workflow";
 import { save as saveWorkflow } from "@/repository/workflow";
-import { getErrMsg } from "@/utils/error";
+import { unwrapErrMsg } from "@/utils/error";
 
 const TEMPLATE_KEY_BLANK = "blank" as const;
 const TEMPLATE_KEY_STANDARD = "standard" as const;
@@ -85,7 +84,7 @@ const WorkflowNew = () => {
     try {
       let workflow = {} as WorkflowModel;
       workflow.name = t("workflow.new.templates.default_name");
-      workflow.description = t("workflow.new.templates.default_description", { date: dayjs().format("YYYY-MM-DD HH:mm") });
+      workflow.description = t("workflow.new.templates.default_description");
       workflow.graphDraft = { nodes: [] };
       workflow.hasDraft = true;
 
@@ -143,14 +142,14 @@ const WorkflowNew = () => {
               ...notifyOnExpiringSoonNode.data.config,
               subject: "[Certimate] Certificate Expiry Alert!",
               message:
-                "The certificate which you are monitoring will be expiring soon. Please pay attention to your website. \r\nDomains: {{ $certificate.domains }} \r\nExpiration: {{ $certificate.notAfter }}({{ $certificate.daysLeft }} days left)",
+                "The certificate which you are monitoring will be expiring soon. Please pay attention to your website. \r\nDomains: {{ $certificate.subjectAltNames }} \r\nExpiration: {{ $certificate.notAfter }}({{ $certificate.daysLeft }} days left)",
             } as WorkflowNodeConfigForBizNotify;
 
             notifyOnExpiredNode.data.config = {
               ...notifyOnExpiredNode.data.config,
               subject: "[Certimate] Certificate Expiry Alert!",
               message:
-                "The certificate which you are monitoring has already expired. Please pay attention to your website. \r\nDomains: {{ $certificate.domains }} \r\nExpiration: {{ $certificate.notAfter }}",
+                "The certificate which you are monitoring has already expired. Please pay attention to your website. \r\nDomains: {{ $certificate.subjectAltNames }} \r\nExpiration: {{ $certificate.notAfter }}",
             } as WorkflowNodeConfigForBizNotify;
 
             notifyOnFailureNode.data.config = {
@@ -243,7 +242,7 @@ const WorkflowNew = () => {
       workflow = await saveWorkflow(workflow);
       navigate(`/workflows/${workflow.id}`, { replace: true });
     } catch (err) {
-      notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
+      notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
 
       throw err;
     } finally {
@@ -261,13 +260,13 @@ const WorkflowNew = () => {
       try {
         let workflow = {} as WorkflowModel;
         workflow.name = t("workflow.new.templates.default_name");
-        workflow.description = t("workflow.new.templates.default_description", { date: dayjs().format("YYYY-MM-DD HH:mm") });
+        workflow.description = t("workflow.new.templates.default_description");
         workflow.graphDraft = graph;
         workflow.hasDraft = true;
         workflow = await saveWorkflow(workflow);
         navigate(`/workflows/${workflow.id}`, { replace: true });
       } catch (err) {
-        notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
+        notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
 
         throw err;
       } finally {
@@ -284,20 +283,14 @@ const WorkflowNew = () => {
       </div>
 
       <div className="container">
-        <div className="my-[6px]">
+        <div className="my-1.5">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-            <Card className="size-full" styles={{ body: { padding: "1rem 1.5rem" } }} variant="borderless">
+            <Card className="size-full" styles={{ body: { padding: "1rem 0.5rem" } }} variant="borderless">
               <div className="flex flex-col gap-3">
-                <Button
-                  className="border-none px-0 shadow-none"
-                  block
-                  icon={<IconSquarePlus2 size="1.25em" />}
-                  variant="solid"
-                  onClick={() => handleTemplateClick(TEMPLATE_KEY_BLANK)}
-                >
+                <Button block icon={<IconSquarePlus2 size="1.25em" />} type="text" onClick={() => handleTemplateClick(TEMPLATE_KEY_BLANK)}>
                   <div className="w-full text-left">{t("workflow.new.button.create")}</div>
                 </Button>
-                <Button className="border-none px-0 shadow-none" block icon={<IconCode size="1.25em" />} variant="solid" onClick={handleImportClick}>
+                <Button block icon={<IconUpload size="1.25em" />} type="text" onClick={handleImportClick}>
                   <div className="w-full text-left">{t("workflow.new.button.import")}</div>
                 </Button>
               </div>

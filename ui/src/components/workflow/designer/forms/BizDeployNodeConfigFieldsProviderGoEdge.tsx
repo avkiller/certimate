@@ -27,14 +27,16 @@ const BizDeployNodeConfigFieldsProviderGoEdge = () => {
       <Form.Item
         name={[parentNamePath, "resourceType"]}
         initialValue={initialValues.resourceType}
-        label={t("workflow_node.deploy.form.goedge_resource_type.label")}
+        label={t("workflow_node.deploy.form.shared_resource_type.label")}
         rules={[formRule]}
       >
-        <Select placeholder={t("workflow_node.deploy.form.goedge_resource_type.placeholder")}>
-          <Select.Option key={RESOURCE_TYPE_CERTIFICATE} value={RESOURCE_TYPE_CERTIFICATE}>
-            {t("workflow_node.deploy.form.goedge_resource_type.option.certificate.label")}
-          </Select.Option>
-        </Select>
+        <Select
+          options={[RESOURCE_TYPE_CERTIFICATE].map((s) => ({
+            value: s,
+            label: t(`workflow_node.deploy.form.goedge_resource_type.option.${s}.label`),
+          }))}
+          placeholder={t("workflow_node.deploy.form.shared_resource_type.placeholder")}
+        />
       </Form.Item>
 
       <Show when={fieldResourceType === RESOURCE_TYPE_CERTIFICATE}>
@@ -70,8 +72,8 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
       switch (values.resourceType) {
         case RESOURCE_TYPE_CERTIFICATE:
           {
-            const res = z.preprocess((v) => Number(v), z.number().int().positive()).safeParse(values.certificateId);
-            if (!res.success) {
+            const scCertificateId = z.coerce.number().int().positive();
+            if (!scCertificateId.safeParse(values.certificateId).success) {
               ctx.addIssue({
                 code: "custom",
                 message: t("workflow_node.deploy.form.goedge_certificate_id.placeholder"),

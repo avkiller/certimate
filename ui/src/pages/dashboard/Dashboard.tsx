@@ -4,7 +4,10 @@ import { useNavigate } from "react-router-dom";
 import {
   IconActivity,
   IconAlertHexagon,
+  IconBox,
+  IconCertificate,
   IconCirclePlus,
+  IconConfetti,
   IconExternalLink,
   IconHexagonLetterX,
   IconHistory,
@@ -23,12 +26,13 @@ import { get as getStatistics } from "@/api/statistics";
 import Empty from "@/components/Empty";
 import WorkflowRunDetailDrawer from "@/components/workflow/WorkflowRunDetailDrawer";
 import WorkflowStatus from "@/components/workflow/WorkflowStatus";
+import { APP_DOWNLOAD_URL } from "@/domain/app";
 import { type Statistics } from "@/domain/statistics";
 import { type WorkflowRunModel } from "@/domain/workflowRun";
-import { useBrowserTheme } from "@/hooks";
+import { useBrowserTheme, useVersionChecker } from "@/hooks";
 import { get as getWorkflowRun, list as listWorkflowRuns } from "@/repository/workflowRun";
 import { mergeCls } from "@/utils/css";
-import { getErrMsg } from "@/utils/error";
+import { unwrapErrMsg } from "@/utils/error";
 
 const Dashboard = () => {
   const { t } = useTranslation();
@@ -40,7 +44,7 @@ const Dashboard = () => {
       </div>
 
       <div className="container">
-        <div className="my-[6px]">
+        <div className="my-1.5">
           <StatisticCards />
         </div>
 
@@ -50,7 +54,7 @@ const Dashboard = () => {
         </div>
 
         <div className="mt-8">
-          <h3>{t("dashboard.latest_workflow_runs")}</h3>
+          <h3>{t("dashboard.recent_workflow_runs")}</h3>
           <WorkflowRunHistoryTable />
         </div>
       </div>
@@ -147,7 +151,7 @@ const StatisticCards = ({ className, style }: { className?: string; style?: Reac
         }
 
         console.error(err);
-        notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
+        notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
 
         throw err;
       },
@@ -217,6 +221,8 @@ const Shortcuts = ({ className, style }: { className?: string; style?: React.CSS
 
   const { t } = useTranslation();
 
+  const { hasUpdate } = useVersionChecker();
+
   return (
     <div className={className} style={style}>
       <div className="flex items-center gap-4 not-md:flex-wrap">
@@ -247,6 +253,17 @@ const Shortcuts = ({ className, style }: { className?: string; style?: React.CSS
         >
           <span className="text-sm">{t("dashboard.shortcut.configure_ca")}</span>
         </Button>
+        {hasUpdate && (
+          <Button
+            className="shadow"
+            icon={<IconConfetti className="animate-bounce" color="var(--color-error)" size="1.25em" />}
+            shape="round"
+            size="large"
+            onClick={() => window.open(APP_DOWNLOAD_URL, "_blank")}
+          >
+            <span className="text-sm">{t("dashboard.shortcut.upgrade")}</span>
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -289,7 +306,7 @@ const WorkflowRunHistoryTable = ({ className, style }: { className?: string; sty
                 }
               }}
             >
-              {workflow?.name ?? <span className="font-mono">{t(`#${record.workflowRef}`)}</span>}
+              {workflow?.name ?? <span className="font-mono">{`#${record.workflowRef}`}</span>}
             </Typography.Link>
           </div>
         );
@@ -326,6 +343,37 @@ const WorkflowRunHistoryTable = ({ className, style }: { className?: string; sty
         return <></>;
       },
     },
+    {
+      key: "artifacts",
+      title: t("workflow_run.props.artifacts"),
+      width: 160,
+      render: (_, record) => {
+        if (record.outputs && record.outputs.length > 0) {
+          const keys = new Set<string>();
+          const icons: React.ReactNode[] = [];
+
+          for (const output of record.outputs) {
+            if (output.type === "ref" && output.value?.split("#")?.at(0) === "certificate") {
+              const KEY = "certificate";
+              if (keys.has(KEY)) continue;
+
+              keys.add(KEY);
+              icons.push(<IconCertificate key={KEY} size="1.25em" />);
+            } else {
+              const KEY = "other";
+              if (keys.has(KEY)) continue;
+
+              keys.add(KEY);
+              icons.push(<IconBox key={KEY} size="1.25em" />);
+            }
+          }
+
+          return <div className="flex items-center gap-2">{icons}</div>;
+        }
+
+        return <></>;
+      },
+    },
   ];
 
   const {
@@ -350,7 +398,7 @@ const WorkflowRunHistoryTable = ({ className, style }: { className?: string; sty
         }
 
         console.error(err);
-        notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
+        notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
 
         throw err;
       },
@@ -384,8 +432,8 @@ const WorkflowRunHistoryTable = ({ className, style }: { className?: string; sty
           ) : (
             <Empty
               className="py-24"
-              title={t("common.text.nodata")}
-              description={loadError ? getErrMsg(loadError) : t("dashboard.latest_workflow_runs.nodata.description")}
+              title={loadError ? t("common.text.nodata_failed") : t("common.text.nodata")}
+              description={loadError ? unwrapErrMsg(loadError) : t("dashboard.recent_workflow_runs.nodata.description")}
               icon={<IconHistory size={24} />}
               extra={
                 loadError ? (
@@ -394,7 +442,7 @@ const WorkflowRunHistoryTable = ({ className, style }: { className?: string; sty
                   </Button>
                 ) : (
                   <Button icon={<IconExternalLink size="1.25em" />} type="primary" onClick={() => navigate("/workflows")}>
-                    {t("dashboard.latest_workflow_runs.nodata.button")}
+                    {t("dashboard.recent_workflow_runs.nodata.button")}
                   </Button>
                 )
               }

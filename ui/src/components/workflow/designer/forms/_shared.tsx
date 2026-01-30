@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { type FlowNodeEntity, getNodeForm, useClientContext, useRefresh } from "@flowgram.ai/fixed-layout-editor";
-import { IconEye, IconEyeOff, IconX } from "@tabler/icons-react";
+import { type FlowNodeEntity, useClientContext, useRefresh } from "@flowgram.ai/fixed-layout-editor";
+import { IconChevronDown, IconEye, IconEyeOff, IconX } from "@tabler/icons-react";
 import { useControllableValue } from "ahooks";
-import { Anchor, type AnchorProps, App, Button, Drawer, Flex, type FormInstance, Tooltip, Typography } from "antd";
+import { Anchor, type AnchorProps, App, Button, Drawer, Dropdown, Flex, type FormInstance, Space, Tooltip, Typography } from "antd";
 import { isEqual } from "radash";
 
 import Show from "@/components/Show";
-import { getErrMsg } from "@/utils/error";
+import { unwrapErrMsg } from "@/utils/error";
 
 import { type NodeRegistry } from "../nodes/typings";
 
@@ -43,6 +43,31 @@ export const NodeConfigDrawer = ({ children, afterClose, anchor, footer = true, 
 
   const [formPending, setFormPending] = useState(false);
 
+  const submitForm = async () => {
+    let formValues: Record<string, unknown>;
+
+    setFormPending(true);
+    try {
+      formValues = await formInst.validateFields();
+    } catch (err) {
+      message.warning(t("common.errmsg.form_invalid"));
+
+      setFormPending(false);
+      throw err;
+    }
+
+    try {
+      node.form!.setValueIn("config", formValues);
+      node.form!.validate();
+    } catch (err) {
+      notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
+
+      throw err;
+    } finally {
+      setFormPending(false);
+    }
+  };
+
   const nodeRegistry = node?.getNodeRegistry<NodeRegistry>();
   const NodeIcon = nodeRegistry?.meta?.icon;
   const renderNodeIcon = () =>
@@ -60,13 +85,13 @@ export const NodeConfigDrawer = ({ children, afterClose, anchor, footer = true, 
 
   const [isNodeDisabled, setIsNodeDisabled] = useState(() => {
     if (node) {
-      return getNodeForm(node)?.getValueIn<boolean>("disabled");
+      return node.form?.getValueIn<boolean>("disabled");
     }
     return false;
   });
   useEffect(() => {
     const d1 = playground.config.onDataChange(() => refresh());
-    const d2 = node?.onDataChange(() => setIsNodeDisabled(getNodeForm(node)?.getValueIn<boolean>("disabled")));
+    const d2 = node?.onDataChange(() => setIsNodeDisabled(node.form?.getValueIn<boolean>("disabled")));
 
     return () => {
       d1.dispose();
@@ -80,28 +105,18 @@ export const NodeConfigDrawer = ({ children, afterClose, anchor, footer = true, 
       return;
     }
 
-    setFormPending(true);
-    try {
-      await formInst.validateFields();
-    } catch (err) {
-      message.warning(t("common.errmsg.form_invalid"));
+    await submitForm();
+    setOpen(false);
+  };
 
-      setFormPending(false);
-      throw err;
-    }
-
-    try {
-      getNodeForm(node)!.setValueIn("config", formInst.getFieldsValue(true));
-      getNodeForm(node)!.validate();
-
+  const handleOkAndContinueClick = async () => {
+    if (node == null) {
       setOpen(false);
-    } catch (err) {
-      notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
-
-      throw err;
-    } finally {
-      setFormPending(false);
+      return;
     }
+
+    await submitForm();
+    message.success(t("common.text.saved"));
   };
 
   const handleCancelClick = () => {
@@ -150,7 +165,7 @@ export const NodeConfigDrawer = ({ children, afterClose, anchor, footer = true, 
   };
 
   const handleDisableNodeClick = () => {
-    getNodeForm(node)!.setValueIn("disabled", !isNodeDisabled);
+    node.form!.setValueIn("disabled", !isNodeDisabled);
   };
 
   return (
@@ -168,9 +183,26 @@ export const NodeConfigDrawer = ({ children, afterClose, anchor, footer = true, 
         footer ? (
           <Flex className="px-2" justify="end" gap="small">
             <Button onClick={handleCancelClick}>{t("common.button.cancel")}</Button>
-            <Button loading={formPending} type="primary" onClick={handleOkClick}>
-              {t("common.button.save")}
-            </Button>
+            <Space.Compact>
+              <Button loading={formPending} type="primary" onClick={handleOkClick}>
+                {t("common.button.save")}
+              </Button>
+              <Dropdown
+                menu={{
+                  items: [
+                    {
+                      key: "save_and_continue",
+                      label: t("common.button.save_and_continue"),
+                      onClick: handleOkAndContinueClick,
+                    },
+                  ],
+                }}
+                placement="bottomRight"
+                trigger={["click"]}
+              >
+                <Button disabled={formPending} icon={<IconChevronDown size="1.25em" />} type="primary" />
+              </Dropdown>
+            </Space.Compact>
           </Flex>
         ) : (
           <></>
@@ -212,7 +244,7 @@ export const NodeConfigDrawer = ({ children, afterClose, anchor, footer = true, 
           </div>
 
           <Show when={!!anchor}>
-            <div className="-mx-[2px] mt-3 text-sm font-normal">
+            <div className="-mx-0.5 mt-3 text-sm font-normal">
               <Anchor
                 affix={false}
                 getContainer={() => containerRef.current!}

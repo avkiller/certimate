@@ -18,8 +18,6 @@ export interface DrawerFormProps<T extends NonNullable<unknown> = any> extends O
   open?: boolean;
   title?: React.ReactNode;
   trigger?: React.ReactNode;
-  width?: string | number;
-  onClose?: (e: React.MouseEvent | React.KeyboardEvent) => void | Promise<unknown>;
   onFinish?: (values: T) => unknown | Promise<unknown>;
   onOpenChange?: (open: boolean) => void;
 }
@@ -36,7 +34,6 @@ const DrawerForm = <T extends NonNullable<unknown> = any>({
   okButtonProps,
   title,
   trigger,
-  width,
   onFinish,
   ...props
 }: DrawerFormProps<T>) => {
@@ -134,7 +131,6 @@ const DrawerForm = <T extends NonNullable<unknown> = any>({
             )}
           </Flex>
         }
-        width={width}
       >
         <Form className={className} style={style} {...mergedFormProps} form={formInst}>
           {children}

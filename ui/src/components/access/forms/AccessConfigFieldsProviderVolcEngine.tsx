@@ -51,14 +51,8 @@ const getSchema = ({ i18n = getI18n() }: { i18n: ReturnType<typeof getI18n> }) =
   const { t } = i18n;
 
   return z.object({
-    accessKeyId: z
-      .string()
-      .min(1, t("access.form.volcengine_access_key_id.placeholder"))
-      .max(64, t("common.errmsg.string_max", { max: 64 })),
-    secretAccessKey: z
-      .string()
-      .min(1, t("access.form.volcengine_secret_access_key.placeholder"))
-      .max(64, t("common.errmsg.string_max", { max: 64 })),
+    accessKeyId: z.string().nonempty(t("access.form.volcengine_access_key_id.placeholder")),
+    secretAccessKey: z.string().nonempty(t("access.form.volcengine_secret_access_key.placeholder")),
   });
 };
 

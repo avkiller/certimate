@@ -1,21 +1,21 @@
 package goedge
 
-type apiResponse interface {
-	GetCode() int32
+type sdkResponse interface {
+	GetCode() int
 	GetMessage() string
 }
 
-type apiResponseBase struct {
-	Code    int32  `json:"code"`
+type sdkResponseBase struct {
+	Code    int    `json:"code"`
 	Message string `json:"message"`
 }
 
-func (r *apiResponseBase) GetCode() int32 {
+func (r *sdkResponseBase) GetCode() int {
 	return r.Code
 }
 
-func (r *apiResponseBase) GetMessage() string {
+func (r *sdkResponseBase) GetMessage() string {
 	return r.Message
 }
 
-var _ apiResponse = (*apiResponseBase)(nil)
+var _ sdkResponse = (*sdkResponseBase)(nil)

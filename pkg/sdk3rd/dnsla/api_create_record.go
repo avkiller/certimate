@@ -6,19 +6,19 @@ import (
 )
 
 type CreateRecordRequest struct {
-	DomainId   string  `json:"domainId"`
+	DomainId   *string `json:"domainId"`
 	GroupId    *string `json:"groupId,omitempty"`
 	LineId     *string `json:"lineId,omitempty"`
-	Type       int32   `json:"type"`
-	Host       string  `json:"host"`
-	Data       string  `json:"data"`
-	Ttl        int32   `json:"ttl"`
+	Type       *int32  `json:"type"`
+	Host       *string `json:"host"`
+	Data       *string `json:"data"`
+	Ttl        *int32  `json:"ttl"`
 	Weight     *int32  `json:"weight,omitempty"`
 	Preference *int32  `json:"preference,omitempty"`
 }
 
 type CreateRecordResponse struct {
-	apiResponseBase
+	sdkResponseBase
 	Data *struct {
 		Id string `json:"id"`
 	} `json:"data,omitempty"`

@@ -12,7 +12,7 @@ type SetWebsiteCertRequest struct {
 }
 
 type SetWebsiteCertResponse struct {
-	apiResponseBase
+	sdkResponseBase
 }
 
 func (c *Client) SetWebsiteCert(req *SetWebsiteCertRequest) (*SetWebsiteCertResponse, error) {

@@ -1,10 +1,11 @@
-﻿package engine
+package engine
 
 import (
 	"context"
 	"errors"
 	"fmt"
 	"log/slog"
+	"runtime/debug"
 	"sync"
 
 	"github.com/samber/lo"
@@ -58,6 +59,8 @@ func (we *workflowEngine) Invoke(ctx context.Context, execution WorkflowExecutio
 	defer func() {
 		if r := recover(); r != nil {
 			we.fireOnErrorHooks(ctx, fmt.Errorf("workflow engine panic: %v", r))
+			we.syslog.Error(fmt.Sprintf("workflow engine panic: %v", r), slog.String("workflowId", execution.WorkflowId), slog.String("runId", execution.RunId))
+			slog.Error(fmt.Sprintf("workflow engine panic: %v, stack trace: %s", r, string(debug.Stack())), slog.String("workflowId", execution.WorkflowId), slog.String("runId", execution.RunId))
 		}
 	}()
 
@@ -66,13 +69,13 @@ func (we *workflowEngine) Invoke(ctx context.Context, execution WorkflowExecutio
 	wfIOs := newInOutManager()
 
 	wfVars := newVariableManager()
-	wfVars.Set(stateVarKeyWorkflowId, execution.WorkflowId, "string")
-	wfVars.Set(stateVarKeyWorkflowName, execution.WorkflowName, "string")
-	wfVars.Set(stateVarKeyRunId, execution.RunId, "string")
-	wfVars.Set(stateVarKeyRunTrigger, execution.RunTrigger, "string")
-	wfVars.Set(stateVarKeyErrorNodeId, "", "string")
-	wfVars.Set(stateVarKeyErrorNodeName, "", "string")
-	wfVars.Set(stateVarKeyErrorMessage, "", "string")
+	wfVars.Set(stateVarKeyWorkflowId, execution.WorkflowId, stateValTypeString)
+	wfVars.Set(stateVarKeyWorkflowName, execution.WorkflowName, stateValTypeString)
+	wfVars.Set(stateVarKeyRunId, execution.RunId, stateValTypeString)
+	wfVars.Set(stateVarKeyRunTrigger, execution.RunTrigger, stateValTypeString)
+	wfVars.Set(stateVarKeyErrorNodeId, "", stateValTypeString)
+	wfVars.Set(stateVarKeyErrorNodeName, "", stateValTypeString)
+	wfVars.Set(stateVarKeyErrorMessage, "", stateValTypeString)
 
 	wfCtx := (&WorkflowContext{}).
 		SetExecutingWorkflow(execution.WorkflowId, execution.RunId, execution.Graph).
@@ -150,8 +153,8 @@ func (we *workflowEngine) executeNode(wfCtx *WorkflowContext, node *Node) error 
 		executor.SetLogger(logger)
 	}
 
-	wfCtx.variables.SetScoped(node.Id, stateVarKeyNodeId, node.Id, "string")
-	wfCtx.variables.SetScoped(node.Id, stateVarKeyNodeName, node.Data.Name, "string")
+	wfCtx.variables.SetScoped(node.Id, stateVarKeyNodeId, node.Id, stateValTypeString)
+	wfCtx.variables.SetScoped(node.Id, stateVarKeyNodeName, node.Data.Name, stateValTypeString)
 
 	// 节点已禁用，直接跳过执行
 	if node.Data.Disabled {
@@ -164,9 +167,9 @@ func (we *workflowEngine) executeNode(wfCtx *WorkflowContext, node *Node) error 
 	execRes, err := executor.Execute(execCtx)
 	if err != nil && !errors.Is(err, ErrTerminated) {
 		if !errors.Is(err, ErrBlocksException) {
-			wfCtx.variables.Set(stateVarKeyErrorNodeId, node.Id, "string")
-			wfCtx.variables.Set(stateVarKeyErrorNodeName, node.Data.Name, "string")
-			wfCtx.variables.Set(stateVarKeyErrorMessage, err.Error(), "string")
+			wfCtx.variables.Set(stateVarKeyErrorNodeId, node.Id, stateValTypeString)
+			wfCtx.variables.Set(stateVarKeyErrorNodeName, node.Data.Name, stateValTypeString)
+			wfCtx.variables.Set(stateVarKeyErrorMessage, err.Error(), stateValTypeString)
 		}
 
 		we.fireOnNodeErrorHooks(wfCtx.ctx, node, err)
@@ -195,7 +198,7 @@ func (we *workflowEngine) executeNode(wfCtx *WorkflowContext, node *Node) error 
 				RunId:      execCtx.RunId,
 				NodeId:     execCtx.Node.Id,
 				NodeConfig: execCtx.Node.Data.Config,
-				Succeeded:  true, // 目前恒为 true
+				Succeeded:  true, // TODO: 目前恒为 true
 			}
 			if len(execOutputs) > 0 {
 				output.Outputs = lo.Map(execOutputs, func(state InOutState, _ int) *domain.WorkflowOutputEntry {
@@ -207,7 +210,7 @@ func (we *workflowEngine) executeNode(wfCtx *WorkflowContext, node *Node) error 
 					}
 				})
 			}
-			if _, err := we.wfoutputRepo.Save(execCtx.ctx, output); err != nil {
+			if _, err := we.wfoutputRepo.Save(execCtx.Context(), output); err != nil {
 				we.syslog.Error("failed to save node output", slog.Any("error", err))
 			}
 		}
@@ -225,6 +228,8 @@ func (we *workflowEngine) executeNode(wfCtx *WorkflowContext, node *Node) error 
 }
 
 func (we *workflowEngine) executeBlocks(wfCtx *WorkflowContext, blocks []*Node) error {
+	errs := make([]error, 0)
+
 	for _, node := range blocks {
 		select {
 		case <-wfCtx.ctx.Done():
@@ -234,8 +239,23 @@ func (we *workflowEngine) executeBlocks(wfCtx *WorkflowContext, blocks []*Node) 
 
 		err := we.executeNode(wfCtx, node)
 		if err != nil {
+			// 如果当前节点是 TryCatch 节点、且在 CatchBlock 分支中没有 End 节点，
+			// 则暂存错误，但继续执行下一个节点，直到当前 Blocks 全部执行完毕。
+			if node.Type == NodeTypeTryCatch {
+				if !errors.Is(err, ErrTerminated) {
+					errs = append(errs, err)
+					continue
+				}
+			}
 			return err
 		}
+	}
+
+	if len(errs) > 0 {
+		if len(errs) == 1 {
+			return errs[0]
+		}
+		return errors.Join(errs...)
 	}
 
 	return nil

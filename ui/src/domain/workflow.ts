@@ -92,7 +92,9 @@ export const defaultNodeConfigForBranchBlock = (): Partial<WorkflowNodeConfigFor
 };
 
 export type WorkflowNodeConfigForBizApply = {
+  identifier: "domain" | "ip";
   domains: string;
+  ipaddrs: string;
   contactEmail: string;
   challengeType: string;
   provider: string;
@@ -101,12 +103,16 @@ export type WorkflowNodeConfigForBizApply = {
   caProvider?: string;
   caProviderAccessId?: string;
   caProviderConfig?: Record<string, unknown>;
+  keySource: string;
   keyAlgorithm: string;
+  keyContent?: string;
   validityLifetime?: string;
   acmeProfile?: string;
   nameservers?: string;
+  dnsPropagationWait?: number;
   dnsPropagationTimeout?: number;
   dnsTTL?: number;
+  httpDelayWait?: number;
   disableFollowCNAME?: boolean;
   disableARI?: boolean;
   skipBeforeExpiryDays: number;
@@ -115,6 +121,7 @@ export type WorkflowNodeConfigForBizApply = {
 export const defaultNodeConfigForBizApply = (): Partial<WorkflowNodeConfigForBizApply> => {
   return {
     challengeType: "dns-01" as const,
+    keySource: "auto" as const,
     keyAlgorithm: "RSA2048" as const,
     skipBeforeExpiryDays: 30,
   };
@@ -122,7 +129,6 @@ export const defaultNodeConfigForBizApply = (): Partial<WorkflowNodeConfigForBiz
 
 export type WorkflowNodeConfigForBizUpload = {
   source: string;
-  domains?: string;
   certificate: string;
   privateKey: string;
 };
@@ -328,8 +334,12 @@ export const newNode = (type: WorkflowNodeType, { i18n = getI18n() }: { i18n?: R
 };
 
 export const duplicateNode = (node: WorkflowNode, options?: { withCopySuffix?: boolean }) => {
-  const { produce } = new Immer({ autoFreeze: false });
-  const deepClone = (node: WorkflowNode, { withCopySuffix, nodeIdMap }: { withCopySuffix: boolean; nodeIdMap: Map<string, string> }) => {
+  return duplicateNodes([node], options)[0];
+};
+
+export const duplicateNodes = (nodes: WorkflowNode[], options?: { withCopySuffix?: boolean }) => {
+  function duplicate(node: WorkflowNode, { withCopySuffix, nodeIdMap }: { withCopySuffix: boolean; nodeIdMap: Map<string, string> }) {
+    const { produce } = new Immer({ autoFreeze: false });
     return produce(node, (draft) => {
       draft.data ??= {};
       draft.id = newNodeId();
@@ -338,7 +348,7 @@ export const duplicateNode = (node: WorkflowNode, options?: { withCopySuffix?: b
       nodeIdMap.set(node.id, draft.id); // 原节点 ID 映射到新节点 ID
 
       if (draft.blocks) {
-        draft.blocks = draft.blocks.map((block) => deepClone(block as WorkflowNode, { withCopySuffix: false, nodeIdMap }));
+        draft.blocks = draft.blocks.map((block) => duplicate(block, { withCopySuffix: false, nodeIdMap }));
       }
 
       if (draft.data?.config) {
@@ -355,7 +365,7 @@ export const duplicateNode = (node: WorkflowNode, options?: { withCopySuffix?: b
             }
             break;
 
-          case WORKFLOW_NODE_TYPES.CONDITION:
+          case WORKFLOW_NODE_TYPES.BRANCHBLOCK:
             {
               const stack = [] as Expr[];
               const expr = draft.data.config.expression as Expr;
@@ -376,6 +386,7 @@ export const duplicateNode = (node: WorkflowNode, options?: { withCopySuffix?: b
                     stack.push(n.right);
                   }
                 }
+
                 draft.data.config = {
                   ...draft.data.config,
                   expression: expr,
@@ -388,13 +399,10 @@ export const duplicateNode = (node: WorkflowNode, options?: { withCopySuffix?: b
 
       return draft;
     });
-  };
+  }
 
-  return deepClone(node, { withCopySuffix: options?.withCopySuffix ?? true, nodeIdMap: new Map() });
-};
-
-export const duplicateNodes = (nodes: WorkflowNode[], options?: { withCopySuffix?: boolean }) => {
-  return nodes.map((node) => duplicateNode(node, options));
+  const map = new Map<string, string>();
+  return nodes.map((node) => duplicate(node, { withCopySuffix: options?.withCopySuffix ?? true, nodeIdMap: map }));
 };
 // #endregion
 

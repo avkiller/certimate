@@ -1,13 +1,19 @@
 name: "🐞 Bug Report"
-description: "报告缺陷来帮助我们完善。 / Create a report to help us improve."
-title: "[Bug] 简要描述你发现的缺陷"
+description: "Create a report to help us improve. / 报告缺陷来帮助我们完善。"
+title: "[Bug] Describe the Bug briefly / 简要描述你发现的缺陷"
+type: bug
 labels:
   - bug
 body:
   - type: markdown
     attributes:
       value: |
-        ## Welcome!
+        **Before you submit the issue, please make sure of the following checklist**:
+        1. Yes, I'm using the latest release and can reproduce the issue. Issues that are not in the latest version will be closed directly.
+        2. Yes, I've searched for [existing issues](https://github.com/certimate-go/certimate/issues) (including closed ones) on GitHub and didn't find any similar.
+        3. Yes, I've read the [documentation](https://docs.certimate.me/) and didn't find any similar.
+        4. Please describe the problem in detail according to the template specification, otherwise the issue will be closed directly.
+        5. Please limit one report per issue.
 
         **在提交 Issue 之前，请确认以下事项**：
         1. 我**确认**已尝试过使用当前最新版本，并能复现问题。由于开发者精力有限，非当前最新版本的问题将被直接关闭，感谢理解。
@@ -16,32 +22,25 @@ body:
         4. 请**务必**按照模板规范详细描述问题，否则 Issue 将会被直接关闭。
         5. 请保持每个 Issue 只包含一个缺陷报告。如果有多个缺陷，请分别提交 Issue。
 
-        **Before you submit the issue, please make sure of the following checklist**:
-        1. Yes, I'm using the latest release and can reproduce the issue. Issues that are not in the latest version will be closed directly.
-        2. Yes, I've searched for [existing issues](https://github.com/certimate-go/certimate/issues) (including closed ones) on GitHub and didn't find any similar.
-        3. Yes, I've read the [documentation](https://docs.certimate.me/en/) and didn't find any similar.
-        4. Please describe the problem in detail according to the template specification, otherwise the issue will be closed directly.
-        5. Please limit one report per issue.
-
   - type: input
     attributes:
-      label: 软件版本 / Release Version
-      description: 请提供 Certimate 的具体版本（请不要填写 `latest` 之类的无效版本号）。 / Please provide the specific version of Certimate.
-      placeholder: (e.g. v1.0.0)
+      label: Release Version / 软件版本
+      description: Please provide the specific version of Certimate. / 请提供 Certimate 的具体版本（请不要填写 `latest` 之类的无效版本号）。
+      placeholder: (e.g. v1.0.0. `latest` is **NOT** a valid version!)
     validations:
       required: true
 
   - type: textarea
     attributes:
-      label: 缺陷描述 / Description
-      description: 请详细清晰地描述你发现的缺陷或故障，如果可能请上传截图。 / Describe the bug you found in detail and clearly, and upload screenshots if possible.
+      label: Description / 缺陷描述
+      description: Describe the bug you found in detail and clearly, and upload screenshots if possible. / 请详细清晰地描述你发现的缺陷或故障，如果可能请上传截图。
     validations:
       required: true
 
   - type: textarea
     attributes:
-      label: 复现步骤 / Steps to reproduce
-      description: 请提供可复现的完整步骤。 / Please walk us through it step by step.
+      label: Steps to reproduce / 复现步骤
+      description: Please walk us through it step by step. / 请提供可复现的完整步骤。
       placeholder: |
         1. ...
         2. ...
@@ -52,13 +51,13 @@ body:
 
   - type: textarea
     attributes:
-      label: 日志 / Logs
-      description: 在此处添加日志信息（如果有的话）。 / Add logs here if available.
+      label: Logs / 日志
+      description: Add logs here if available. / 在此处添加日志信息（如果有的话）。
       value: |-
         <details>
 
         ```console
-        # 请在此粘贴日志 / Paste logs here
+        # Paste logs here / 请在此粘贴日志
         ```
 
         </details>
@@ -67,14 +66,14 @@ body:
 
   - type: textarea
     attributes:
-      label: 其他 / Miscellaneous
-      description: 在此处添加关于该 Issue 的任何其他信息。 / Add any other context about the issue here.
+      label: Miscellaneous / 其他
+      description: Add any other context about the issue here. / 在此处添加关于该 Issue 的任何其他信息。
     validations:
       required: false
 
   - type: checkboxes
     attributes:
-      label: 贡献 / Contribution
+      label: Contribution / 贡献代码
       options:
-        - label: 我乐意为此贡献 PR！ / I am interested in contributing a PR for this!
+        - label: I am interested in contributing a PR for this! / 我乐意为此提交代码并发起 PR！
           required: false

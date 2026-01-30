@@ -14,7 +14,7 @@ type ProvisionSiteTLSCertificateParams struct {
 }
 
 type ProvisionSiteTLSCertificateResponse struct {
-	apiResponseBase
+	sdkResponseBase
 	Domains   []string `json:"domains,omitempty"`
 	State     string   `json:"state,omitempty"`
 	ExpiresAt string   `json:"expires_at,omitempty"`

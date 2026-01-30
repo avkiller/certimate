@@ -47,17 +47,17 @@ const BizDeployNodeConfigFieldsProviderTencentCloudSSLUpdate = () => {
       </Form.Item>
 
       <Form.Item
-        name={[parentNamePath, "resourceTypes"]}
-        initialValue={initialValues.resourceTypes}
-        label={t("workflow_node.deploy.form.tencentcloud_sslupdate_resource_types.label")}
-        extra={t("workflow_node.deploy.form.tencentcloud_sslupdate_resource_types.help")}
+        name={[parentNamePath, "resourceProducts"]}
+        initialValue={initialValues.resourceProducts}
+        label={t("workflow_node.deploy.form.tencentcloud_sslupdate_resource_products.label")}
+        extra={t("workflow_node.deploy.form.tencentcloud_sslupdate_resource_products.help")}
         rules={[formRule]}
-        tooltip={<span dangerouslySetInnerHTML={{ __html: t("workflow_node.deploy.form.tencentcloud_sslupdate_resource_types.tooltip") }}></span>}
+        tooltip={<span dangerouslySetInnerHTML={{ __html: t("workflow_node.deploy.form.tencentcloud_sslupdate_resource_products.tooltip") }}></span>}
       >
         <MultipleSplitValueInput
-          modalTitle={t("workflow_node.deploy.form.tencentcloud_sslupdate_resource_types.multiple_input_modal.title")}
-          placeholder={t("workflow_node.deploy.form.tencentcloud_sslupdate_resource_types.placeholder")}
-          placeholderInModal={t("workflow_node.deploy.form.tencentcloud_sslupdate_resource_types.multiple_input_modal.placeholder")}
+          modalTitle={t("workflow_node.deploy.form.tencentcloud_sslupdate_resource_products.multiple_input_modal.title")}
+          placeholder={t("workflow_node.deploy.form.tencentcloud_sslupdate_resource_products.placeholder")}
+          placeholderInModal={t("workflow_node.deploy.form.tencentcloud_sslupdate_resource_products.multiple_input_modal.placeholder")}
           separator={MULTIPLE_INPUT_SEPARATOR}
           splitOptions={{ removeEmpty: true, trimSpace: true }}
         />
@@ -96,7 +96,7 @@ const BizDeployNodeConfigFieldsProviderTencentCloudSSLUpdate = () => {
 const getInitialValues = (): Nullish<z.infer<ReturnType<typeof getSchema>>> => {
   return {
     certificateId: "",
-    resourceTypes: "",
+    resourceProducts: "",
   };
 };
 
@@ -106,20 +106,16 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
   return z.object({
     endpoint: z.string().nullish(),
     certificateId: z.string().nonempty(t("workflow_node.deploy.form.tencentcloud_sslupdate_certificate_id.placeholder")),
-    resourceTypes: z.string().refine((v) => {
+    resourceProducts: z.string().refine((v) => {
       if (!v) return false;
-      return String(v)
-        .split(MULTIPLE_INPUT_SEPARATOR)
-        .every((e) => !!e.trim());
-    }, t("workflow_node.deploy.form.tencentcloud_sslupdate_resource_types.placeholder")),
+      return v.split(MULTIPLE_INPUT_SEPARATOR).every((e) => !!e.trim());
+    }, t("workflow_node.deploy.form.tencentcloud_sslupdate_resource_products.placeholder")),
     resourceRegions: z
       .string()
       .nullish()
       .refine((v) => {
         if (!v) return true;
-        return String(v)
-          .split(MULTIPLE_INPUT_SEPARATOR)
-          .every((e) => !!e.trim());
+        return v.split(MULTIPLE_INPUT_SEPARATOR).every((e) => !!e.trim());
       }, t("workflow_node.deploy.form.tencentcloud_sslupdate_resource_regions.placeholder")),
     isReplaced: z.boolean().nullish(),
   });

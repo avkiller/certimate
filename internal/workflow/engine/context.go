@@ -1,4 +1,4 @@
-﻿package engine
+package engine
 
 import (
 	"context"
@@ -41,6 +41,10 @@ func (c *WorkflowContext) SetInputsManager(manager InOutManager) *WorkflowContex
 func (c *WorkflowContext) SetContext(ctx context.Context) *WorkflowContext {
 	c.ctx = ctx
 	return c
+}
+
+func (c *WorkflowContext) Context() context.Context {
+	return c.ctx
 }
 
 func (c *WorkflowContext) Clone() *WorkflowContext {

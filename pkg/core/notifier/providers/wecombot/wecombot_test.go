@@ -18,7 +18,7 @@ const (
 var fWebhookUrl string
 
 func init() {
-	argsPrefix := "CERTIMATE_NOTIFIER_WECOMBOT_"
+	argsPrefix := "WECOMBOT_"
 
 	flag.StringVar(&fWebhookUrl, argsPrefix+"WEBHOOKURL", "", "")
 }
@@ -27,7 +27,7 @@ func init() {
 Shell command to run this test:
 
 	go test -v ./wecombot_test.go -args \
-	--CERTIMATE_NOTIFIER_WECOMBOT_WEBHOOKURL="https://example.com/your-webhook-url" \
+	--WECOMBOT_WEBHOOKURL="https://example.com/your-webhook-url" \
 */
 func TestNotify(t *testing.T) {
 	flag.Parse()
@@ -38,7 +38,7 @@ func TestNotify(t *testing.T) {
 			fmt.Sprintf("WEBHOOKURL: %v", fWebhookUrl),
 		}, "\n"))
 
-		notifier, err := provider.NewNotifierProvider(&provider.NotifierProviderConfig{
+		provider, err := provider.NewNotifier(&provider.NotifierConfig{
 			WebhookUrl: fWebhookUrl,
 		})
 		if err != nil {
@@ -46,7 +46,7 @@ func TestNotify(t *testing.T) {
 			return
 		}
 
-		res, err := notifier.Notify(context.Background(), mockSubject, mockMessage)
+		res, err := provider.Notify(context.Background(), mockSubject, mockMessage)
 		if err != nil {
 			t.Errorf("err: %+v", err)
 			return

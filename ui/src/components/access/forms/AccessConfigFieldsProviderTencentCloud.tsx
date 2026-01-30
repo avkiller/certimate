@@ -51,14 +51,8 @@ const getSchema = ({ i18n = getI18n() }: { i18n: ReturnType<typeof getI18n> }) =
   const { t } = i18n;
 
   return z.object({
-    secretId: z
-      .string()
-      .min(1, t("access.form.tencentcloud_secret_id.placeholder"))
-      .max(64, t("common.errmsg.string_max", { max: 64 })),
-    secretKey: z
-      .string()
-      .min(1, t("access.form.tencentcloud_secret_key.placeholder"))
-      .max(64, t("common.errmsg.string_max", { max: 64 })),
+    secretId: z.string().nonempty(t("access.form.tencentcloud_secret_id.placeholder")),
+    secretKey: z.string().nonempty(t("access.form.tencentcloud_secret_key.placeholder")),
   });
 };
 

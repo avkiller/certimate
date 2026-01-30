@@ -3,12 +3,15 @@
   "certificate.page.subtitle": "SSL 证书含有网站的公钥和网站标识以及其他相关信息。它们来自于工作流的运行输出。",
 
   "certificate.nodata.title": "暂无证书",
-  "certificate.nodata.description": "当前未找到任何认证。请先运行一个工作流以生成证书。",
+  "certificate.nodata.description": "当前未找到证书。请先运行一个工作流。",
   "certificate.nodata.button": "前往工作流",
 
   "certificate.search.placeholder": "按证书名称或序列号搜索……",
 
   "certificate.action.view.menu": "查看详情",
+  "certificate.action.revoke.menu": "吊销证书",
+  "certificate.action.revoke.modal.title": "吊销「{{name}}」",
+  "certificate.action.revoke.modal.content": "确定要吊销该证书吗？<br>注意此操作不可撤销，请谨慎操作。",
   "certificate.action.delete.menu": "删除证书",
   "certificate.action.delete.modal.title": "删除「{{name}}」",
   "certificate.action.delete.modal.content": "确定要删除该证书吗？<br>注意此操作不可撤销，请谨慎操作。",
@@ -28,10 +31,11 @@
   "certificate.props.source": "来源",
   "certificate.props.source.request": "申请",
   "certificate.props.source.upload": "上传",
+  "certificate.props.revoked": "已吊销",
   "certificate.props.certificate": "证书内容",
   "certificate.props.private_key": "私钥内容",
   "certificate.props.serial_number": "证书序列号",
-  "certificate.props.key_algorithm": "证书算法",
+  "certificate.props.key_algorithm": "私钥算法",
   "certificate.props.issuer": "颁发者",
   "certificate.props.created_at": "创建时间",
   "certificate.props.updated_at": "更新时间"

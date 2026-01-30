@@ -13,7 +13,9 @@ import (
 	"time"
 
 	"github.com/go-resty/resty/v2"
-	"github.com/google/uuid"
+	"github.com/pocketbase/pocketbase/tools/security"
+
+	"github.com/certimate-go/certimate/internal/app"
 )
 
 type Client struct {
@@ -38,12 +40,12 @@ func NewClient(endpoint, accessKeyId, secretAccessKey string) (*Client, error) {
 		SetBaseURL(endpoint).
 		SetHeader("Accept", "application/json").
 		SetHeader("Content-Type", "application/json").
-		SetHeader("User-Agent", "certimate").
+		SetHeader("User-Agent", app.AppUserAgent).
 		SetPreRequestHook(func(c *resty.Client, req *http.Request) error {
 			// 生成时间戳及流水号
 			now := time.Now()
 			eopDate := now.Format("20060102T150405Z")
-			eopReqId := uuid.New().String()
+			eopReqId := security.RandomString(32)
 
 			// 获取查询参数
 			queryStr := ""
@@ -136,13 +138,13 @@ func (c *Client) DoRequest(req *resty.Request) (*resty.Response, error) {
 	if err != nil {
 		return resp, fmt.Errorf("sdkerr: failed to send request: %w", err)
 	} else if resp.IsError() {
-		return resp, fmt.Errorf("sdkerr: unexpected status code: %d, resp: %s", resp.StatusCode(), resp.String())
+		return resp, fmt.Errorf("sdkerr: unexpected status code: %d (resp: %s)", resp.StatusCode(), resp.String())
 	}
 
 	return resp, nil
 }
 
-func (c *Client) DoRequestWithResult(req *resty.Request, res any) (*resty.Response, error) {
+func (c *Client) DoRequestWithResult(req *resty.Request, res interface{}) (*resty.Response, error) {
 	if req == nil {
 		return nil, fmt.Errorf("sdkerr: nil request")
 	}
@@ -157,7 +159,7 @@ func (c *Client) DoRequestWithResult(req *resty.Request, res any) (*resty.Respon
 
 	if len(resp.Body()) != 0 {
 		if err := json.Unmarshal(resp.Body(), &res); err != nil {
-			return resp, fmt.Errorf("sdkerr: failed to unmarshal response: %w", err)
+			return resp, fmt.Errorf("sdkerr: failed to unmarshal response: %w (resp: %s)", err, resp.String())
 		}
 	}
 

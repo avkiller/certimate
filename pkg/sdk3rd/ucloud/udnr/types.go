@@ -4,6 +4,6 @@ type DomainDNSRecord struct {
 	DnsType    string
 	RecordName string
 	Content    string
-	TTL        int
-	Prio       int
+	TTL        string
+	Prio       string
 }

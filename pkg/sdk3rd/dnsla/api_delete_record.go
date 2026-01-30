@@ -7,7 +7,7 @@ import (
 )
 
 type DeleteRecordResponse struct {
-	apiResponseBase
+	sdkResponseBase
 }
 
 func (c *Client) DeleteRecord(recordId string) (*DeleteRecordResponse, error) {

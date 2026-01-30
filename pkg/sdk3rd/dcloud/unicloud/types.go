@@ -1,27 +1,25 @@
 package unicloud
 
-type apiResponse interface {
+type sdkResponse interface {
 	GetSuccess() bool
 	GetErrorCode() string
 	GetErrorMessage() string
-
-	GetReturnCode() int32
+	GetReturnCode() int
 	GetReturnDesc() string
 }
 
-type apiResponseBase struct {
+type sdkResponseBase struct {
 	Success *bool              `json:"success,omitempty"`
 	Header  *map[string]string `json:"header,omitempty"`
 	Error   *struct {
 		Code    string `json:"code"`
 		Message string `json:"message"`
 	} `json:"error,omitempty"`
-
-	ReturnCode *int32  `json:"ret,omitempty"`
+	ReturnCode *int    `json:"ret,omitempty"`
 	ReturnDesc *string `json:"desc,omitempty"`
 }
 
-func (r *apiResponseBase) GetReturnCode() int32 {
+func (r *sdkResponseBase) GetReturnCode() int {
 	if r.ReturnCode == nil {
 		return 0
 	}
@@ -29,7 +27,7 @@ func (r *apiResponseBase) GetReturnCode() int32 {
 	return *r.ReturnCode
 }
 
-func (r *apiResponseBase) GetReturnDesc() string {
+func (r *sdkResponseBase) GetReturnDesc() string {
 	if r.ReturnDesc == nil {
 		return ""
 	}
@@ -37,7 +35,7 @@ func (r *apiResponseBase) GetReturnDesc() string {
 	return *r.ReturnDesc
 }
 
-func (r *apiResponseBase) GetSuccess() bool {
+func (r *sdkResponseBase) GetSuccess() bool {
 	if r.Success == nil {
 		return false
 	}
@@ -45,7 +43,7 @@ func (r *apiResponseBase) GetSuccess() bool {
 	return *r.Success
 }
 
-func (r *apiResponseBase) GetErrorCode() string {
+func (r *sdkResponseBase) GetErrorCode() string {
 	if r.Error == nil {
 		return ""
 	}
@@ -53,7 +51,7 @@ func (r *apiResponseBase) GetErrorCode() string {
 	return r.Error.Code
 }
 
-func (r *apiResponseBase) GetErrorMessage() string {
+func (r *sdkResponseBase) GetErrorMessage() string {
 	if r.Error == nil {
 		return ""
 	}
@@ -61,4 +59,4 @@ func (r *apiResponseBase) GetErrorMessage() string {
 	return r.Error.Message
 }
 
-var _ apiResponse = (*apiResponseBase)(nil)
+var _ sdkResponse = (*sdkResponseBase)(nil)

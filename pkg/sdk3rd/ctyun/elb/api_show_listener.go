@@ -3,16 +3,18 @@ package elb
 import (
 	"context"
 	"net/http"
+
+	qs "github.com/google/go-querystring/query"
 )
 
 type ShowListenerRequest struct {
-	ClientToken *string `json:"clientToken,omitempty"`
-	RegionID    *string `json:"regionID,omitempty"`
-	ListenerID  *string `json:"listenerID,omitempty"`
+	ClientToken *string `json:"clientToken,omitempty" url:"clientToken,omitempty"`
+	RegionID    *string `json:"regionID,omitempty"    url:"regionID,omitempty"`
+	ListenerID  *string `json:"listenerID,omitempty"  url:"listenerID,omitempty"`
 }
 
 type ShowListenerResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
 	ReturnObj []*ListenerRecord `json:"returnObj,omitempty"`
 }
@@ -26,16 +28,12 @@ func (c *Client) ShowListenerWithContext(ctx context.Context, req *ShowListenerR
 	if err != nil {
 		return nil, err
 	} else {
-		if req.ClientToken != nil {
-			httpreq.SetQueryParam("clientToken", *req.ClientToken)
-		}
-		if req.RegionID != nil {
-			httpreq.SetQueryParam("regionID", *req.RegionID)
-		}
-		if req.ListenerID != nil {
-			httpreq.SetQueryParam("listenerID", *req.ListenerID)
+		values, err := qs.Values(req)
+		if err != nil {
+			return nil, err
 		}
 
+		httpreq.SetQueryParamsFromValues(values)
 		httpreq.SetContext(ctx)
 	}
 

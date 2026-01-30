@@ -2,7 +2,9 @@ package qiniu
 
 import (
 	"context"
+	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/qiniu/go-sdk/v7/auth"
 	"github.com/qiniu/go-sdk/v7/client"
@@ -19,6 +21,37 @@ func NewCdnManager(mac *auth.Credentials) *CdnManager {
 
 	client := &client.Client{Client: &http.Client{Transport: newTransport(mac, nil)}}
 	return &CdnManager{client: client}
+}
+
+type GetDomainListResponse struct {
+	Code    *int    `json:"code,omitempty"`
+	Error   *string `json:"error,omitempty"`
+	Marker  string  `json:"marker"`
+	Domains []*struct {
+		Name               string `json:"name"`
+		Type               string `json:"type"`
+		CName              string `json:"cname"`
+		OperatingState     string `json:"operatingState"`
+		OperatingStateDesc string `json:"operatingStateDesc"`
+		CreateAt           string `json:"createAt"`
+		ModifyAt           string `json:"modifyAt"`
+	} `json:"domains"`
+}
+
+func (m *CdnManager) GetDomainList(ctx context.Context, marker string, limit int) (*GetDomainListResponse, error) {
+	query := url.Values{}
+	if marker != "" {
+		query.Set("marker", marker)
+	}
+	if limit > 0 {
+		query.Set("limit", fmt.Sprintf("%d", limit))
+	}
+
+	resp := new(GetDomainListResponse)
+	if err := m.client.Call(ctx, resp, http.MethodGet, urlf("domain?%s", query.Encode()), nil); err != nil {
+		return nil, err
+	}
+	return resp, nil
 }
 
 type GetDomainInfoResponse struct {

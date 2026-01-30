@@ -34,6 +34,6 @@ func (c *Client) doRequest(req *resty.Request) (*resty.Response, error) {
 	return c.client.DoRequest(req)
 }
 
-func (c *Client) doRequestWithResult(req *resty.Request, res apiResponse) (*resty.Response, error) {
+func (c *Client) doRequestWithResult(req *resty.Request, res sdkResponse) (*resty.Response, error) {
 	return c.client.DoRequestWithResult(req, res)
 }

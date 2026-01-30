@@ -16,7 +16,7 @@ type CreateCertificateRequest struct {
 }
 
 type CreateCertificateResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
 	ReturnObj *struct {
 		ID string `json:"id"`

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { EditorState, FlowLayoutDefault } from "@flowgram.ai/fixed-layout-editor";
-import { IconBrowserShare, IconCheck, IconDots, IconDownload, IconSettings2, IconTransferOut } from "@tabler/icons-react";
+import { IconBrowserShare, IconBug, IconCheck, IconDots, IconDownload, IconSettings2, IconTransferOut } from "@tabler/icons-react";
 import { useRequest } from "ahooks";
 import { Alert, App, Button, Card, Divider, Dropdown, Empty, Skeleton, Table, type TableProps, Tooltip, Typography, theme } from "antd";
 import dayjs from "dayjs";
@@ -17,7 +17,7 @@ import { listByWorkflowRunId as listCertificatesByWorkflowRunId } from "@/reposi
 import { listByWorkflowRunId as listLogsByWorkflowRunId } from "@/repository/workflowLog";
 import { subscribe as subscribeWorkflowRun } from "@/repository/workflowRun";
 import { mergeCls } from "@/utils/css";
-import { getErrMsg } from "@/utils/error";
+import { unwrapErrMsg } from "@/utils/error";
 
 import WorkflowDesigner from "./designer/Designer";
 import WorkflowToolbar from "./designer/Toolbar";
@@ -60,7 +60,8 @@ const WorkflowRunDetail = ({ className, style, ...props }: WorkflowRunDetailProp
   return (
     <div className={className} style={style}>
       <Alert
-        message={
+        showIcon
+        title={
           <div className="text-xs">
             {mergedData.endedAt
               ? t("workflow_run.base.description_with_time_cost", {
@@ -74,7 +75,6 @@ const WorkflowRunDetail = ({ className, style, ...props }: WorkflowRunDetailProp
                 })}
           </div>
         }
-        showIcon
         type={
           {
             [WORKFLOW_RUN_STATUSES.SUCCEEDED]: "success" as const,
@@ -83,6 +83,14 @@ const WorkflowRunDetail = ({ className, style, ...props }: WorkflowRunDetailProp
           }[mergedData.status] ?? ("info" as const)
         }
       />
+      {!!mergedData.error && (
+        <Alert
+          className="mt-1"
+          icon={<IconBug size="1em" color="var(--color-error)" />}
+          showIcon
+          title={<div className="text-xs text-error">{mergedData.error}</div>}
+        />
+      )}
 
       <div className="mt-8">
         <Typography.Title level={5}>{t("workflow_run.process")}</Typography.Title>
@@ -91,13 +99,13 @@ const WorkflowRunDetail = ({ className, style, ...props }: WorkflowRunDetailProp
 
       <div className="mt-8">
         <Typography.Title level={5}>{t("workflow_run.logs")}</Typography.Title>
-        <WorkflowRunLogs runId={mergedData.id} runStatus={mergedData.status} />
+        <WorkflowRunLogs runData={mergedData} />
       </div>
 
-      <Show when={mergedData.status === WORKFLOW_RUN_STATUSES.SUCCEEDED}>
+      <Show when={mergedData.outputs && mergedData.outputs.length > 0}>
         <div className="mt-8">
           <Typography.Title level={5}>{t("workflow_run.artifacts")}</Typography.Title>
-          <WorkflowRunArtifacts runId={mergedData.id} />
+          <WorkflowRunArtifacts runData={mergedData} />
         </div>
       </Show>
     </div>
@@ -175,10 +183,12 @@ const WorkflowRunProcess = ({ runData }: { runData: WorkflowRunModel }) => {
   );
 };
 
-const WorkflowRunLogs = ({ runId, runStatus }: { runId: string; runStatus: string }) => {
+const WorkflowRunLogs = ({ runData }: { runData: WorkflowRunModel }) => {
   const { t } = useTranslation();
 
   const { theme: browserTheme } = useBrowserTheme();
+
+  const { id: runId, status: runStatus } = runData;
 
   type Log = Pick<WorkflowLogModel, "timestamp" | "level" | "message" | "data">;
   type LogGroup = { id: string; name: string; records: Log[] };
@@ -189,7 +199,7 @@ const WorkflowRunLogs = ({ runId, runStatus }: { runId: string; runStatus: strin
     },
     {
       refreshDeps: [runId, runStatus],
-      pollingInterval: 1500,
+      pollingInterval: 1000,
       pollingWhenHidden: false,
       throttleWait: 500,
       onSuccess: (res) => {
@@ -208,7 +218,7 @@ const WorkflowRunLogs = ({ runId, runStatus }: { runId: string; runStatus: strin
         );
       },
       onFinally: () => {
-        if (runStatus === WORKFLOW_RUN_STATUSES.PENDING || runStatus === WORKFLOW_RUN_STATUSES.PROCESSING) {
+        if (runStatus !== WORKFLOW_RUN_STATUSES.PENDING && runStatus !== WORKFLOW_RUN_STATUSES.PROCESSING) {
           req.cancel();
         }
       },
@@ -228,6 +238,9 @@ const WorkflowRunLogs = ({ runId, runStatus }: { runId: string; runStatus: strin
   const [showWhitespace, setShowWhitespace] = useState(true);
 
   const renderLogRecord = (record: Log) => {
+    let timestamp = dayjs(record.timestamp).format("YYYY-MM-DD HH:mm:ss");
+    timestamp = `[${timestamp}]`;
+
     let message = <>{record.message}</>;
     if (record.data != null && Object.keys(record.data).length > 0) {
       message = (
@@ -245,7 +258,7 @@ const WorkflowRunLogs = ({ runId, runStatus }: { runId: string; runStatus: strin
 
     return (
       <div className="flex space-x-2" style={{ wordBreak: "break-word" }}>
-        {showTimestamp ? <div className="font-mono whitespace-nowrap text-stone-400">[{dayjs(record.timestamp).format("YYYY-MM-DD HH:mm:ss")}]</div> : <></>}
+        {showTimestamp && <div className="font-mono whitespace-nowrap text-stone-400">{timestamp}</div>}
         <div
           className={mergeCls(
             "flex-1 font-mono",
@@ -276,7 +289,14 @@ const WorkflowRunLogs = ({ runId, runStatus }: { runId: string; runStatus: strin
           group.records
             .map((record) => {
               const datetime = dayjs(record.timestamp).format("YYYY-MM-DDTHH:mm:ss.SSSZ");
-              const level = record.level;
+              const level =
+                record.level < WorkflowLogLevel.Info
+                  ? "DBUG"
+                  : record.level < WorkflowLogLevel.Warn
+                    ? "INFO"
+                    : record.level < WorkflowLogLevel.Error
+                      ? "WARN"
+                      : "ERRO";
               const message = record.message;
               const data = record.data && Object.keys(record.data).length > 0 ? JSON.stringify(record.data) : "";
               return `[${datetime}] [${level}] ${escape(message)} ${escape(data)}`.trim();
@@ -339,9 +359,9 @@ const WorkflowRunLogs = ({ runId, runStatus }: { runId: string; runStatus: strin
 
       <div className="min-h-8 px-4 py-2">
         <Show when={!loading || listData.length > 0} fallback={<Skeleton />}>
-          {listData.map((group) => {
+          {listData.map((group, index) => {
             return (
-              <div className="mb-3">
+              <div key={index} className="mb-3">
                 <div className="truncate text-xs leading-loose">
                   <span className="font-mono text-stone-400">{`#${group.id}\u00A0`}</span>
                   <span>{group.name}</span>
@@ -356,10 +376,12 @@ const WorkflowRunLogs = ({ runId, runStatus }: { runId: string; runStatus: strin
   );
 };
 
-const WorkflowRunArtifacts = ({ runId }: { runId: string }) => {
+const WorkflowRunArtifacts = ({ runData }: { runData: WorkflowRunModel }) => {
   const { t } = useTranslation();
 
   const { notification } = App.useApp();
+
+  const { id: runId } = runData;
 
   const tableColumns: TableProps<CertificateModel>["columns"] = [
     {
@@ -408,6 +430,7 @@ const WorkflowRunArtifacts = ({ runId }: { runId: string }) => {
   const [tableData, setTableData] = useState<CertificateModel[]>([]);
   const { loading } = useRequest(
     () => {
+      // TODO: 目前输出产物只有证书
       return listCertificatesByWorkflowRunId(runId);
     },
     {
@@ -421,7 +444,7 @@ const WorkflowRunArtifacts = ({ runId }: { runId: string }) => {
         }
 
         console.error(err);
-        notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
+        notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
 
         throw err;
       },

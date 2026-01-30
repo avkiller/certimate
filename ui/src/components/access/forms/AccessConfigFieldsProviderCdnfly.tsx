@@ -23,7 +23,7 @@ const AccessConfigFormFieldsProviderCdnfly = () => {
         label={t("access.form.cdnfly_server_url.label")}
         rules={[formRule]}
       >
-        <Input placeholder={t("access.form.cdnfly_server_url.placeholder")} />
+        <Input type="url" placeholder={t("access.form.cdnfly_server_url.placeholder")} />
       </Form.Item>
 
       <Form.Item
@@ -52,10 +52,7 @@ const AccessConfigFormFieldsProviderCdnfly = () => {
         label={t("access.form.shared_allow_insecure_conns.label")}
         rules={[formRule]}
       >
-        <Switch
-          checkedChildren={t("access.form.shared_allow_insecure_conns.switch.on")}
-          unCheckedChildren={t("access.form.shared_allow_insecure_conns.switch.off")}
-        />
+        <Switch />
       </Form.Item>
     </>
   );
@@ -74,14 +71,8 @@ const getSchema = ({ i18n = getI18n() }: { i18n: ReturnType<typeof getI18n> }) =
 
   return z.object({
     serverUrl: z.url(t("common.errmsg.url_invalid")),
-    apiKey: z
-      .string()
-      .min(1, t("access.form.cdnfly_api_key.placeholder"))
-      .max(64, t("common.errmsg.string_max", { max: 64 })),
-    apiSecret: z
-      .string()
-      .min(1, t("access.form.cdnfly_api_secret.placeholder"))
-      .max(64, t("common.errmsg.string_max", { max: 64 })),
+    apiKey: z.string().nonempty(t("access.form.cdnfly_api_key.placeholder")),
+    apiSecret: z.string().nonempty(t("access.form.cdnfly_api_secret.placeholder")),
     allowInsecureConnections: z.boolean().nullish(),
   });
 };

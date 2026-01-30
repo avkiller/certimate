@@ -23,7 +23,7 @@ var (
 )
 
 func init() {
-	argsPrefix := "CERTIMATE_NOTIFIER_MATTERMOST_"
+	argsPrefix := "MATTERMOST_"
 
 	flag.StringVar(&fServerUrl, argsPrefix+"SERVERURL", "", "")
 	flag.StringVar(&fChannelId, argsPrefix+"CHANNELID", "", "")
@@ -35,10 +35,10 @@ func init() {
 Shell command to run this test:
 
 	go test -v ./mattermost_test.go -args \
-	--CERTIMATE_NOTIFIER_MATTERMOST_SERVERURL="https://example.com/your-server-url" \
-	--CERTIMATE_NOTIFIER_MATTERMOST_CHANNELID="your-chanel-id" \
-	--CERTIMATE_NOTIFIER_MATTERMOST_USERNAME="your-username" \
-	--CERTIMATE_NOTIFIER_MATTERMOST_PASSWORD="your-password"
+	--MATTERMOST_SERVERURL="https://example.com/your-server-url" \
+	--MATTERMOST_CHANNELID="your-chanel-id" \
+	--MATTERMOST_USERNAME="your-username" \
+	--MATTERMOST_PASSWORD="your-password"
 */
 func TestNotify(t *testing.T) {
 	flag.Parse()
@@ -52,7 +52,7 @@ func TestNotify(t *testing.T) {
 			fmt.Sprintf("PASSWORD: %v", fPassword),
 		}, "\n"))
 
-		notifier, err := provider.NewNotifierProvider(&provider.NotifierProviderConfig{
+		provider, err := provider.NewNotifier(&provider.NotifierConfig{
 			ServerUrl: fServerUrl,
 			ChannelId: fChannelId,
 			Username:  fUsername,
@@ -63,7 +63,7 @@ func TestNotify(t *testing.T) {
 			return
 		}
 
-		res, err := notifier.Notify(context.Background(), mockSubject, mockMessage)
+		res, err := provider.Notify(context.Background(), mockSubject, mockMessage)
 		if err != nil {
 			t.Errorf("err: %+v", err)
 			return

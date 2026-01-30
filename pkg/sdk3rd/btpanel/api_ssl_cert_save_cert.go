@@ -11,7 +11,7 @@ type SSLCertSaveCertRequest struct {
 }
 
 type SSLCertSaveCertResponse struct {
-	apiResponseBase
+	sdkResponseBase
 
 	SSLHash string `json:"ssl_hash"`
 }

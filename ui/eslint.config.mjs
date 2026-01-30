@@ -120,8 +120,14 @@ export default defineConfig(
   // React
   {
     name: "react",
-    extends: [reactHooksPlugin.configs["recommended-latest"], reactRefreshPlugin.configs["vite"]],
+    extends: [reactHooksPlugin.configs.flat["recommended-latest"], reactRefreshPlugin.configs["vite"]],
     rules: {
+      "react-hooks/exhaustive-deps": ["warn"],
+      "react-hooks/immutability": ["warn"],
+      "react-hooks/refs": ["warn"],
+      "react-hooks/preserve-manual-memoization": ["off"],
+      "react-hooks/set-state-in-effect": ["warn"],
+      "react-hooks/set-state-in-render": ["warn"],
       "react-refresh/only-export-components": [
         "warn",
         {

@@ -3,22 +3,23 @@ package dnsla
 import (
 	"context"
 	"net/http"
-	"strconv"
+
+	qs "github.com/google/go-querystring/query"
 )
 
 type ListRecordsRequest struct {
-	DomainId  *string `json:"domainId,omitempty"`
-	GroupId   *string `json:"groupId,omitempty"`
-	LineId    *string `json:"lineId,omitempty"`
-	Type      *int32  `json:"type,omitempty"`
-	Host      *string `json:"host,omitempty"`
-	Data      *string `json:"data,omitempty"`
-	PageIndex *int32  `json:"pageIndex,omitempty"`
-	PageSize  *int32  `json:"pageSize,omitempty"`
+	DomainId  *string `json:"domainId,omitempty"  url:"domainId,omitempty"`
+	GroupId   *string `json:"groupId,omitempty"   url:"groupId,omitempty"`
+	LineId    *string `json:"lineId,omitempty"    url:"lineId,omitempty"`
+	Type      *int32  `json:"type,omitempty"      url:"type,omitempty"`
+	Host      *string `json:"host,omitempty"      url:"host,omitempty"`
+	Data      *string `json:"data,omitempty"      url:"data,omitempty"`
+	PageIndex *int32  `json:"pageIndex,omitempty" url:"pageIndex,omitempty"`
+	PageSize  *int32  `json:"pageSize,omitempty"  url:"pageSize,omitempty"`
 }
 
 type ListRecordsResponse struct {
-	apiResponseBase
+	sdkResponseBase
 	Data *struct {
 		Total   int32        `json:"total"`
 		Results []*DnsRecord `json:"results"`
@@ -34,31 +35,12 @@ func (c *Client) ListRecordsWithContext(ctx context.Context, req *ListRecordsReq
 	if err != nil {
 		return nil, err
 	} else {
-		if req.DomainId != nil {
-			httpreq.SetQueryParam("domainId", *req.DomainId)
-		}
-		if req.GroupId != nil {
-			httpreq.SetQueryParam("groupId", *req.GroupId)
-		}
-		if req.LineId != nil {
-			httpreq.SetQueryParam("lineId", *req.LineId)
-		}
-		if req.Type != nil {
-			httpreq.SetQueryParam("type", strconv.Itoa(int(*req.Type)))
-		}
-		if req.Host != nil {
-			httpreq.SetQueryParam("host", *req.Host)
-		}
-		if req.Data != nil {
-			httpreq.SetQueryParam("data", *req.Data)
-		}
-		if req.PageIndex != nil {
-			httpreq.SetQueryParam("pageIndex", strconv.Itoa(int(*req.PageIndex)))
-		}
-		if req.PageSize != nil {
-			httpreq.SetQueryParam("pageSize", strconv.Itoa(int(*req.PageSize)))
+		values, err := qs.Values(req)
+		if err != nil {
+			return nil, err
 		}
 
+		httpreq.SetQueryParamsFromValues(values)
 		httpreq.SetContext(ctx)
 	}
 

@@ -1,11 +1,11 @@
 import { CopyToClipboard } from "react-copy-to-clipboard";
 import { useTranslation } from "react-i18next";
-import { IconChevronDown, IconClipboard, IconThumbUp } from "@tabler/icons-react";
-import { App, Button, Dropdown, Form, Input, Tooltip } from "antd";
+import { IconClipboard, IconDownload, IconThumbUp } from "@tabler/icons-react";
+import { App, Button, Dropdown, Form, Input, Tag, Tooltip } from "antd";
 import dayjs from "dayjs";
 import { saveAs } from "file-saver";
 
-import { archive as archiveCertificate } from "@/api/certificates";
+import { download as downloadCertificate } from "@/api/certificates";
 import { CERTIFICATE_FORMATS, type CertificateFormatType, type CertificateModel } from "@/domain/certificate";
 
 export interface CertificateDetailProps {
@@ -21,7 +21,7 @@ const CertificateDetail = ({ data, ...props }: CertificateDetailProps) => {
 
   const handleDownloadClick = async (format: CertificateFormatType) => {
     try {
-      const res = await archiveCertificate(data.id, format);
+      const res = await downloadCertificate(data.id, format);
       const bstr = atob(res.data.fileBytes);
       const u8arr = Uint8Array.from(bstr, (ch) => ch.charCodeAt(0));
       const blob = new Blob([u8arr], { type: "application/zip" });
@@ -48,6 +48,7 @@ const CertificateDetail = ({ data, ...props }: CertificateDetailProps) => {
             value={`${dayjs(data.validityNotBefore).format("YYYY-MM-DD HH:mm:ss")} ~ ${dayjs(data.validityNotAfter).format("YYYY-MM-DD HH:mm:ss")}`}
             variant="filled"
             placeholder=""
+            suffix={data.isRevoked ? <Tag color="error">{t("certificate.props.revoked")}</Tag> : <></>}
           />
         </Form.Item>
 
@@ -60,7 +61,7 @@ const CertificateDetail = ({ data, ...props }: CertificateDetailProps) => {
         </Form.Item>
 
         <Form.Item label={t("certificate.props.certificate")}>
-          <div className="absolute -top-[6px] right-0 -translate-y-full">
+          <div className="absolute -top-1.5 right-0 -translate-y-full">
             <Tooltip title={t("common.button.copy")}>
               <CopyToClipboard
                 text={data.certificate}
@@ -76,7 +77,7 @@ const CertificateDetail = ({ data, ...props }: CertificateDetailProps) => {
         </Form.Item>
 
         <Form.Item label={t("certificate.props.private_key")}>
-          <div className="absolute -top-[6px] right-0 -translate-y-full">
+          <div className="absolute -top-1.5 right-0 -translate-y-full">
             <Tooltip title={t("common.button.copy")}>
               <CopyToClipboard
                 text={data.privateKey}
@@ -114,8 +115,9 @@ const CertificateDetail = ({ data, ...props }: CertificateDetailProps) => {
               },
             ],
           }}
+          trigger={["click", "hover"]}
         >
-          <Button icon={<IconChevronDown size="1.25em" />} iconPosition="end" type="primary">
+          <Button icon={<IconDownload size="1.25em" />} type="primary">
             {t("common.button.download")}
           </Button>
         </Dropdown>

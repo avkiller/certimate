@@ -21,7 +21,7 @@ var (
 )
 
 func init() {
-	argsPrefix := "CERTIMATE_NOTIFIER_SLACKBOT_"
+	argsPrefix := "SLACKBOT_"
 
 	flag.StringVar(&fApiToken, argsPrefix+"APITOKEN", "", "")
 	flag.StringVar(&fChannelId, argsPrefix+"CHANNELID", "", "")
@@ -31,8 +31,8 @@ func init() {
 Shell command to run this test:
 
 	go test -v ./slackbot_test.go -args \
-	--CERTIMATE_NOTIFIER_SLACKBOT_APITOKEN="your-bot-token" \
-	--CERTIMATE_NOTIFIER_SLACKBOT_CHANNELID="your-channel-id"
+	--SLACKBOT_APITOKEN="your-bot-token" \
+	--SLACKBOT_CHANNELID="your-channel-id"
 */
 func TestNotify(t *testing.T) {
 	flag.Parse()
@@ -44,7 +44,7 @@ func TestNotify(t *testing.T) {
 			fmt.Sprintf("CHANNELID: %v", fChannelId),
 		}, "\n"))
 
-		notifier, err := provider.NewNotifierProvider(&provider.NotifierProviderConfig{
+		provider, err := provider.NewNotifier(&provider.NotifierConfig{
 			BotToken:  fApiToken,
 			ChannelId: fChannelId,
 		})
@@ -53,7 +53,7 @@ func TestNotify(t *testing.T) {
 			return
 		}
 
-		res, err := notifier.Notify(context.Background(), mockSubject, mockMessage)
+		res, err := provider.Notify(context.Background(), mockSubject, mockMessage)
 		if err != nil {
 			t.Errorf("err: %+v", err)
 			return

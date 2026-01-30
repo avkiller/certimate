@@ -1,10 +1,11 @@
 import { getI18n, useTranslation } from "react-i18next";
-import { IconChevronDown } from "@tabler/icons-react";
-import { Button, Dropdown, Form, Input, Select } from "antd";
+import { IconBulb, IconChevronDown } from "@tabler/icons-react";
+import { Button, Divider, Form, Input, Popover, Select, Space } from "antd";
 import { createSchemaFieldRule } from "antd-zod";
 import { z } from "zod";
 
-import CodeInput from "@/components/CodeInput";
+import CodeTextInput from "@/components/CodeTextInput";
+import PresetScriptTemplatesPopselect from "@/components/preset/PresetScriptTemplatesPopselect";
 import Show from "@/components/Show";
 import Tips from "@/components/Tips";
 import { CERTIFICATE_FORMATS } from "@/domain/certificate";
@@ -59,8 +60,8 @@ sudo service nginx reload
       return `# *** 需要管理员权限 ***
 
 # 请将以下变量替换为实际值
-$pfxPath = "${params?.certPath || "<your-cert-path>"}" # PFX 文件路径（与表单中保持一致）
-$pfxPassword = "${params?.pfxPassword || "<your-pfx-password>"}" # PFX 密码（与表单中保持一致）
+$pfxPath = "\${CERTIMATE_DEPLOYER_CMDVAR_CERTIFICATE_PATH}" # PFX 文件路径（与表单中保持一致）
+$pfxPassword = "\${CERTIMATE_DEPLOYER_CMDVAR_PFX_PASSWORD}" # PFX 密码（与表单中保持一致）
 $siteName = "<your-site-name>" # IIS 网站名称
 $domain = "<your-domain-name>" # 域名
 $ipaddr = "<your-binding-ip>"  # 绑定 IP，“*”表示所有 IP 绑定
@@ -75,7 +76,7 @@ Import-Module WebAdministration
 # 检查是否已存在 HTTPS 绑定
 $existingBinding = Get-WebBinding -Name "$siteName" -Protocol "https" -Port $port -HostHeader "$domain" -ErrorAction SilentlyContinue
 if (!$existingBinding) {
-    # 添加新的 HTTPS 绑定
+  # 添加新的 HTTPS 绑定
   New-WebBinding -Name "$siteName" -Protocol "https" -Port $port -IPAddress "$ipaddr" -HostHeader "$domain"
 }
 # 获取绑定对象
@@ -90,8 +91,8 @@ Remove-Item -Path "$pfxPath" -Force
       return `# *** 需要管理员权限 ***
 
 # 请将以下变量替换为实际值
-$pfxPath = "${params?.certPath || "<your-cert-path>"}" # PFX 文件路径（与表单中保持一致）
-$pfxPassword = "${params?.pfxPassword || "<your-pfx-password>"}" # PFX 密码（与表单中保持一致）
+$pfxPath = "\${CERTIMATE_DEPLOYER_CMDVAR_CERTIFICATE_PATH}" # PFX 文件路径（与表单中保持一致）
+$pfxPassword = "\${CERTIMATE_DEPLOYER_CMDVAR_PFX_PASSWORD}" # PFX 密码（与表单中保持一致）
 $ipaddr = "<your-binding-ip>"  # 绑定 IP，“0.0.0.0”表示所有 IP 绑定，可填入域名
 $port = "<your-binding-port>"  # 绑定端口
 
@@ -113,8 +114,8 @@ Remove-Item -Path "$pfxPath" -Force
       return `# *** 需要管理员权限 ***
 
 # 请将以下变量替换为实际值
-$pfxPath = "${params?.certPath || "<your-cert-path>"}" # PFX 文件路径（与表单中保持一致）
-$pfxPassword = "${params?.pfxPassword || "<your-pfx-password>"}" # PFX 密码（与表单中保持一致）
+$pfxPath = "\${CERTIMATE_DEPLOYER_CMDVAR_CERTIFICATE_PATH}" # PFX 文件路径（与表单中保持一致）
+$pfxPassword = "\${CERTIMATE_DEPLOYER_CMDVAR_PFX_PASSWORD}" # PFX 密码（与表单中保持一致）
 
 # 导入证书到本地计算机的个人存储区
 $cert = Import-PfxCertificate -FilePath "$pfxPath" -CertStoreLocation Cert:\\LocalMachine\\My -Password (ConvertTo-SecureString -String "$pfxPassword" -AsPlainText -Force) -Exportable
@@ -338,25 +339,29 @@ const BizDeployNodeConfigFieldsProviderLocal = () => {
       </Form.Item>
 
       <Form.Item label={t("workflow_node.deploy.form.local_pre_command.label")}>
-        <div className="absolute -top-[6px] right-0 -translate-y-full">
-          <Dropdown
-            menu={{
-              items: ["sh_backup_files", "ps_backup_files"].map((key) => ({
-                key,
-                label: t(`workflow_node.deploy.form.local_preset_scripts.option.${key}.label`),
-                onClick: () => handlePresetPreScriptClick(key),
-              })),
-            }}
+        <div className="absolute -top-1.5 right-0 -translate-y-full">
+          <PresetScriptTemplatesPopselect
+            options={["sh_backup_files", "ps_backup_files"].map((key) => ({
+              key,
+              label: t(`workflow_node.deploy.form.local_preset_scripts.${key}`),
+            }))}
             trigger={["click"]}
+            onSelect={(key, template) => {
+              if (template) {
+                formInst.setFieldValue([parentNamePath, "preCommand"], template.command);
+              } else {
+                handlePresetPreScriptClick(key);
+              }
+            }}
           >
             <Button size="small" type="link">
-              {t("workflow_node.deploy.form.local_preset_scripts.button")}
+              {t("preset.dropdown.script.button")}
               <IconChevronDown size="1.25em" />
             </Button>
-          </Dropdown>
+          </PresetScriptTemplatesPopselect>
         </div>
         <Form.Item name={[parentNamePath, "preCommand"]} initialValue={initialValues.preCommand} noStyle rules={[formRule]}>
-          <CodeInput
+          <CodeTextInput
             height="auto"
             minHeight="64px"
             maxHeight="256px"
@@ -367,25 +372,37 @@ const BizDeployNodeConfigFieldsProviderLocal = () => {
       </Form.Item>
 
       <Form.Item label={t("workflow_node.deploy.form.local_post_command.label")}>
-        <div className="absolute -top-[6px] right-0 -translate-y-full">
-          <Dropdown
-            menu={{
-              items: ["sh_reload_nginx", "ps_binding_iis", "ps_binding_netsh", "ps_binding_rdp"].map((key) => ({
+        <div className="absolute -top-1.5 right-0 -translate-y-full">
+          <Space align="center" separator={<Divider orientation="vertical" />} size={0}>
+            <Popover content={<div dangerouslySetInnerHTML={{ __html: t("workflow_node.deploy.form.shared_script_command.vartips") }} />} mouseEnterDelay={1}>
+              <Button color="default" size="small" variant="link">
+                <IconBulb size="1.25em" />
+              </Button>
+            </Popover>
+            <PresetScriptTemplatesPopselect
+              options={["sh_reload_nginx", "ps_binding_iis", "ps_binding_netsh", "ps_binding_rdp"].map((key) => ({
                 key,
-                label: t(`workflow_node.deploy.form.local_preset_scripts.option.${key}.label`),
+                label: t(`workflow_node.deploy.form.local_preset_scripts.${key}`),
                 onClick: () => handlePresetPostScriptClick(key),
-              })),
-            }}
-            trigger={["click"]}
-          >
-            <Button size="small" type="link">
-              {t("workflow_node.deploy.form.local_preset_scripts.button")}
-              <IconChevronDown size="1.25em" />
-            </Button>
-          </Dropdown>
+              }))}
+              trigger={["click"]}
+              onSelect={(key, template) => {
+                if (template) {
+                  formInst.setFieldValue([parentNamePath, "postCommand"], template.command);
+                } else {
+                  handlePresetPostScriptClick(key);
+                }
+              }}
+            >
+              <Button size="small" type="link">
+                {t("preset.dropdown.script.button")}
+                <IconChevronDown size="1.25em" />
+              </Button>
+            </PresetScriptTemplatesPopselect>
+          </Space>
         </div>
         <Form.Item name={[parentNamePath, "postCommand"]} initialValue={initialValues.postCommand} noStyle rules={[formRule]}>
-          <CodeInput
+          <CodeTextInput
             height="auto"
             minHeight="64px"
             maxHeight="256px"
@@ -401,8 +418,8 @@ const BizDeployNodeConfigFieldsProviderLocal = () => {
 const getInitialValues = (): Nullish<z.infer<ReturnType<typeof getSchema>>> => {
   return {
     format: FORMAT_PEM,
-    certPath: "/etc/ssl/certimate/cert.crt",
     keyPath: "/etc/ssl/certimate/cert.key",
+    certPath: "/etc/ssl/certimate/cert.crt",
     shellEnv: SHELLENV_SH,
   };
 };
@@ -429,22 +446,10 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
         .string()
         .max(256, t("common.errmsg.string_max", { max: 256 }))
         .nullish(),
-      pfxPassword: z
-        .string()
-        .max(64, t("common.errmsg.string_max", { max: 256 }))
-        .nullish(),
-      jksAlias: z
-        .string()
-        .max(64, t("common.errmsg.string_max", { max: 256 }))
-        .nullish(),
-      jksKeypass: z
-        .string()
-        .max(64, t("common.errmsg.string_max", { max: 256 }))
-        .nullish(),
-      jksStorepass: z
-        .string()
-        .max(64, t("common.errmsg.string_max", { max: 256 }))
-        .nullish(),
+      pfxPassword: z.string().nullish(),
+      jksAlias: z.string().nullish(),
+      jksKeypass: z.string().nullish(),
+      jksStorepass: z.string().nullish(),
       shellEnv: z.literal([SHELLENV_SH, SHELLENV_CMD, SHELLENV_POWERSHELL], t("workflow_node.deploy.form.local_shell_env.placeholder")),
       preCommand: z
         .string()

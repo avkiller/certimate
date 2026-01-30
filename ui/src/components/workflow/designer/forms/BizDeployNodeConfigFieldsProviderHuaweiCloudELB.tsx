@@ -7,9 +7,9 @@ import Show from "@/components/Show";
 
 import { useFormNestedFieldsContext } from "./_context";
 
-const RESOURCE_TYPE_CERTIFICATE = "certificate" as const;
 const RESOURCE_TYPE_LOADBALANCER = "loadbalancer" as const;
 const RESOURCE_TYPE_LISTENER = "listener" as const;
+const RESOURCE_TYPE_CERTIFICATE = "certificate" as const;
 
 const BizDeployNodeConfigFieldsProviderHuaweiCloudELB = () => {
   const { i18n, t } = useTranslation();
@@ -39,20 +39,16 @@ const BizDeployNodeConfigFieldsProviderHuaweiCloudELB = () => {
       <Form.Item
         name={[parentNamePath, "resourceType"]}
         initialValue={initialValues.resourceType}
-        label={t("workflow_node.deploy.form.huaweicloud_elb_resource_type.label")}
+        label={t("workflow_node.deploy.form.shared_resource_type.label")}
         rules={[formRule]}
       >
-        <Select placeholder={t("workflow_node.deploy.form.huaweicloud_elb_resource_type.placeholder")}>
-          <Select.Option key={RESOURCE_TYPE_CERTIFICATE} value={RESOURCE_TYPE_CERTIFICATE}>
-            {t("workflow_node.deploy.form.huaweicloud_elb_resource_type.option.certificate.label")}
-          </Select.Option>
-          <Select.Option key={RESOURCE_TYPE_LOADBALANCER} value={RESOURCE_TYPE_LOADBALANCER}>
-            {t("workflow_node.deploy.form.huaweicloud_elb_resource_type.option.loadbalancer.label")}
-          </Select.Option>
-          <Select.Option key={RESOURCE_TYPE_LISTENER} value={RESOURCE_TYPE_LISTENER}>
-            {t("workflow_node.deploy.form.huaweicloud_elb_resource_type.option.listener.label")}
-          </Select.Option>
-        </Select>
+        <Select
+          options={[RESOURCE_TYPE_LOADBALANCER, RESOURCE_TYPE_LISTENER, RESOURCE_TYPE_CERTIFICATE].map((s) => ({
+            value: s,
+            label: t(`workflow_node.deploy.form.huaweicloud_elb_resource_type.option.${s}.label`),
+          }))}
+          placeholder={t("workflow_node.deploy.form.shared_resource_type.placeholder")}
+        />
       </Form.Item>
 
       <Show when={fieldResourceType === RESOURCE_TYPE_CERTIFICATE}>
@@ -108,8 +104,8 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
     .object({
       region: z.string().nonempty(t("workflow_node.deploy.form.huaweicloud_elb_region.placeholder")),
       resourceType: z.literal(
-        [RESOURCE_TYPE_CERTIFICATE, RESOURCE_TYPE_LOADBALANCER, RESOURCE_TYPE_LISTENER],
-        t("workflow_node.deploy.form.huaweicloud_elb_resource_type.placeholder")
+        [RESOURCE_TYPE_LOADBALANCER, RESOURCE_TYPE_LISTENER, RESOURCE_TYPE_CERTIFICATE],
+        t("workflow_node.deploy.form.shared_resource_type.placeholder")
       ),
       loadbalancerId: z.string().nullish(),
       listenerId: z.string().nullish(),

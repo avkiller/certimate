@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import MultipleSplitValueInput from "@/components/MultipleSplitValueInput";
 import Tips from "@/components/Tips";
+import { matchSearchOption } from "@/utils/search";
 
 import { useFormNestedFieldsContext } from "./_context";
 
@@ -47,16 +48,18 @@ const BizDeployNodeConfigFieldsProviderTencentCloudSSLDeploy = () => {
       </Form.Item>
 
       <Form.Item
-        name={[parentNamePath, "resourceType"]}
-        initialValue={initialValues.resourceType}
-        label={t("workflow_node.deploy.form.tencentcloud_ssldeploy_resource_type.label")}
+        name={[parentNamePath, "resourceProduct"]}
+        initialValue={initialValues.resourceProduct}
+        label={t("workflow_node.deploy.form.tencentcloud_ssldeploy_resource_product.label")}
         rules={[formRule]}
-        tooltip={<span dangerouslySetInnerHTML={{ __html: t("workflow_node.deploy.form.tencentcloud_ssldeploy_resource_type.tooltip") }}></span>}
+        tooltip={<span dangerouslySetInnerHTML={{ __html: t("workflow_node.deploy.form.tencentcloud_ssldeploy_resource_product.tooltip") }}></span>}
       >
         <AutoComplete
           options={["apigateway", "cdn", "clb", "cos", "ddos", "lighthouse", "live", "tcb", "teo", "tke", "tse", "vod", "waf"].map((value) => ({ value }))}
-          placeholder={t("workflow_node.deploy.form.tencentcloud_ssldeploy_resource_type.placeholder")}
-          filterOption={(inputValue, option) => option!.value.toLowerCase().includes(inputValue.toLowerCase())}
+          placeholder={t("workflow_node.deploy.form.tencentcloud_ssldeploy_resource_product.placeholder")}
+          showSearch={{
+            filterOption: (inputValue, option) => matchSearchOption(inputValue, option!),
+          }}
         />
       </Form.Item>
 
@@ -83,7 +86,7 @@ const BizDeployNodeConfigFieldsProviderTencentCloudSSLDeploy = () => {
 const getInitialValues = (): Nullish<z.infer<ReturnType<typeof getSchema>>> => {
   return {
     region: "",
-    resourceType: "",
+    resourceProduct: "",
     resourceIds: "",
   };
 };
@@ -94,12 +97,10 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
   return z.object({
     endpoint: z.string().nullish(),
     region: z.string().nonempty(t("workflow_node.deploy.form.tencentcloud_ssldeploy_region.placeholder")),
-    resourceType: z.string().nonempty(t("workflow_node.deploy.form.tencentcloud_ssldeploy_resource_type.placeholder")),
+    resourceProduct: z.string().nonempty(t("workflow_node.deploy.form.tencentcloud_ssldeploy_resource_product.placeholder")),
     resourceIds: z.string().refine((v) => {
       if (!v) return false;
-      return String(v)
-        .split(MULTIPLE_INPUT_SEPARATOR)
-        .every((e) => /^[A-Za-z0-9*._\-|]+$/.test(e));
+      return v.split(MULTIPLE_INPUT_SEPARATOR).every((e) => /^[A-Za-z0-9*._\-|]+$/.test(e));
     }, t("workflow_node.deploy.form.tencentcloud_ssldeploy_resource_ids.errmsg.invalid")),
   });
 };
