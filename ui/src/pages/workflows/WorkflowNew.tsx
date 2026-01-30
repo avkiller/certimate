@@ -1,186 +1,322 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { PageHeader } from "@ant-design/pro-components";
-import { Card, Col, Form, Input, type InputRef, Row, Spin, Typography, notification } from "antd";
-import { createSchemaFieldRule } from "antd-zod";
-import { z } from "zod";
+import { IconArrowRight, IconCode, IconSquarePlus2 } from "@tabler/icons-react";
+import { App, Button, Card, Spin, Typography } from "antd";
+import dayjs from "dayjs";
 
-import ModalForm from "@/components/ModalForm";
-import { type WorkflowModel, initWorkflow } from "@/domain/workflow";
-import { useAntdForm } from "@/hooks";
+import Show from "@/components/Show";
+import WorkflowGraphImportModal from "@/components/workflow/WorkflowGraphImportModal";
+import {
+  WORKFLOW_NODE_TYPES,
+  type WorkflowModel,
+  type WorkflowNodeConfigForBizDeploy,
+  type WorkflowNodeConfigForBizNotify,
+  type WorkflowNodeConfigForBranchBlock,
+  newNode,
+} from "@/domain/workflow";
 import { save as saveWorkflow } from "@/repository/workflow";
 import { getErrMsg } from "@/utils/error";
 
 const TEMPLATE_KEY_BLANK = "blank" as const;
 const TEMPLATE_KEY_STANDARD = "standard" as const;
-type TemplateKeys = typeof TEMPLATE_KEY_BLANK | typeof TEMPLATE_KEY_STANDARD;
+const TEMPLATE_KEY_CERTTEST = "certtest" as const;
+type TemplateKeys = typeof TEMPLATE_KEY_BLANK | typeof TEMPLATE_KEY_CERTTEST | typeof TEMPLATE_KEY_STANDARD;
 
 const WorkflowNew = () => {
   const navigate = useNavigate();
 
-  const { t } = useTranslation();
+  const { i18n, t } = useTranslation();
 
-  const [notificationApi, NotificationContextHolder] = notification.useNotification();
+  const { notification } = App.useApp();
 
-  const templateGridSpans = {
-    xs: { flex: "100%" },
-    md: { flex: "100%" },
-    lg: { flex: "50%" },
-    xl: { flex: "50%" },
-    xxl: { flex: "50%" },
-  };
+  const templates = [
+    {
+      key: TEMPLATE_KEY_STANDARD,
+      name: t("workflow.new.templates.template.standard.title"),
+      description: t("workflow.new.templates.template.standard.description"),
+      image: "/imgs/workflow/tpl-standard.png",
+    },
+    {
+      key: TEMPLATE_KEY_CERTTEST,
+      name: t("workflow.new.templates.template.certtest.title"),
+      description: t("workflow.new.templates.template.certtest.description"),
+      image: "/imgs/workflow/tpl-certtest.png",
+    },
+  ];
   const [templateSelectKey, setTemplateSelectKey] = useState<TemplateKeys>();
+  const [templatePending, setTemplatePending] = useState(false);
 
-  const formSchema = z.object({
-    name: z
-      .string({ message: t("workflow.new.modal.form.name.placeholder") })
-      .min(1, t("workflow.new.modal.form.name.placeholder"))
-      .max(64, t("common.errmsg.string_max", { max: 64 }))
-      .trim(),
-    description: z
-      .string({ message: t("workflow.new.modal.form.description.placeholder") })
-      .max(256, t("common.errmsg.string_max", { max: 256 }))
-      .trim()
-      .nullish(),
-  });
-  const formRule = createSchemaFieldRule(formSchema);
-  const {
-    form: formInst,
-    formPending,
-    formProps,
-    submit: submitForm,
-  } = useAntdForm<z.infer<typeof formSchema>>({
-    onSubmit: async (values) => {
+  const renderTemplateCard = ({ key, name, description, image }: { key: TemplateKeys; name: string; description: string; image: string }) => {
+    return (
+      <Card
+        key={key}
+        className="group/card size-full"
+        cover={<img className="min-h-[120px] object-contain" src={image} />}
+        hoverable
+        onClick={() => handleTemplateClick(key)}
+      >
+        <div className="flex w-full items-center gap-4">
+          <Card.Meta
+            className="grow"
+            title={
+              <div className="flex w-full items-center justify-between gap-4 overflow-hidden transition-colors group-hover/card:text-primary">
+                <div className="flex-1 truncate">{name}</div>
+                <Show when={templatePending} fallback={<IconArrowRight className="opacity-0 transition-opacity group-hover/card:opacity-100" size="1.25em" />}>
+                  <Spin spinning={templateSelectKey === key} />
+                </Show>
+              </div>
+            }
+            description={description}
+          />
+        </div>
+      </Card>
+    );
+  };
+
+  const { modalProps: workflowImportModalProps, ...workflowImportModal } = WorkflowGraphImportModal.useModal();
+
+  const handleTemplateClick = async (key: TemplateKeys) => {
+    if (templatePending) return;
+
+    setTemplateSelectKey(key);
+    setTemplatePending(true);
+
+    try {
+      let workflow = {} as WorkflowModel;
+      workflow.name = t("workflow.new.templates.default_name");
+      workflow.description = t("workflow.new.templates.default_description", { date: dayjs().format("YYYY-MM-DD HH:mm") });
+      workflow.graphDraft = { nodes: [] };
+      workflow.hasDraft = true;
+
+      switch (key) {
+        case TEMPLATE_KEY_BLANK:
+          {
+            const startNode = newNode(WORKFLOW_NODE_TYPES.START, { i18n: i18n });
+            const endNode = newNode(WORKFLOW_NODE_TYPES.END, { i18n: i18n });
+
+            workflow.graphDraft!.nodes = [startNode, endNode];
+          }
+          break;
+
+        case TEMPLATE_KEY_STANDARD:
+          {
+            const startNode = newNode(WORKFLOW_NODE_TYPES.START, { i18n: i18n });
+            const tryCatchNode = newNode(WORKFLOW_NODE_TYPES.TRYCATCH, { i18n: i18n });
+            const applyNode = newNode(WORKFLOW_NODE_TYPES.BIZ_APPLY, { i18n: i18n });
+            const deployNode = newNode(WORKFLOW_NODE_TYPES.BIZ_DEPLOY, { i18n: i18n });
+            const notifyOnFailureNode = newNode(WORKFLOW_NODE_TYPES.BIZ_NOTIFY, { i18n: i18n });
+            const endNode = newNode(WORKFLOW_NODE_TYPES.END, { i18n: i18n });
+
+            deployNode.data.config = {
+              ...deployNode.data.config,
+              certificateOutputNodeId: applyNode.id,
+            } as WorkflowNodeConfigForBizDeploy;
+
+            notifyOnFailureNode.data.config = {
+              ...notifyOnFailureNode.data.config,
+              subject: "[Certimate] Workflow Failure Alert!",
+              message: 'Your workflow "{{ $workflow.name }}" run has failed. Please check the details.',
+            } as WorkflowNodeConfigForBizNotify;
+
+            tryCatchNode.blocks!.at(0)!.blocks ??= [];
+            tryCatchNode.blocks!.at(0)!.blocks!.push(applyNode, deployNode);
+            tryCatchNode.blocks!.at(1)!.blocks ??= [];
+            tryCatchNode.blocks!.at(1)!.blocks!.unshift(notifyOnFailureNode);
+
+            workflow.graphDraft!.nodes = [startNode, tryCatchNode, endNode];
+          }
+          break;
+
+        case TEMPLATE_KEY_CERTTEST:
+          {
+            const startNode = newNode(WORKFLOW_NODE_TYPES.START, { i18n: i18n });
+            const tryCatchNode = newNode(WORKFLOW_NODE_TYPES.TRYCATCH, { i18n: i18n });
+            const monitorNode = newNode(WORKFLOW_NODE_TYPES.BIZ_MONITOR, { i18n: i18n });
+            const conditionNode = newNode(WORKFLOW_NODE_TYPES.CONDITION, { i18n: i18n });
+            const notifyOnExpiringSoonNode = newNode(WORKFLOW_NODE_TYPES.BIZ_NOTIFY, { i18n: i18n });
+            const notifyOnExpiredNode = newNode(WORKFLOW_NODE_TYPES.BIZ_NOTIFY, { i18n: i18n });
+            const notifyOnFailureNode = newNode(WORKFLOW_NODE_TYPES.BIZ_NOTIFY, { i18n: i18n });
+            const endNode = newNode(WORKFLOW_NODE_TYPES.END, { i18n: i18n });
+
+            notifyOnExpiringSoonNode.data.config = {
+              ...notifyOnExpiringSoonNode.data.config,
+              subject: "[Certimate] Certificate Expiry Alert!",
+              message:
+                "The certificate which you are monitoring will be expiring soon. Please pay attention to your website. \r\nDomains: {{ $certificate.domains }} \r\nExpiration: {{ $certificate.notAfter }}({{ $certificate.daysLeft }} days left)",
+            } as WorkflowNodeConfigForBizNotify;
+
+            notifyOnExpiredNode.data.config = {
+              ...notifyOnExpiredNode.data.config,
+              subject: "[Certimate] Certificate Expiry Alert!",
+              message:
+                "The certificate which you are monitoring has already expired. Please pay attention to your website. \r\nDomains: {{ $certificate.domains }} \r\nExpiration: {{ $certificate.notAfter }}",
+            } as WorkflowNodeConfigForBizNotify;
+
+            notifyOnFailureNode.data.config = {
+              ...notifyOnFailureNode.data.config,
+              subject: "[Certimate] Workflow Failure Alert!",
+              message: 'Your workflow "{{ $workflow.name }}" run has failed. Please check the details.',
+            } as WorkflowNodeConfigForBizNotify;
+
+            tryCatchNode.blocks!.at(0)!.blocks ??= [];
+            tryCatchNode.blocks!.at(0)!.blocks!.push(monitorNode, conditionNode);
+            tryCatchNode.blocks!.at(1)!.blocks ??= [];
+            tryCatchNode.blocks!.at(1)!.blocks!.unshift(notifyOnFailureNode);
+
+            conditionNode.blocks!.at(0)!.data.name = t("workflow_node.condition.default_name.template_certtest_on_expiring_soon");
+            conditionNode.blocks!.at(0)!.data.config = {
+              ...conditionNode.blocks!.at(0)!.data.config,
+              expression: {
+                left: {
+                  left: {
+                    selector: {
+                      id: monitorNode.id,
+                      name: "certificate.validity",
+                      type: "boolean",
+                    },
+                    type: "var",
+                  },
+                  operator: "eq",
+                  right: {
+                    type: "const",
+                    value: "true",
+                    valueType: "boolean",
+                  },
+                  type: "comparison",
+                },
+                operator: "and",
+                right: {
+                  left: {
+                    selector: {
+                      id: monitorNode.id,
+                      name: "certificate.daysLeft",
+                      type: "number",
+                    },
+                    type: "var",
+                  },
+                  operator: "lte",
+                  right: {
+                    type: "const",
+                    value: "30",
+                    valueType: "number",
+                  },
+                  type: "comparison",
+                },
+                type: "logical",
+              },
+            } as WorkflowNodeConfigForBranchBlock;
+            conditionNode.blocks!.at(0)!.blocks ??= [];
+            conditionNode.blocks!.at(0)!.blocks!.push(notifyOnExpiringSoonNode);
+            conditionNode.blocks!.at(1)!.data.name = t("workflow_node.condition.default_name.template_certtest_on_expired");
+            conditionNode.blocks!.at(1)!.data.config = {
+              ...conditionNode.blocks!.at(1)!.data.config,
+              expression: {
+                left: {
+                  selector: {
+                    id: monitorNode.id,
+                    name: "certificate.validity",
+                    type: "boolean",
+                  },
+                  type: "var",
+                },
+                operator: "eq",
+                right: {
+                  type: "const",
+                  value: "false",
+                  valueType: "boolean",
+                },
+                type: "comparison",
+              },
+            } as WorkflowNodeConfigForBranchBlock;
+            conditionNode.blocks!.at(1)!.blocks ??= [];
+            conditionNode.blocks!.at(1)!.blocks!.push(notifyOnExpiredNode);
+
+            workflow.graphDraft!.nodes = [startNode, tryCatchNode, endNode];
+          }
+          break;
+
+        default:
+          throw "Invalid value of `templateSelectKey`";
+      }
+
+      workflow = await saveWorkflow(workflow);
+      navigate(`/workflows/${workflow.id}`, { replace: true });
+    } catch (err) {
+      notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
+
+      throw err;
+    } finally {
+      setTemplatePending(false);
+      setTemplateSelectKey(void 0);
+    }
+  };
+
+  const handleImportClick = async () => {
+    if (templatePending) return;
+
+    workflowImportModal.open().then(async (graph) => {
+      setTemplatePending(true);
+
       try {
-        let workflow: WorkflowModel;
-
-        switch (templateSelectKey) {
-          case TEMPLATE_KEY_BLANK:
-            workflow = initWorkflow();
-            break;
-
-          case TEMPLATE_KEY_STANDARD:
-            workflow = initWorkflow({ template: "standard" });
-            break;
-
-          default:
-            throw "Invalid state: `templateSelectKey`";
-        }
-
-        workflow.name = values.name?.trim() ?? workflow.name;
-        workflow.description = values.description?.trim() ?? workflow.description;
+        let workflow = {} as WorkflowModel;
+        workflow.name = t("workflow.new.templates.default_name");
+        workflow.description = t("workflow.new.templates.default_description", { date: dayjs().format("YYYY-MM-DD HH:mm") });
+        workflow.graphDraft = graph;
+        workflow.hasDraft = true;
         workflow = await saveWorkflow(workflow);
         navigate(`/workflows/${workflow.id}`, { replace: true });
       } catch (err) {
-        notificationApi.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
+        notification.error({ message: t("common.text.request_error"), description: getErrMsg(err) });
 
         throw err;
+      } finally {
+        setTemplatePending(false);
       }
-    },
-  });
-  const [formModalOpen, setFormModalOpen] = useState(false);
-
-  useEffect(() => {
-    if (formModalOpen) {
-      setTimeout(() => inputRef.current?.focus({ cursor: "end" }), 1);
-    } else {
-      setTemplateSelectKey(undefined);
-      formInst.resetFields();
-    }
-  }, [formModalOpen]);
-
-  const inputRef = useRef<InputRef>(null);
-
-  const handleTemplateClick = (key: TemplateKeys) => {
-    setTemplateSelectKey(key);
-    setFormModalOpen(true);
-  };
-
-  const handleModalOpenChange = (open: boolean) => {
-    setFormModalOpen(open);
-  };
-
-  const handleModalFormFinish = () => {
-    return submitForm();
+    });
   };
 
   return (
-    <div>
-      {NotificationContextHolder}
+    <div className="px-6 py-4">
+      <div className="container">
+        <h1>{t("workflow.new.title")}</h1>
+        <p className="text-base text-gray-500">{t("workflow.new.subtitle")}</p>
+      </div>
 
-      <Card styles={{ body: { padding: "0.5rem", paddingBottom: 0 } }} style={{ borderRadius: 0 }}>
-        <PageHeader title={t("workflow.new.title")}>
-          <Typography.Paragraph type="secondary">{t("workflow.new.subtitle")}</Typography.Paragraph>
-        </PageHeader>
-      </Card>
+      <div className="container">
+        <div className="my-[6px]">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+            <Card className="size-full" styles={{ body: { padding: "1rem 1.5rem" } }} variant="borderless">
+              <div className="flex flex-col gap-3">
+                <Button
+                  className="border-none px-0 shadow-none"
+                  block
+                  icon={<IconSquarePlus2 size="1.25em" />}
+                  variant="solid"
+                  onClick={() => handleTemplateClick(TEMPLATE_KEY_BLANK)}
+                >
+                  <div className="w-full text-left">{t("workflow.new.button.create")}</div>
+                </Button>
+                <Button className="border-none px-0 shadow-none" block icon={<IconCode size="1.25em" />} variant="solid" onClick={handleImportClick}>
+                  <div className="w-full text-left">{t("workflow.new.button.import")}</div>
+                </Button>
+              </div>
+            </Card>
 
-      <div className="p-4">
-        <div className="mx-auto max-w-[960px] px-2">
-          <Typography.Text type="secondary">
-            <div className="mb-8 mt-4 text-xl">{t("workflow.new.templates.title")}</div>
-          </Typography.Text>
-
-          <Row className="justify-stretch" gutter={[16, 16]}>
-            <Col {...templateGridSpans}>
-              <Card
-                className="size-full"
-                cover={<img className="min-h-[120px] object-contain" src="/imgs/workflow/tpl-standard.png" />}
-                hoverable
-                onClick={() => handleTemplateClick(TEMPLATE_KEY_STANDARD)}
-              >
-                <div className="flex w-full items-center gap-4">
-                  <Card.Meta
-                    className="grow"
-                    title={t("workflow.new.templates.template.standard.title")}
-                    description={t("workflow.new.templates.template.standard.description")}
-                  />
-                  <Spin spinning={templateSelectKey === TEMPLATE_KEY_STANDARD} />
-                </div>
-              </Card>
-            </Col>
-            <Col {...templateGridSpans}>
-              <Card
-                className="size-full"
-                cover={<img className="min-h-[120px] object-contain" src="/imgs/workflow/tpl-blank.png" />}
-                hoverable
-                onClick={() => handleTemplateClick(TEMPLATE_KEY_BLANK)}
-              >
-                <div className="flex w-full items-center gap-4">
-                  <Card.Meta
-                    className="grow"
-                    title={t("workflow.new.templates.template.blank.title")}
-                    description={t("workflow.new.templates.template.blank.description")}
-                  />
-                  <Spin spinning={templateSelectKey === TEMPLATE_KEY_BLANK} />
-                </div>
-              </Card>
-            </Col>
-          </Row>
+            <WorkflowGraphImportModal {...workflowImportModalProps} />
+          </div>
         </div>
 
-        <ModalForm
-          {...formProps}
-          autoFocus
-          disabled={formPending}
-          layout="vertical"
-          form={formInst}
-          modalProps={{ destroyOnClose: true }}
-          okText={t("common.button.submit")}
-          open={formModalOpen}
-          title={t(`workflow.new.modal.title`)}
-          width={480}
-          onFinish={handleModalFormFinish}
-          onOpenChange={handleModalOpenChange}
-        >
-          <Form.Item name="name" label={t("workflow.new.modal.form.name.label")} rules={[formRule]}>
-            <Input ref={inputRef} autoFocus placeholder={t("workflow.new.modal.form.name.placeholder")} />
-          </Form.Item>
+        <div className="mt-8">
+          <h3>{t("workflow.new.templates.title")}</h3>
+          <Typography.Text type="secondary">
+            <div className="mb-4">{t("workflow.new.templates.subtitle")}</div>
+          </Typography.Text>
 
-          <Form.Item name="description" label={t("workflow.new.modal.form.description.label")} rules={[formRule]}>
-            <Input placeholder={t("workflow.new.modal.form.description.placeholder")} />
-          </Form.Item>
-        </ModalForm>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+            {templates.map((template) => renderTemplateCard(template))}
+          </div>
+        </div>
       </div>
     </div>
   );

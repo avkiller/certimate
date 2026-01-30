@@ -4,63 +4,43 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"strconv"
+	"log/slog"
 	"strings"
 	"time"
 
 	"github.com/go-acme/lego/v4/certcrypto"
-	"github.com/usual2970/certimate/internal/app"
-	"github.com/usual2970/certimate/internal/domain"
-	"github.com/usual2970/certimate/internal/domain/dtos"
-	"github.com/usual2970/certimate/internal/notify"
-	"github.com/usual2970/certimate/internal/pkg/utils/certs"
-	"github.com/usual2970/certimate/internal/repository"
-)
+	"github.com/pocketbase/dbx"
 
-const (
-	defaultExpireSubject = "有 ${COUNT} 张证书即将过期"
-	defaultExpireMessage = "有 ${COUNT} 张证书即将过期，域名分别为 ${DOMAINS}，请保持关注！"
+	"github.com/certimate-go/certimate/internal/app"
+	"github.com/certimate-go/certimate/internal/domain"
+	"github.com/certimate-go/certimate/internal/domain/dtos"
+	xcert "github.com/certimate-go/certimate/pkg/utils/cert"
 )
-
-type certificateRepository interface {
-	ListExpireSoon(ctx context.Context) ([]*domain.Certificate, error)
-	GetById(ctx context.Context, id string) (*domain.Certificate, error)
-}
 
 type CertificateService struct {
-	certRepo certificateRepository
+	certificateRepo certificateRepository
+	settingsRepo    settingsRepository
 }
 
-func NewCertificateService(certRepo certificateRepository) *CertificateService {
+func NewCertificateService(certificateRepo certificateRepository, settingsRepo settingsRepository) *CertificateService {
 	return &CertificateService{
-		certRepo: certRepo,
+		certificateRepo: certificateRepo,
+		settingsRepo:    settingsRepo,
 	}
 }
 
 func (s *CertificateService) InitSchedule(ctx context.Context) error {
-	app.GetScheduler().MustAdd("certificateExpireSoonNotify", "0 0 * * *", func() {
-		certificates, err := s.certRepo.ListExpireSoon(context.Background())
-		if err != nil {
-			app.GetLogger().Error("failed to get certificates which expire soon", "err", err)
-			return
-		}
-
-		notification := buildExpireSoonNotification(certificates)
-		if notification == nil {
-			return
-		}
-
-		if err := notify.SendToAllChannels(notification.Subject, notification.Message); err != nil {
-			app.GetLogger().Error("failed to send notification", "err", err)
-		}
+	// 每日清理过期证书
+	app.GetScheduler().MustAdd("cleanupCertificateExpired", "0 0 * * *", func() {
+		s.cleanupExpiredCertificates(context.Background())
 	})
+
 	return nil
 }
 
-func (s *CertificateService) ArchiveFile(ctx context.Context, req *dtos.CertificateArchiveFileReq) (*dtos.CertificateArchiveFileResp, error) {
-	certificate, err := s.certRepo.GetById(ctx, req.CertificateId)
+func (s *CertificateService) DownloadArchivedFile(ctx context.Context, req *dtos.CertificateArchiveFileReq) (*dtos.CertificateArchiveFileResp, error) {
+	certificate, err := s.certificateRepo.GetById(ctx, req.CertificateId)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +89,7 @@ func (s *CertificateService) ArchiveFile(ctx context.Context, req *dtos.Certific
 		{
 			const pfxPassword = "certimate"
 
-			certPFX, err := certs.TransformCertificateFromPEMToPFX(certificate.Certificate, certificate.PrivateKey, pfxPassword)
+			certPFX, err := xcert.TransformCertificateFromPEMToPFX(certificate.Certificate, certificate.PrivateKey, pfxPassword)
 			if err != nil {
 				return nil, err
 			}
@@ -147,7 +127,7 @@ func (s *CertificateService) ArchiveFile(ctx context.Context, req *dtos.Certific
 		{
 			const jksPassword = "certimate"
 
-			certJKS, err := certs.TransformCertificateFromPEMToJKS(certificate.Certificate, certificate.PrivateKey, jksPassword, jksPassword, jksPassword)
+			certJKS, err := xcert.TransformCertificateFromPEMToJKS(certificate.Certificate, certificate.PrivateKey, jksPassword, jksPassword, jksPassword)
 			if err != nil {
 				return nil, err
 			}
@@ -187,10 +167,10 @@ func (s *CertificateService) ArchiveFile(ctx context.Context, req *dtos.Certific
 }
 
 func (s *CertificateService) ValidateCertificate(ctx context.Context, req *dtos.CertificateValidateCertificateReq) (*dtos.CertificateValidateCertificateResp, error) {
-	certX509, err := certs.ParseCertificateFromPEM(req.Certificate)
+	certX509, err := xcert.ParseCertificateFromPEM(req.Certificate)
 	if err != nil {
 		return nil, err
-	} else if time.Now().After(certX509.NotAfter) {
+	} else if certX509.NotAfter.Before(time.Now()) {
 		return nil, fmt.Errorf("certificate has expired at %s", certX509.NotAfter.UTC().Format(time.RFC3339))
 	}
 
@@ -211,46 +191,28 @@ func (s *CertificateService) ValidatePrivateKey(ctx context.Context, req *dtos.C
 	}, nil
 }
 
-func buildExpireSoonNotification(certificates []*domain.Certificate) *struct {
-	Subject string
-	Message string
-} {
-	if len(certificates) == 0 {
-		return nil
+func (s *CertificateService) cleanupExpiredCertificates(ctx context.Context) error {
+	settings, err := s.settingsRepo.GetByName(ctx, "persistence")
+	if err != nil {
+		app.GetLogger().Error("failed to get persistence settings", slog.Any("error", err))
+		return err
 	}
 
-	subject := defaultExpireSubject
-	message := defaultExpireMessage
+	persistenceSettings := settings.Content.AsPersistence()
+	if persistenceSettings.ExpiredCertificatesMaxDaysRetention != 0 {
+		ret, err := s.certificateRepo.DeleteWhere(
+			context.Background(),
+			dbx.NewExp(fmt.Sprintf("validityNotAfter<DATETIME('now', '-%d days')", persistenceSettings.ExpiredCertificatesMaxDaysRetention)),
+		)
+		if err != nil {
+			app.GetLogger().Error("failed to delete expired certificates", slog.Any("error", err))
+			return err
+		}
 
-	// 查询模板信息
-	settingsRepo := repository.NewSettingsRepository()
-	settings, err := settingsRepo.GetByName(context.Background(), "notifyTemplates")
-	if err == nil {
-		var templates *domain.NotifyTemplatesSettingsContent
-		json.Unmarshal([]byte(settings.Content), &templates)
-
-		if templates != nil && len(templates.NotifyTemplates) > 0 {
-			subject = templates.NotifyTemplates[0].Subject
-			message = templates.NotifyTemplates[0].Message
+		if ret > 0 {
+			app.GetLogger().Info(fmt.Sprintf("cleanup %d expired certificates", ret))
 		}
 	}
 
-	// 替换变量
-	count := len(certificates)
-	domains := make([]string, count)
-	for i, record := range certificates {
-		domains[i] = record.SubjectAltNames
-	}
-	countStr := strconv.Itoa(count)
-	domainStr := strings.Join(domains, ";")
-	subject = strings.ReplaceAll(subject, "${COUNT}", countStr)
-	subject = strings.ReplaceAll(subject, "${DOMAINS}", domainStr)
-	message = strings.ReplaceAll(message, "${COUNT}", countStr)
-	message = strings.ReplaceAll(message, "${DOMAINS}", domainStr)
-
-	// 返回消息
-	return &struct {
-		Subject string
-		Message string
-	}{Subject: subject, Message: message}
+	return nil
 }

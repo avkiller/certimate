@@ -1,23 +1,29 @@
-import { memo, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
-  CloudServerOutlined as CloudServerOutlinedIcon,
-  GlobalOutlined as GlobalOutlinedIcon,
-  HomeOutlined as HomeOutlinedIcon,
-  LogoutOutlined as LogoutOutlinedIcon,
-  MenuOutlined as MenuOutlinedIcon,
-  MoonOutlined as MoonOutlinedIcon,
-  NodeIndexOutlined as NodeIndexOutlinedIcon,
-  SafetyOutlined as SafetyOutlinedIcon,
-  SettingOutlined as SettingOutlinedIcon,
-  SunOutlined as SunOutlinedIcon,
-} from "@ant-design/icons";
-import { Button, type ButtonProps, Drawer, Dropdown, Layout, Menu, type MenuProps, Tooltip, theme } from "antd";
+  IconBrandGithub,
+  IconCertificate,
+  IconFingerprint,
+  IconHelpCircle,
+  IconHierarchy3,
+  IconHome,
+  IconLayoutSidebarLeftCollapse,
+  IconLayoutSidebarRightCollapse,
+  IconMenu2,
+  IconPower,
+  IconSettings,
+} from "@tabler/icons-react";
+import { Alert, Button, Drawer, Layout, Menu, type MenuProps, theme } from "antd";
 
-import Version from "@/components/Version";
-import { useBrowserTheme, useTriggerElement } from "@/hooks";
+import AppLocale from "@/components/AppLocale";
+import AppTheme from "@/components/AppTheme";
+import AppVersion from "@/components/AppVersion";
+import Show from "@/components/Show";
+import { APP_DOCUMENT_URL, APP_REPO_URL } from "@/domain/app";
+import { useTriggerElement } from "@/hooks";
 import { getAuthStore } from "@/repository/admin";
+import { isBrowserHappy } from "@/utils/browser";
 
 const ConsoleLayout = () => {
   const navigate = useNavigate();
@@ -26,13 +32,19 @@ const ConsoleLayout = () => {
 
   const { token: themeToken } = theme.useToken();
 
+  const [siderCollapsed, setSiderCollapsed] = useState(false);
+
   const handleLogoutClick = () => {
     auth.clear();
     navigate("/login");
   };
 
-  const handleSettingsClick = () => {
-    navigate("/settings/account");
+  const handleDocumentClick = () => {
+    window.open(APP_DOCUMENT_URL, "_blank");
+  };
+
+  const handleGitHubClick = () => {
+    window.open(APP_REPO_URL, "_blank");
   };
 
   const auth = getAuthStore();
@@ -41,50 +53,120 @@ const ConsoleLayout = () => {
   }
 
   return (
-    <Layout className="h-screen" hasSider>
-      <Layout.Sider className="fixed left-0 top-0 z-20 h-full max-md:static max-md:hidden" width="256px" theme="light">
-        <div className="flex size-full flex-col items-center justify-between overflow-hidden">
-          <div className="w-full">
-            <SiderMenu />
-          </div>
-          <div className="w-full py-2 text-center">
-            <Version />
-          </div>
-        </div>
-      </Layout.Sider>
+    <Layout className="h-screen bg-background text-foreground">
+      <Show when={!isBrowserHappy()}>
+        <Alert banner message={t("common.text.happy_browser")} type="warning" showIcon closable />
+      </Show>
 
-      <Layout className="flex flex-col overflow-hidden pl-[256px] max-md:pl-0">
-        <Layout.Header className="p-0 shadow-sm" style={{ background: themeToken.colorBgContainer }}>
-          <div className="flex size-full items-center justify-between overflow-hidden px-4">
-            <div className="flex items-center gap-4">
-              <SiderMenuDrawer trigger={<Button className="md:hidden" icon={<MenuOutlinedIcon />} size="large" />} />
+      <Layout className="h-screen" hasSider>
+        <Layout.Sider
+          className="group/sider z-20 h-full border-r bg-background max-md:static max-md:hidden"
+          style={{ borderColor: themeToken.colorBorderSecondary }}
+          theme="light"
+          width={siderCollapsed ? 81 : 256}
+        >
+          <div className="flex size-full flex-col items-center justify-between overflow-hidden select-none">
+            <div className="w-full px-2">
+              <SiderMenu collapsed={siderCollapsed} />
             </div>
-            <div className="flex size-full grow items-center justify-end gap-4 overflow-hidden">
-              <Tooltip title={t("common.menu.theme")} mouseEnterDelay={2}>
-                <ThemeToggleButton size="large" />
-              </Tooltip>
-              <Tooltip title={t("common.menu.locale")} mouseEnterDelay={2}>
-                <LocaleToggleButton size="large" />
-              </Tooltip>
-              <Tooltip title={t("common.menu.settings")} mouseEnterDelay={2}>
-                <Button icon={<SettingOutlinedIcon />} size="large" onClick={handleSettingsClick} />
-              </Tooltip>
-              <Tooltip title={t("common.menu.logout")} mouseEnterDelay={2}>
-                <Button danger icon={<LogoutOutlinedIcon />} size="large" onClick={handleLogoutClick} />
-              </Tooltip>
+            <div className="w-full px-2 pb-2">
+              <Menu
+                style={{ background: "transparent", borderInlineEnd: "none" }}
+                inlineCollapsed={siderCollapsed}
+                items={[
+                  {
+                    key: "document",
+                    icon: (
+                      <span className="anticon scale-125" role="img">
+                        <IconHelpCircle size="1em" />
+                      </span>
+                    ),
+                    label: t("common.menu.gethelp"),
+                    onClick: handleDocumentClick,
+                  },
+                  {
+                    key: "logout",
+                    danger: true,
+                    icon: (
+                      <span className="anticon scale-125" role="img">
+                        <IconPower size="1em" />
+                      </span>
+                    ),
+                    label: t("common.menu.logout"),
+                    onClick: handleLogoutClick,
+                  },
+                ]}
+                mode="vertical"
+                selectable={false}
+              />
             </div>
           </div>
-        </Layout.Header>
+          <div className="absolute top-1/2 right-0 translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover/sider:opacity-100">
+            <Button
+              className="bg-background shadow"
+              icon={
+                siderCollapsed ? (
+                  <IconLayoutSidebarRightCollapse size="1.5em" stroke="1.25" color="#999" />
+                ) : (
+                  <IconLayoutSidebarLeftCollapse size="1.5em" stroke="1.25" color="#999" />
+                )
+              }
+              shape="circle"
+              type="text"
+              onClick={() => setSiderCollapsed(!siderCollapsed)}
+            />
+          </div>
+        </Layout.Sider>
 
-        <Layout.Content className="flex-1 overflow-y-auto overflow-x-hidden">
-          <Outlet />
-        </Layout.Content>
+        <Layout className="flex flex-col overflow-hidden">
+          <Layout.Header
+            className="relative border-b shadow-sm md:hidden"
+            style={{
+              padding: 0,
+              borderBottomColor: themeToken.colorBorderSecondary,
+            }}
+          >
+            <div className="absolute inset-0 z-0">
+              <div
+                className="h-full w-full"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(rgba(255, 255, 255, 0.063) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.063) 1px, transparent 1px)",
+                  backgroundSize: "20px 20px",
+                }}
+              >
+                <div className="h-full w-full backdrop-blur-[1px]"></div>
+              </div>
+            </div>
+            <div className="flex size-full items-center justify-between overflow-hidden px-4">
+              <div className="flex items-center gap-4">
+                <SiderMenuDrawer trigger={<Button icon={<IconMenu2 size="1.25em" stroke="1.25" />} />} />
+              </div>
+              <div className="flex size-full grow items-center justify-end gap-4 overflow-hidden">
+                <AppTheme.Dropdown>
+                  <Button icon={<AppTheme.Icon size="1.25em" stroke="1.25" />} />
+                </AppTheme.Dropdown>
+                <AppLocale.Dropdown>
+                  <Button icon={<AppLocale.Icon size="1.25em" stroke="1.25" />} />
+                </AppLocale.Dropdown>
+                <AppVersion.Badge>
+                  <Button icon={<IconBrandGithub size="1.25em" stroke="1.25" />} onClick={handleGitHubClick} />
+                </AppVersion.Badge>
+                <Button danger icon={<IconPower size="1.25em" stroke="1.25" />} onClick={handleLogoutClick} />
+              </div>
+            </div>
+          </Layout.Header>
+
+          <Layout.Content className="relative flex-1 overflow-x-hidden overflow-y-auto">
+            <Outlet />
+          </Layout.Content>
+        </Layout>
       </Layout>
     </Layout>
   );
 };
 
-const SiderMenu = memo(({ onSelect }: { onSelect?: (key: string) => void }) => {
+const SiderMenu = memo(({ collapsed, onSelect }: { collapsed?: boolean; onSelect?: (key: string) => void }) => {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -94,19 +176,27 @@ const SiderMenu = memo(({ onSelect }: { onSelect?: (key: string) => void }) => {
   const MENU_KEY_WORKFLOWS = "/workflows";
   const MENU_KEY_CERTIFICATES = "/certificates";
   const MENU_KEY_ACCESSES = "/accesses";
-  const menuItems: Required<MenuProps>["items"] = [
-    [MENU_KEY_HOME, <HomeOutlinedIcon />, t("dashboard.page.title")],
-    [MENU_KEY_WORKFLOWS, <NodeIndexOutlinedIcon />, t("workflow.page.title")],
-    [MENU_KEY_CERTIFICATES, <SafetyOutlinedIcon />, t("certificate.page.title")],
-    [MENU_KEY_ACCESSES, <CloudServerOutlinedIcon />, t("access.page.title")],
-  ].map(([key, icon, label]) => {
+  const MENU_KEY_SETTINGS = "/settings";
+  const menuItems: Required<MenuProps>["items"] = (
+    [
+      [MENU_KEY_HOME, "dashboard.page.title", <IconHome size="1em" />],
+      [MENU_KEY_WORKFLOWS, "workflow.page.title", <IconHierarchy3 size="1em" />],
+      [MENU_KEY_CERTIFICATES, "certificate.page.title", <IconCertificate size="1em" />],
+      [MENU_KEY_ACCESSES, "access.page.title", <IconFingerprint size="1em" />],
+      [MENU_KEY_SETTINGS, "settings.page.title", <IconSettings size="1em" />],
+    ] satisfies Array<[string, string, React.ReactNode]>
+  ).map(([key, label, icon]) => {
     return {
-      key: key as string,
-      icon: icon,
-      label: label,
+      key: key,
+      icon: (
+        <span className="anticon scale-125" role="img">
+          {icon}
+        </span>
+      ),
+      label: t(label),
       onClick: () => {
-        navigate(key as string);
-        onSelect?.(key as string);
+        navigate(key);
+        onSelect?.(key);
       },
     };
   });
@@ -124,7 +214,7 @@ const SiderMenu = memo(({ onSelect }: { onSelect?: (key: string) => void }) => {
     if (item) {
       setMenuSelectedKey(item.key as string);
     } else {
-      setMenuSelectedKey(undefined);
+      setMenuSelectedKey(void 0);
     }
   }, [location.pathname]);
 
@@ -136,12 +226,19 @@ const SiderMenu = memo(({ onSelect }: { onSelect?: (key: string) => void }) => {
 
   return (
     <>
-      <div className="flex w-full items-center gap-2 overflow-hidden px-4 font-semibold">
-        <img src="/logo.svg" className="size-[36px]" />
-        <span className="h-[64px] w-[74px] truncate leading-[64px] dark:text-white">Certimate</span>
+      <div className="h-[64px] w-full overflow-hidden px-4 py-2 max-md:py-0">
+        <div className="flex size-full items-center justify-around gap-2">
+          <img src="/logo.svg" className="size-[36px]" />
+          <Show when={!collapsed}>
+            <span className="w-[81px] truncate text-base leading-[64px] font-semibold">Certimate</span>
+            <AppVersion.LinkButton className="text-xs" />
+          </Show>
+        </div>
       </div>
-      <div className="w-full grow overflow-y-auto overflow-x-hidden">
+      <div className="w-full grow overflow-x-hidden overflow-y-auto">
         <Menu
+          style={{ background: "transparent", borderInlineEnd: "none" }}
+          inlineCollapsed={collapsed}
           items={menuItems}
           mode="vertical"
           selectedKeys={menuSelectedKey ? [menuSelectedKey] : []}
@@ -161,13 +258,17 @@ const SiderMenuDrawer = memo(({ trigger }: { trigger: React.ReactNode }) => {
 
   const triggerEl = useTriggerElement(trigger, { onClick: () => setSiderOpen(true) });
 
+  const handleMenuSelect = useCallback(() => {
+    setSiderOpen(false);
+  }, []);
+
   return (
     <>
       {triggerEl}
 
       <Drawer
         closable={false}
-        destroyOnClose
+        destroyOnHidden
         open={siderOpen}
         placement="left"
         styles={{
@@ -176,56 +277,9 @@ const SiderMenuDrawer = memo(({ trigger }: { trigger: React.ReactNode }) => {
         }}
         onClose={() => setSiderOpen(false)}
       >
-        <SiderMenu onSelect={() => setSiderOpen(false)} />
+        <SiderMenu onSelect={handleMenuSelect} />
       </Drawer>
     </>
-  );
-});
-
-const ThemeToggleButton = memo(({ size }: { size?: ButtonProps["size"] }) => {
-  const { t } = useTranslation();
-
-  const { theme, themeMode, setThemeMode } = useBrowserTheme();
-
-  const items: Required<MenuProps>["items"] = [
-    ["light", t("common.theme.light")],
-    ["dark", t("common.theme.dark")],
-    ["system", t("common.theme.system")],
-  ].map(([key, label]) => {
-    return {
-      key: key as string,
-      label: label,
-      onClick: () => {
-        setThemeMode(key as Parameters<typeof setThemeMode>[0]);
-        if (key !== themeMode) {
-          window.location.reload();
-        }
-      },
-    };
-  });
-
-  return (
-    <Dropdown menu={{ items }} trigger={["click"]}>
-      <Button icon={theme === "dark" ? <MoonOutlinedIcon /> : <SunOutlinedIcon />} size={size} />
-    </Dropdown>
-  );
-});
-
-const LocaleToggleButton = memo(({ size }: { size?: ButtonProps["size"] }) => {
-  const { i18n } = useTranslation();
-
-  const items: Required<MenuProps>["items"] = Object.keys(i18n.store.data).map((key) => {
-    return {
-      key: key,
-      label: <>{i18n.store.data[key].name as string}</>,
-      onClick: () => i18n.changeLanguage(key),
-    };
-  });
-
-  return (
-    <Dropdown menu={{ items }} trigger={["click"]}>
-      <Button icon={<GlobalOutlinedIcon />} size={size} />
-    </Dropdown>
   );
 });
 

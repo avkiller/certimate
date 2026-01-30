@@ -1,7 +1,7 @@
 export type Statistics = {
   certificateTotal: number;
   certificateExpired: number;
-  certificateExpireSoon: number;
+  certificateExpiringSoon: number;
   workflowTotal: number;
   workflowEnabled: number;
   workflowDisabled: number;

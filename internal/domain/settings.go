@@ -1,39 +1,37 @@
 package domain
 
 import (
-	"encoding/json"
-	"fmt"
+	xmaps "github.com/certimate-go/certimate/pkg/utils/maps"
 )
 
 const CollectionNameSettings = "settings"
 
 type Settings struct {
 	Meta
-	Name    string `json:"name" db:"name"`
-	Content string `json:"content" db:"content"`
+	Name    string          `json:"name" db:"name"`
+	Content SettingsContent `json:"content" db:"content"`
 }
 
-type NotifyTemplatesSettingsContent struct {
-	NotifyTemplates []NotifyTemplate `json:"notifyTemplates"`
+type SettingsContent map[string]any
+
+type SettingsContentForSSLProvider struct {
+	Provider CAProviderType                    `json:"provider"`
+	Config   map[CAProviderType]map[string]any `json:"config"`
 }
 
-type NotifyTemplate struct {
-	Subject string `json:"subject"`
-	Message string `json:"message"`
+type SettingsContentForPersistence struct {
+	WorkflowRunsMaxDaysRetention        int `json:"workflowRunsMaxDaysRetention"`
+	ExpiredCertificatesMaxDaysRetention int `json:"expiredCertificatesMaxDaysRetention"`
 }
 
-type NotifyChannelsSettingsContent map[string]map[string]any
+func (c SettingsContent) AsSSLProvider() *SettingsContentForSSLProvider {
+	content := &SettingsContentForSSLProvider{}
+	xmaps.Populate(c, content)
+	return content
+}
 
-func (s *Settings) GetNotifyChannelConfig(channel string) (map[string]any, error) {
-	conf := &NotifyChannelsSettingsContent{}
-	if err := json.Unmarshal([]byte(s.Content), conf); err != nil {
-		return nil, err
-	}
-
-	v, ok := (*conf)[channel]
-	if !ok {
-		return nil, fmt.Errorf("channel \"%s\" not found", channel)
-	}
-
-	return v, nil
+func (c SettingsContent) AsPersistence() *SettingsContentForPersistence {
+	content := &SettingsContentForPersistence{}
+	xmaps.Populate(c, content)
+	return content
 }

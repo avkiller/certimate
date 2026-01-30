@@ -3,12 +3,8 @@ package statistics
 import (
 	"context"
 
-	"github.com/usual2970/certimate/internal/domain"
+	"github.com/certimate-go/certimate/internal/domain"
 )
-
-type statisticsRepository interface {
-	Get(ctx context.Context) (*domain.Statistics, error)
-}
 
 type StatisticsService struct {
 	statRepo statisticsRepository

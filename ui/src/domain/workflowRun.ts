@@ -1,35 +1,21 @@
-import { type WorkflowModel } from "./workflow";
+import { type WorkflowGraph, type WorkflowModel } from "./workflow";
 
 export interface WorkflowRunModel extends BaseModel {
-  workflowId: string;
+  workflowRef: string;
   status: string;
   trigger: string;
   startedAt: ISO8601String;
   endedAt: ISO8601String;
-  logs?: WorkflowRunLog[];
+  graph?: WorkflowGraph;
   error?: string;
   expand?: {
-    workflowId?: WorkflowModel;
+    workflowRef?: Pick<WorkflowModel, "id" | "name" | "description">;
   };
 }
 
-export type WorkflowRunLog = {
-  nodeId: string;
-  nodeName: string;
-  records?: WorkflowRunLogRecord[];
-  error?: string;
-};
-
-export type WorkflowRunLogRecord = {
-  time: ISO8601String;
-  level: string;
-  content: string;
-  error?: string;
-};
-
 export const WORKFLOW_RUN_STATUSES = Object.freeze({
   PENDING: "pending",
-  RUNNING: "running",
+  PROCESSING: "processing",
   SUCCEEDED: "succeeded",
   FAILED: "failed",
   CANCELED: "canceled",

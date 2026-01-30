@@ -4,12 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 
+	"github.com/certimate-go/certimate/internal/app"
+	"github.com/certimate-go/certimate/internal/domain"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
-	"github.com/usual2970/certimate/internal/app"
-	"github.com/usual2970/certimate/internal/domain"
 )
 
 type WorkflowRepository struct{}
@@ -18,13 +17,13 @@ func NewWorkflowRepository() *WorkflowRepository {
 	return &WorkflowRepository{}
 }
 
-func (r *WorkflowRepository) ListEnabledAuto(ctx context.Context) ([]*domain.Workflow, error) {
+func (r *WorkflowRepository) ListEnabledScheduled(ctx context.Context) ([]*domain.Workflow, error) {
 	records, err := app.GetApp().FindRecordsByFilter(
 		domain.CollectionNameWorkflow,
 		"enabled={:enabled} && trigger={:trigger}",
 		"-created",
 		0, 0,
-		dbx.Params{"enabled": true, "trigger": string(domain.WorkflowTriggerTypeAuto)},
+		dbx.Params{"enabled": true, "trigger": string(domain.WorkflowTriggerTypeScheduled)},
 	)
 	if err != nil {
 		return nil, err
@@ -79,10 +78,11 @@ func (r *WorkflowRepository) Save(ctx context.Context, workflow *domain.Workflow
 	record.Set("trigger", string(workflow.Trigger))
 	record.Set("triggerCron", workflow.TriggerCron)
 	record.Set("enabled", workflow.Enabled)
-	record.Set("content", workflow.Content)
-	record.Set("draft", workflow.Draft)
+	record.Set("graphDraft", workflow.GraphDraft)
+	record.Set("graphContent", workflow.GraphContent)
 	record.Set("hasDraft", workflow.HasDraft)
-	record.Set("lastRunId", workflow.LastRunId)
+	record.Set("hasContent", workflow.HasContent)
+	record.Set("lastRunRef", workflow.LastRunId)
 	record.Set("lastRunStatus", string(workflow.LastRunStatus))
 	record.Set("lastRunTime", workflow.LastRunTime)
 	if err := app.GetApp().Save(record); err != nil {
@@ -97,17 +97,17 @@ func (r *WorkflowRepository) Save(ctx context.Context, workflow *domain.Workflow
 
 func (r *WorkflowRepository) castRecordToModel(record *core.Record) (*domain.Workflow, error) {
 	if record == nil {
-		return nil, fmt.Errorf("record is nil")
+		return nil, errors.New("the record is nil")
 	}
 
-	content := &domain.WorkflowNode{}
-	if err := record.UnmarshalJSONField("content", content); err != nil {
-		return nil, err
+	graphDraft := &domain.WorkflowGraph{}
+	if err := record.UnmarshalJSONField("graphDraft", graphDraft); err != nil {
+		return nil, errors.New("field 'graphDraft' is malformed")
 	}
 
-	draft := &domain.WorkflowNode{}
-	if err := record.UnmarshalJSONField("draft", draft); err != nil {
-		return nil, err
+	graphContent := &domain.WorkflowGraph{}
+	if err := record.UnmarshalJSONField("graphContent", graphContent); err != nil {
+		return nil, errors.New("field 'graphContent' is malformed")
 	}
 
 	workflow := &domain.Workflow{
@@ -121,10 +121,11 @@ func (r *WorkflowRepository) castRecordToModel(record *core.Record) (*domain.Wor
 		Trigger:       domain.WorkflowTriggerType(record.GetString("trigger")),
 		TriggerCron:   record.GetString("triggerCron"),
 		Enabled:       record.GetBool("enabled"),
-		Content:       content,
-		Draft:         draft,
+		GraphDraft:    graphDraft,
+		GraphContent:  graphContent,
 		HasDraft:      record.GetBool("hasDraft"),
-		LastRunId:     record.GetString("lastRunId"),
+		HasContent:    record.GetBool("hasContent"),
+		LastRunId:     record.GetString("lastRunRef"),
 		LastRunStatus: domain.WorkflowRunStatusType(record.GetString("lastRunStatus")),
 		LastRunTime:   record.GetDateTime("lastRunTime").Time(),
 	}

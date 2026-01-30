@@ -1,7 +1,5 @@
-﻿package dtos
-
-import "github.com/usual2970/certimate/internal/domain"
+package dtos
 
 type NotifyTestPushReq struct {
-	Channel domain.NotifyChannelType `json:"channel"`
+	Provider string `json:"provider"`
 }

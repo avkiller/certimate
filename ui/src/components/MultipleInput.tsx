@@ -1,16 +1,11 @@
 ﻿import { type ChangeEvent, forwardRef, useImperativeHandle, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  ArrowDownOutlined as ArrowDownOutlinedIcon,
-  ArrowUpOutlined as ArrowUpOutlinedIcon,
-  MinusOutlined as MinusOutlinedIcon,
-  PlusOutlined as PlusOutlinedIcon,
-} from "@ant-design/icons";
+import { IconCircleArrowDown, IconCircleArrowUp, IconCircleMinus, IconCirclePlus } from "@tabler/icons-react";
 import { useControllableValue } from "ahooks";
-import { Button, Input, type InputProps, type InputRef, Space } from "antd";
+import { Button, Input, type InputProps, type InputRef } from "antd";
 import { produce } from "immer";
 
-export type MultipleInputProps = Omit<InputProps, "count" | "defaultValue" | "showCount" | "value" | "onChange" | "onPressEnter" | "onClear"> & {
+export interface MultipleInputProps extends Omit<InputProps, "count" | "defaultValue" | "showCount" | "value" | "onChange" | "onPressEnter" | "onClear"> {
   allowClear?: boolean;
   defaultValue?: string[];
   maxCount?: number;
@@ -22,7 +17,7 @@ export type MultipleInputProps = Omit<InputProps, "count" | "defaultValue" | "sh
   onValueCreate?: (index: number) => void;
   onValueRemove?: (index: number) => void;
   onValueSort?: (oldIndex: number, newIndex: number) => void;
-};
+}
 
 const MultipleInput = ({
   allowClear = false,
@@ -129,7 +124,7 @@ const MultipleInput = ({
       {t("common.button.add")}
     </Button>
   ) : (
-    <Space className="w-full" direction="vertical" size="small">
+    <div className="flex flex-col gap-2">
       {Array.from(value).map((element, index) => {
         const allowUp = index > 0;
         const allowDown = index < value.length - 1;
@@ -147,19 +142,19 @@ const MultipleInput = ({
             allowRemove={allowRemove}
             allowUp={allowUp}
             disabled={disabled}
-            defaultValue={undefined}
+            defaultValue={void 0}
             showSortButton={showSortButton}
             value={element}
             onBlur={() => handleInputBlur(index)}
             onChange={(val) => handleChange(index, val)}
-            onClickAdd={() => handleClickAdd(index)}
-            onClickDown={() => handleClickDown(index)}
-            onClickUp={() => handleClickUp(index)}
-            onClickRemove={() => handleClickRemove(index)}
+            onEntryAdd={() => handleClickAdd(index)}
+            onEntryDown={() => handleClickDown(index)}
+            onEntryUp={() => handleClickUp(index)}
+            onEntryRemove={() => handleClickRemove(index)}
           />
         );
       })}
-    </Space>
+    </div>
   );
 };
 
@@ -174,10 +169,10 @@ type MultipleInputItemProps = Omit<
   defaultValue?: string;
   value?: string;
   onChange?: (value: string) => void;
-  onClickAdd?: () => void;
-  onClickDown?: () => void;
-  onClickUp?: () => void;
-  onClickRemove?: () => void;
+  onEntryAdd?: () => void;
+  onEntryDown?: () => void;
+  onEntryUp?: () => void;
+  onEntryRemove?: () => void;
 };
 
 type MultipleInputItemInstance = {
@@ -196,11 +191,10 @@ const MultipleInputItem = forwardRef<MultipleInputItemInstance, MultipleInputIte
       allowUp,
       disabled,
       showSortButton,
-      size,
-      onClickAdd,
-      onClickDown,
-      onClickUp,
-      onClickRemove,
+      onEntryAdd,
+      onEntryDown,
+      onEntryUp,
+      onEntryRemove,
       ...props
     }: MultipleInputItemProps,
     ref
@@ -216,18 +210,18 @@ const MultipleInputItem = forwardRef<MultipleInputItemInstance, MultipleInputIte
 
     const upBtn = useMemo(() => {
       if (!showSortButton) return null;
-      return <Button icon={<ArrowUpOutlinedIcon />} color="default" disabled={disabled || !allowUp} type="text" onClick={onClickUp} />;
-    }, [allowUp, disabled, showSortButton, onClickUp]);
+      return <Button icon={<IconCircleArrowUp size="1.25em" />} color="default" disabled={disabled || !allowUp} type="text" onClick={onEntryUp} />;
+    }, [allowUp, disabled, showSortButton, onEntryUp]);
     const downBtn = useMemo(() => {
       if (!showSortButton) return null;
-      return <Button icon={<ArrowDownOutlinedIcon />} color="default" disabled={disabled || !allowDown} type="text" onClick={onClickDown} />;
-    }, [allowDown, disabled, showSortButton, onClickDown]);
+      return <Button icon={<IconCircleArrowDown size="1.25em" />} color="default" disabled={disabled || !allowDown} type="text" onClick={onEntryDown} />;
+    }, [allowDown, disabled, showSortButton, onEntryDown]);
     const removeBtn = useMemo(() => {
-      return <Button icon={<MinusOutlinedIcon />} color="default" disabled={disabled || !allowRemove} type="text" onClick={onClickRemove} />;
-    }, [allowRemove, disabled, onClickRemove]);
+      return <Button icon={<IconCircleMinus size="1.25em" />} color="default" disabled={disabled || !allowRemove} type="text" onClick={onEntryRemove} />;
+    }, [allowRemove, disabled, onEntryRemove]);
     const addBtn = useMemo(() => {
-      return <Button icon={<PlusOutlinedIcon />} color="default" disabled={disabled || !allowAdd} type="text" onClick={onClickAdd} />;
-    }, [allowAdd, disabled, onClickAdd]);
+      return <Button icon={<IconCirclePlus size="1.25em" />} color="default" disabled={disabled || !allowAdd} type="text" onClick={onEntryAdd} />;
+    }, [allowAdd, disabled, onEntryAdd]);
 
     const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
       setValue(e.target.value);
@@ -251,20 +245,20 @@ const MultipleInputItem = forwardRef<MultipleInputItemInstance, MultipleInputIte
           <Input
             {...props}
             ref={inputRef}
-            className={undefined}
-            style={undefined}
+            className={void 0}
+            style={void 0}
             allowClear={allowClear}
-            defaultValue={undefined}
+            defaultValue={void 0}
             value={value}
             onChange={handleInputChange}
           />
         </div>
-        <Space.Compact size={size}>
+        <div className="flex items-center justify-end">
           {removeBtn}
           {upBtn}
           {downBtn}
           {addBtn}
-        </Space.Compact>
+        </div>
       </div>
     );
   }

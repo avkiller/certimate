@@ -1,0 +1,27 @@
+name: Release Sync to Gitee
+
+on:
+  # release:
+  #   types: [published, unpublished, deleted]
+  workflow_dispatch:
+
+jobs:
+  sync-to-gitee:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python3
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Run script
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+        run: |
+          cd .github/workflows
+          python ./release_sync_gitee.py

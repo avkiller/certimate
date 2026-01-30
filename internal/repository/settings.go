@@ -5,9 +5,9 @@ import (
 	"database/sql"
 	"errors"
 
+	"github.com/certimate-go/certimate/internal/app"
+	"github.com/certimate-go/certimate/internal/domain"
 	"github.com/pocketbase/dbx"
-	"github.com/usual2970/certimate/internal/app"
-	"github.com/usual2970/certimate/internal/domain"
 )
 
 type SettingsRepository struct{}
@@ -29,6 +29,11 @@ func (r *SettingsRepository) GetByName(ctx context.Context, name string) (*domai
 		return nil, err
 	}
 
+	content := make(map[string]any)
+	if err := record.UnmarshalJSONField("content", &content); err != nil {
+		return nil, errors.New("field 'content' is malformed")
+	}
+
 	settings := &domain.Settings{
 		Meta: domain.Meta{
 			Id:        record.Id,
@@ -36,7 +41,7 @@ func (r *SettingsRepository) GetByName(ctx context.Context, name string) (*domai
 			UpdatedAt: record.GetDateTime("updated").Time(),
 		},
 		Name:    record.GetString("name"),
-		Content: record.GetString("content"),
+		Content: content,
 	}
 	return settings, nil
 }

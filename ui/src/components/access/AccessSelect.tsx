@@ -1,75 +1,76 @@
 import { useEffect, useState } from "react";
-import { Avatar, Select, type SelectProps, Space, Typography } from "antd";
+import { useMount } from "ahooks";
+import { Avatar, Select, type SelectProps, Typography, theme } from "antd";
 
 import { type AccessModel } from "@/domain/access";
 import { accessProvidersMap } from "@/domain/provider";
 import { useZustandShallowSelector } from "@/hooks";
 import { useAccessesStore } from "@/stores/access";
 
-export type AccessTypeSelectProps = Omit<
-  SelectProps,
-  "filterOption" | "filterSort" | "labelRender" | "loading" | "options" | "optionFilterProp" | "optionLabelProp" | "optionRender"
-> & {
-  filter?: (record: AccessModel) => boolean;
-};
+export interface AccessTypeSelectProps
+  extends Omit<SelectProps, "filterOption" | "filterSort" | "labelRender" | "loading" | "options" | "optionFilterProp" | "optionLabelProp" | "optionRender"> {
+  onFilter?: (value: string, option: AccessModel) => boolean;
+}
 
-const AccessSelect = ({ filter, ...props }: AccessTypeSelectProps) => {
+const AccessSelect = ({ onFilter, ...props }: AccessTypeSelectProps) => {
+  const { token: themeToken } = theme.useToken();
+
   const { accesses, loadedAtOnce, fetchAccesses } = useAccessesStore(useZustandShallowSelector(["accesses", "loadedAtOnce", "fetchAccesses"]));
-  useEffect(() => {
-    fetchAccesses();
-  }, []);
+  useMount(() => fetchAccesses(false));
 
   const [options, setOptions] = useState<Array<{ key: string; value: string; label: string; data: AccessModel }>>([]);
   useEffect(() => {
-    const items = filter != null ? accesses.filter(filter) : accesses;
+    const filteredItems = onFilter != null ? accesses.filter((item) => onFilter(item.id, item)) : accesses;
     setOptions(
-      items.map((item) => ({
+      filteredItems.map((item) => ({
         key: item.id,
         value: item.id,
         label: item.name,
         data: item,
       }))
     );
-  }, [accesses, filter]);
+  }, [accesses, onFilter]);
 
   const renderOption = (key: string) => {
     const access = accesses.find((e) => e.id === key);
     if (!access) {
       return (
-        <Space className="max-w-full grow truncate" size={4}>
-          <Avatar size="small" />
-          <Typography.Text className="leading-loose" ellipsis>
-            {key}
-          </Typography.Text>
-        </Space>
+        <div className="flex items-center gap-2 truncate overflow-hidden">
+          <Avatar shape="square" size="small" />
+          <Typography.Text ellipsis>{key}</Typography.Text>
+        </div>
       );
     }
 
     const provider = accessProvidersMap.get(access.provider);
     return (
-      <Space className="max-w-full grow truncate" size={4}>
-        <Avatar src={provider?.icon} size="small" />
-        <Typography.Text className="leading-loose" ellipsis>
-          {access.name}
-        </Typography.Text>
-      </Space>
+      <div className="flex items-center gap-2 truncate overflow-hidden">
+        <Avatar shape="square" src={provider?.icon} size="small" />
+        <Typography.Text ellipsis>{access.name}</Typography.Text>
+      </div>
     );
   };
 
   return (
     <Select
       {...props}
-      labelRender={({ label, value }) => {
-        if (label) {
+      filterOption={(inputValue, option) => {
+        if (!option) return false;
+
+        const value = inputValue.toLowerCase();
+        return option.label.toLowerCase().includes(value);
+      }}
+      labelRender={({ value }) => {
+        if (value != null) {
           return renderOption(value as string);
         }
 
-        return <Typography.Text type="secondary">{props.placeholder}</Typography.Text>;
+        return <span style={{ color: themeToken.colorTextPlaceholder }}>{props.placeholder}</span>;
       }}
       loading={!loadedAtOnce}
       options={options}
       optionFilterProp="label"
-      optionLabelProp={undefined}
+      optionLabelProp={void 0}
       optionRender={(option) => renderOption(option.data.value)}
     />
   );

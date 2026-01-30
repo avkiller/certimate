@@ -4,55 +4,39 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 
-	"github.com/go-acme/lego/v4/registration"
+	"github.com/go-acme/lego/v4/acme"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
-	"golang.org/x/sync/singleflight"
 
-	"github.com/usual2970/certimate/internal/app"
-	"github.com/usual2970/certimate/internal/domain"
+	"github.com/certimate-go/certimate/internal/app"
+	"github.com/certimate-go/certimate/internal/domain"
 )
 
-type AcmeAccountRepository struct{}
+type ACMEAccountRepository struct{}
 
-func NewAcmeAccountRepository() *AcmeAccountRepository {
-	return &AcmeAccountRepository{}
+func NewACMEAccountRepository() *ACMEAccountRepository {
+	return &ACMEAccountRepository{}
 }
 
-var g singleflight.Group
-
-func (r *AcmeAccountRepository) GetByCAAndEmail(ca, email string) (*domain.AcmeAccount, error) {
-	resp, err, _ := g.Do(fmt.Sprintf("acme_account_%s_%s", ca, email), func() (interface{}, error) {
-		resp, err := app.GetApp().FindFirstRecordByFilter(
-			domain.CollectionNameAcmeAccount,
-			"ca={:ca} && email={:email}",
-			dbx.Params{"ca": ca, "email": email},
-		)
-		if err != nil {
-			return nil, err
-		}
-		return resp, nil
-	})
+func (r *ACMEAccountRepository) GetByCAAndEmail(ctx context.Context, ca, caDirUrl, email string) (*domain.ACMEAccount, error) {
+	record, err := app.GetApp().FindFirstRecordByFilter(
+		domain.CollectionNameACMEAccount,
+		"ca={:ca} && acmeDirUrl={:acmeDirUrl} && email={:email}",
+		dbx.Params{"ca": ca, "acmeDirUrl": caDirUrl, "email": email},
+	)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, domain.ErrRecordNotFound
+		}
 		return nil, err
-	}
-
-	if resp == nil {
-		return nil, domain.ErrRecordNotFound
-	}
-
-	record, ok := resp.(*core.Record)
-	if !ok {
-		return nil, domain.ErrRecordNotFound
 	}
 
 	return r.castRecordToModel(record)
 }
 
-func (r *AcmeAccountRepository) Save(ctx context.Context, acmeAccount *domain.AcmeAccount) (*domain.AcmeAccount, error) {
-	collection, err := app.GetApp().FindCollectionByNameOrId(domain.CollectionNameAcmeAccount)
+func (r *ACMEAccountRepository) Save(ctx context.Context, acmeAccount *domain.ACMEAccount) (*domain.ACMEAccount, error) {
+	collection, err := app.GetApp().FindCollectionByNameOrId(domain.CollectionNameACMEAccount)
 	if err != nil {
 		return acmeAccount, err
 	}
@@ -72,8 +56,10 @@ func (r *AcmeAccountRepository) Save(ctx context.Context, acmeAccount *domain.Ac
 
 	record.Set("ca", acmeAccount.CA)
 	record.Set("email", acmeAccount.Email)
-	record.Set("key", acmeAccount.Key)
-	record.Set("resource", acmeAccount.Resource)
+	record.Set("privateKey", acmeAccount.PrivateKey)
+	record.Set("acmeAccount", acmeAccount.ACMEAccount)
+	record.Set("acmeAcctUrl", acmeAccount.ACMEAcctUrl)
+	record.Set("acmeDirUrl", acmeAccount.ACMEDirUrl)
 	if err := app.GetApp().Save(record); err != nil {
 		return acmeAccount, err
 	}
@@ -84,26 +70,28 @@ func (r *AcmeAccountRepository) Save(ctx context.Context, acmeAccount *domain.Ac
 	return acmeAccount, nil
 }
 
-func (r *AcmeAccountRepository) castRecordToModel(record *core.Record) (*domain.AcmeAccount, error) {
+func (r *ACMEAccountRepository) castRecordToModel(record *core.Record) (*domain.ACMEAccount, error) {
 	if record == nil {
-		return nil, fmt.Errorf("record is nil")
+		return nil, errors.New("the record is nil")
 	}
 
-	resource := &registration.Resource{}
-	if err := record.UnmarshalJSONField("resource", resource); err != nil {
-		return nil, err
+	account := &acme.Account{}
+	if err := record.UnmarshalJSONField("acmeAccount", account); err != nil {
+		return nil, errors.New("field 'acmeAccount' is malformed")
 	}
 
-	acmeAccount := &domain.AcmeAccount{
+	acmeAccount := &domain.ACMEAccount{
 		Meta: domain.Meta{
 			Id:        record.Id,
 			CreatedAt: record.GetDateTime("created").Time(),
 			UpdatedAt: record.GetDateTime("updated").Time(),
 		},
-		CA:       record.GetString("ca"),
-		Email:    record.GetString("email"),
-		Key:      record.GetString("key"),
-		Resource: resource,
+		CA:          record.GetString("ca"),
+		Email:       record.GetString("email"),
+		PrivateKey:  record.GetString("privateKey"),
+		ACMEAccount: account,
+		ACMEAcctUrl: record.GetString("acmeAcctUrl"),
+		ACMEDirUrl:  record.GetString("acmeDirUrl"),
 	}
 	return acmeAccount, nil
 }
