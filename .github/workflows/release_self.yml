@@ -5,6 +5,12 @@ on:
     tags:
       - "v[0-9]*"
   workflow_dispatch:
+    inputs:
+      version:
+        type: string
+        description: 'release tags(Default: v0.4.15)'
+        required: false
+        default: 'v0.4.15'
 
 jobs:
   prepare-ui:
@@ -56,8 +62,13 @@ jobs:
         env:
           CGO_ENABLED: 0
           GOOS: linux
+          VERSION: ${{ inputs.version }}
         run: |
           mkdir -p dist/linux
+          if [ "$GITHUB_EVENT_NAME" != "workflow_dispatch" ]; then
+            # 使用当前的tags
+            VERSION = "GITHUB_REF#refs/tags/"
+          fi
           for ARCH in amd64 arm64 armv7; do
             if [ "$ARCH" == "armv7" ]; then
               go env -w GOARCH=arm
@@ -66,7 +77,8 @@ jobs:
               go env -w GOARCH=$ARCH
               go env -u GOARM
             fi
-            go build -trimpath -ldflags="-s -w" -o dist/linux/certimate_${GITHUB_REF#refs/tags/}_linux_$ARCH
+            
+            go build -trimpath -ldflags="-s -w" -o dist/linux/certimate_${VERSION}_linux_$ARCH
           done
 
       - name: Upload Linux binaries
@@ -100,11 +112,16 @@ jobs:
         env:
           CGO_ENABLED: 0
           GOOS: darwin
+          VERSION: ${{ inputs.version }}
         run: |
           mkdir -p dist/darwin
+          if [ "$GITHUB_EVENT_NAME" != "workflow_dispatch" ]; then
+            # 使用当前的tags
+            VERSION = "GITHUB_REF#refs/tags/"
+          fi
           for ARCH in amd64 arm64; do
             go env -w GOARCH=$ARCH
-            go build -trimpath -ldflags="-s -w" -o dist/darwin/certimate_${GITHUB_REF#refs/tags/}_darwin_$ARCH
+            go build -trimpath -ldflags="-s -w" -o dist/darwin/certimate_${VERSION}_darwin_$ARCH
           done
 
       - name: Upload macOS binaries
@@ -138,11 +155,17 @@ jobs:
         env:
           CGO_ENABLED: 0
           GOOS: windows
+          VERSION: ${{ inputs.version }}
         run: |
           mkdir -p dist/windows
+          if [ "$GITHUB_EVENT_NAME" != "workflow_dispatch" ]; then
+            # 使用当前的tags
+            VERSION = "GITHUB_REF#refs/tags/"
+          fi
+          if
           for ARCH in amd64 arm64 386; do
             go env -w GOARCH=$ARCH
-            go build -trimpath -ldflags="-s -w" -o dist/windows/certimate_${GITHUB_REF#refs/tags/}_windows_$ARCH.exe
+            go build -trimpath -ldflags="-s -w" -o dist/windows/certimate_${VERSION}_windows_$ARCH.exe
           done
 
       - name: Upload Windows binaries
