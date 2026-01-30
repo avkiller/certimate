@@ -1,90 +1,138 @@
-import { useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
+import { IconArrowRight, IconLock, IconMail } from "@tabler/icons-react";
+import { App, Button, Card, Divider, Form, Input, Space } from "antd";
+import { createSchemaFieldRule } from "antd-zod";
 import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
 
-import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { getErrMessage } from "@/lib/error";
-import { getPb } from "@/repository/api";
+import AppDocument from "@/components/AppDocument";
+import AppLocale from "@/components/AppLocale";
+import AppTheme from "@/components/AppTheme";
+import AppVersion from "@/components/AppVersion";
+import { useAntdForm, useBrowserTheme } from "@/hooks";
 
-const formSchema = z.object({
-  username: z.string().email({
-    message: "login.username.errmsg.invalid",
-  }),
-  password: z.string().min(10, {
-    message: "login.password.errmsg.invalid",
-  }),
-});
+import { authWithPassword } from "@/repository/admin";
+import { unwrapErrMsg } from "@/utils/error";
 
 const Login = () => {
+  const navigage = useNavigate();
+
   const { t } = useTranslation();
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
+  const { notification } = App.useApp();
+  const { theme: browserTheme } = useBrowserTheme();
+
+  const bgStyle = useMemo<React.CSSProperties>(() => {
+    let svg = "";
+    let mask = "";
+    if (browserTheme === "dark") {
+      svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" fill="none" stroke="rgb(202 78 13 / 0.12)"><path d="M0 .5H31.5V32"/></svg>`;
+      mask = "white";
+    } else {
+      svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" fill="none" stroke="rgb(249 115 22 / 0.08)"><path d="M0 .5H31.5V32"/></svg>`;
+      mask = "black";
+    }
+
+    return {
+      backgroundImage: `url('data:image/svg+xml;base64,${btoa(svg)}')`,
+      maskImage: `linear-gradient(to bottom right, transparent, ${mask}, transparent)`,
+    };
+  }, [browserTheme]);
+
+  const formSchema = z.object({
+    username: z.email(t("login.username.errmsg.invalid")),
+    password: z.string().min(10, t("login.password.errmsg.invalid")),
+  });
+  const formRule = createSchemaFieldRule(formSchema);
+  const {
+    form: formInst,
+    formPending,
+    formProps,
+  } = useAntdForm<z.infer<typeof formSchema>>({
+    initialValues: {
       username: "",
       password: "",
     },
+    onSubmit: async (values) => {
+      try {
+        await authWithPassword(values.username, values.password);
+        await navigage("/");
+      } catch (err) {
+        notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
+
+        throw err;
+      }
+    },
   });
 
-  // 2. Define a submit handler.
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    try {
-      await getPb().admins.authWithPassword(values.username, values.password);
-      navigage("/");
-    } catch (e) {
-      const message = getErrMessage(e);
-      form.setError("username", { message });
-      form.setError("password", { message });
-    }
-  };
-
-  const navigage = useNavigate();
   return (
-    <div className="max-w-[35em] border dark:border-stone-500 mx-auto mt-32 p-10 rounded-md shadow-md">
-      <div className="flex justify-center mb-10">
-        <img src="/vite.svg" className="w-16" />
-      </div>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 dark:text-stone-200">
-          <FormField
-            control={form.control}
-            name="username"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t("login.username.label")}</FormLabel>
-                <FormControl>
-                  <Input placeholder={t("login.username.placeholder")} {...field} />
-                </FormControl>
+    <>
+      <div className="pointer-events-none fixed min-h-screen w-full" style={bgStyle}></div>
 
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+      <div className="flex h-screen w-full flex-col items-center justify-center">
+        <Card className="w-120 max-w-full rounded-md shadow-md max-sm:h-full max-sm:w-full max-sm:rounded-none">
+          <div className="px-4 py-8">
+            <div className="mb-12 flex items-center justify-center">
+              <img src="/logo.svg" className="w-16" />
+            </div>
 
-          <FormField
-            control={form.control}
-            name="password"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>{t("login.password.label")}</FormLabel>
-                <FormControl>
-                  <Input placeholder={t("login.password.placeholder")} {...field} type="password" />
-                </FormControl>
+            <Form {...formProps} form={formInst} disabled={formPending} layout="vertical" validateTrigger="onBlur">
+              <Form.Item name="username" label={t("login.username.label")} rules={[formRule]}>
+                <Space.Compact block>
+                  <Space.Addon>
+                    <IconMail size="1.25em" />
+                  </Space.Addon>
+                  <Input autoComplete="new-password" autoFocus placeholder={t("login.username.placeholder")} size="large" />
+                </Space.Compact>
+              </Form.Item>
 
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <div className="flex justify-end">
-            <Button type="submit">{t("login.submit")}</Button>
+              <Form.Item name="password" label={t("login.password.label")} rules={[formRule]}>
+                <Space.Compact block>
+                  <Space.Addon>
+                    <IconLock size="1.25em" />
+                  </Space.Addon>
+                  <Input.Password autoComplete="new-password" placeholder={t("login.password.placeholder")} size="large" />
+                </Space.Compact>
+              </Form.Item>
+
+              <Form.Item className="mt-8 mb-0">
+                <Button block type="primary" htmlType="submit" icon={<IconArrowRight size="1.25em" />} iconPlacement="end" loading={formPending} size="large">
+                  {t("login.submit")}
+                </Button>
+              </Form.Item>
+            </Form>
+
+            <div className="mt-12">
+              <div className="block max-sm:hidden">
+                <div className="flex items-center justify-center">
+                  <Space align="center" separator={<Divider orientation="vertical" />} size={4}>
+                    <AppLocale.LinkButton />
+                    <AppTheme.LinkButton />
+                    <AppDocument.LinkButton />
+                    <AppVersion.LinkButton />
+                  </Space>
+                </div>
+              </div>
+              <div className="hidden max-sm:block">
+                <div className="flex items-center justify-center">
+                  <Space align="center" separator={<Divider orientation="vertical" />} size={4}>
+                    <AppLocale.LinkButton />
+                    <AppTheme.LinkButton />
+                    <AppDocument.LinkButton />
+                  </Space>
+                </div>
+                <div className="mt-6 flex items-center justify-center">
+                  <Space align="center" separator={<Divider orientation="vertical" />} size={4}>
+                    <AppVersion.LinkButton />
+                  </Space>
+                </div>
+              </div>
+            </div>
           </div>
-        </form>
-      </Form>
-    </div>
+        </Card>
+      </div>
+    </>
   );
 };
 

@@ -1,14 +1,17 @@
-import { Resource } from "i18next";
+import { type Resource } from "i18next";
 
-import zh from "./zh";
 import en from "./en";
+import zh from "./zh";
+
+export const LOCALE_ZH_NAME = "zh" as const;
+export const LOCALE_EN_NAME = "en" as const;
 
 const resources: Resource = {
-  zh: {
+  [LOCALE_ZH_NAME]: {
     name: "简体中文",
     translation: zh,
   },
-  en: {
+  [LOCALE_EN_NAME]: {
     name: "English",
     translation: en,
   },

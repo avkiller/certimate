@@ -1,22 +1,29 @@
-import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
-import LanguageDetector from "i18next-browser-languagedetector";
+import i18n from "i18next";
+import i18nBrowserLanguageDetector from "i18next-browser-languagedetector";
 
-import resources from "./locales";
+import resources, { LOCALE_EN_NAME, LOCALE_ZH_NAME } from "./locales";
 
 i18n
-  .use(LanguageDetector)
+  .use(i18nBrowserLanguageDetector)
   .use(initReactI18next)
   .init({
     resources,
-    fallbackLng: "zh",
+    fallbackLng: LOCALE_EN_NAME,
     debug: true,
     interpolation: {
       escapeValue: false,
     },
-    backend: {
-      loadPath: "/locales/{{lng}}.json",
+    detection: {
+      lookupLocalStorage: "certimate-ui-lang",
     },
   });
+
+export const localeNames = {
+  ZH: LOCALE_ZH_NAME,
+  EN: LOCALE_EN_NAME,
+};
+
+export const localeResources = resources;
 
 export default i18n;

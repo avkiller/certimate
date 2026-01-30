@@ -1,0 +1,13 @@
+package baishancdn
+
+const (
+	// 资源类型：替换指定域名的证书。
+	RESOURCE_TYPE_DOMAIN = "domain"
+	// 资源类型：替换指定证书。
+	RESOURCE_TYPE_CERTIFICATE = "certificate"
+)
+
+const (
+	// 匹配模式：精确匹配。
+	DOMAIN_MATCH_PATTERN_EXACT = "exact"
+)

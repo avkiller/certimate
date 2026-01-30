@@ -1,0 +1,51 @@
+name: "💡 Feature Request"
+description: "Suggest an idea for this project. / 提出新功能请求或改进意见。"
+title: "[Feature] Describe the feature briefly / 简要描述你希望实现的功能"
+type: feature
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Before you submit the issue, please make sure of the following checklist**:
+        1. Yes, I'm using the latest release.
+        2. Yes, I've searched for [existing issues](https://github.com/certimate-go/certimate/issues) (including closed ones) on GitHub and didn't find any similar.
+        3. Yes, I've read the [documentation](https://docs.certimate.me/) and didn't find any similar.
+        4. Please describe the problem in detail according to the template specification, otherwise the issue will be closed directly.
+        5. Please limit one request per issue.
+
+        **在提交 Issue 之前，请确认以下事项**：
+        1. 我**确认**是基于当前最新大版本而提出的新功能请求或改进意见。
+        2. 我**确认**已搜索过[已有的 Issues](https://github.com/certimate-go/certimate/issues)（包括已关闭的），没有类似的问题。
+        3. 我**确认**已阅读过[文档](https://docs.certimate.me/)，没有类似的问题。
+        4. 请**务必**按照模板规范详细描述问题，否则 Issue 将会被直接关闭。
+        5. 请保持每个 Issue 只包含一个功能请求。如果有多个需求，请分别提交 Issue。
+
+  - type: textarea
+    attributes:
+      label: Description / 功能描述
+      description: Describe the feature you'd like to add in detail and clearly, and upload screenshots if possible. / 请详细清晰地描述你希望添加的功能，如果可能请上传截图。
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Motivation / 请求动机
+      description: Why is this feature helpful to the project? / 为什么这个功能对项目有帮助？
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Miscellaneous / 其他
+      description: Add any other context about the problem here. / 在此处添加关于该 Issue 的任何其他信息（新增提供商请求请补充 API 文档链接等资料）。
+    validations:
+      required: false
+
+  - type: checkboxes
+    attributes:
+      label: Contribution / 贡献代码
+      options:
+        - label: I am interested in contributing a PR for this! / 我乐意为此提交代码并发起 PR！
+          required: false

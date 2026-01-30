@@ -1,76 +1,112 @@
-# 向 Certimate 贡献代码
+# Contribution Guide
 
-感谢你抽出时间来改进 Certimate！以下是向 Certimate 主仓库提交 PR（Pull Request）时的操作指南。
+<div align="center">
 
-- [向 Certimate 贡献代码](#向-certimate-贡献代码)
-  - [前提条件](#前提条件)
-  - [修改 Go 代码](#修改-go-代码)
-  - [修改管理页面 (Admin UI)](#修改管理页面-admin-ui)
+English ｜ [简体中文](CONTRIBUTING_zh.md)
 
-## 前提条件
+</div>
 
-- Go 1.22+ (用于修改 Go 代码)
-- Node 20+ (用于修改 UI)
+Thank you for taking the time to improve Certimate! Below is a guide for submitting a PR (Pull Request) to the Certimate repository.
 
-如果还没有这样做，你可以 fork Certimate 的主仓库，并克隆到本地以便进行修改：
+We need to be nimble and ship fast given where we are, but we also want to make sure that contributors like you get as smooth an experience at contributing as possible. We've assembled this contribution guide for that purpose, aiming at getting you familiarized with the codebase & how we work with contributors, so you could quickly jump to the fun part.
 
-```bash
-git clone https://github.com/your_username/certimate.git
-```
+Index:
 
-> **重要提示：**
-> 建议为每个 Bug 修复或新功能创建一个从 `main` 分支派生的新分支。如果你计划提交多个 PR，请保持不同的改动在独立分支中，以便更容易进行代码审查并最终合并。
-> 保持一个 PR 只实现一个功能。
+- [Development](#development)
+  - [Prerequisites](#prerequisites)
+  - [Backend Code](#backend-code)
+  - [Frontend Code](#frontend-code)
+- [Submitting PR](#submitting-pr)
+  - [Pull Request Process](#pull-request-process)
+- [Getting Help](#getting-help)
 
-## 修改 Go 代码
+---
 
-假设你已经对 Certimate 的 Go 代码做了一些修改，现在你想要运行它：
+## Development
 
-1. 进入根目录
-2. 运行以下命令启动服务：
+### Prerequisites
 
+- Go 1.25+ (for backend code changes)
+- Node.js 22.12+ (for frontend code changes)
+
+### Backend Code
+
+The backend code of Certimate is developed using Golang. It is a monolithic application based on [Pocketbase](https://github.com/pocketbase/pocketbase).
+
+Once you have made changes to the backend code in Certimate, follow these steps to run the project:
+
+1. Navigate to the root directory.
+2. Install dependencies:
+   ```bash
+   go mod vendor
+   ```
+3. Start the local development server:
    ```bash
    go run main.go serve
    ```
 
-这将启动一个 Web 服务器，默认运行在 `http://localhost:8090`，并使用来自 `ui/dist` 的预构建管理页面。
+This will start a web server at `http://localhost:8090` using the prebuilt WebUI located in `/ui/dist`.
 
-**在向主仓库提交 PR 之前，建议你：**
+> If you encounter an error `ui/embed.go: pattern all:dist: no matching files found`, please refer to _[Frontend Code](#frontend-code)_ and build WebUI first.
 
-- 使用 [gofumpt](https://github.com/mvdan/gofumpt) 对你的代码进行格式化。
+**Before submitting a PR to the main repository, you should:**
 
-- 为你的改动添加单元测试或集成测试（Certimate 使用 Go 的标准 `testing` 包）。你可以通过以下命令运行测试（在项目根目录下）：
+- Format your source code by using [gofumpt](https://github.com/mvdan/gofumpt). Recommended using VSCode and installing the gofumpt plugin to automatically format when saving.
+- Adding unit or integration tests for your changes (with go standard library `testing` package).
 
-  ```bash
-  go test ./...
-  ```
+### Frontend Code
 
-## 修改管理页面 (Admin UI)
+The frontend code of Certimate is developed using TypeScript. It is a SPA based on [React](https://github.com/facebook/react) and [Vite](https://github.com/vitejs/vite).
 
-Certimate 的管理页面是一个基于 React 和 Vite 构建的单页应用（SPA）。
+Once you have made changes to the backend code in Certimate, follow these steps to run the project:
 
-要启动 Admin UI：
-
-1. 进入 `ui` 项目目录。
-
-2. 运行 `npm install` 安装依赖。
-
-3. 启动 Vite 开发服务器：
-
+1. Navigate to the `/ui` directory.
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the local development server:
    ```bash
    npm run dev
    ```
 
-你可以通过浏览器访问 `http://localhost:5173` 来查看运行中的管理页面。
+This will start a web server at `http://localhost:5173`. You can now access the WebUI in your browser.
 
-由于 Admin UI 只是一个客户端应用，运行时需要 Certimate 的后端服务作为支撑。你可以手动运行 Certimate，或者使用预构建的可执行文件。
-
-所有对 Admin UI 的修改将会自动反映在浏览器中，无需手动刷新页面。
-
-完成修改后，运行以下命令来构建 Admin UI，以便它能被嵌入到 Go 包中：
+After completing your changes, build the WebUI so it can be embedded into the Go package:
 
 ```bash
 npm run build
 ```
 
-完成所有步骤后，你可以将改动提交 PR 到 Certimate 主仓库。
+**Before submitting a PR to the main repository, you should:**
+
+- Format your source code by using [ESLint](https://github.com/eslint/eslint). Recommended using VSCode and installing the ESLint plugin to automatically format when saving.
+
+## Submitting PR
+
+Before opening a Pull Request, please open an issue to discuss the change and get feedback from the maintainers. This will helps us:
+
+- To understand the context of the change.
+- To ensure it fits into Certimate's roadmap.
+- To prevent us from duplicating work.
+- To prevent you from spending time on a change that we may not be able to accept.
+
+### Pull Request Process
+
+1. Fork the repository, and then checkout `main` branch.
+2. Before you draft a PR, please open an issue to discuss the changes you want to make.
+3. Create a new branch for your changes.
+4. Please add tests for your changes accordingly.
+5. Ensure your code passes the existing tests.
+6. Please link the issue in the PR description.
+7. Get merged!
+
+> [!IMPORTANT]
+>
+> It is recommended to create a new branch from `main` for each bug fix or feature. If you plan to submit multiple PRs, ensure the changes are in separate branches for easier review and eventual merge.
+>
+> Keep each PR focused on a single feature or fix.
+
+## Getting Help
+
+If you ever get stuck or get a burning question while contributing, simply shoot your queries our way via the GitHub issues.

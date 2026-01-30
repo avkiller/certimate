@@ -5,12 +5,13 @@
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "explicit"
   },
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.defaultFormatter": "dbaeumer.vscode-eslint",
   "editor.formatOnSave": true,
   "go.useLanguageServer": true,
   "gopls": {
     "formatting.gofumpt": true,
   },
+  "typescript.tsdk": "ui/node_modules/typescript/lib",
   "[go]": {
     "editor.defaultFormatter": "golang.go"
   },

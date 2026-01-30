@@ -1,0 +1,25 @@
+package notifiers
+
+import (
+	"fmt"
+
+	"github.com/certimate-go/certimate/internal/domain"
+	"github.com/certimate-go/certimate/pkg/core/notifier"
+	slackbot "github.com/certimate-go/certimate/pkg/core/notifier/providers/slackbot"
+	xmaps "github.com/certimate-go/certimate/pkg/utils/maps"
+)
+
+func init() {
+	Registries.MustRegister(domain.NotificationProviderTypeSlackBot, func(options *ProviderFactoryOptions) (notifier.Provider, error) {
+		credentials := domain.AccessConfigForSlackBot{}
+		if err := xmaps.Populate(options.ProviderAccessConfig, &credentials); err != nil {
+			return nil, fmt.Errorf("failed to populate provider access config: %w", err)
+		}
+
+		provider, err := slackbot.NewNotifier(&slackbot.NotifierConfig{
+			BotToken:  credentials.BotToken,
+			ChannelId: xmaps.GetOrDefaultString(options.ProviderExtendedConfig, "channelId", credentials.ChannelId),
+		})
+		return provider, err
+	})
+}

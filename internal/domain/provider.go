@@ -1,0 +1,394 @@
+package domain
+
+type AccessProviderType string
+
+/*
+授权提供商类型常量值。
+
+注意：如果追加新的常量值，请保持以 ASCII 排序。
+NOTICE: If you add new constant, please keep ASCII order.
+*/
+const (
+	AccessProviderType1Panel              = AccessProviderType("1panel")
+	AccessProviderType35cn                = AccessProviderType("35cn")
+	AccessProviderType51DNScom            = AccessProviderType("51dnscom")
+	AccessProviderTypeACMECA              = AccessProviderType("acmeca")
+	AccessProviderTypeACMEDNS             = AccessProviderType("acmedns")
+	AccessProviderTypeACMEHttpReq         = AccessProviderType("acmehttpreq")
+	AccessProviderTypeActalisSSL          = AccessProviderType("actalisssl")
+	AccessProviderTypeAkamai              = AccessProviderType("akamai")
+	AccessProviderTypeAliyun              = AccessProviderType("aliyun")
+	AccessProviderTypeAPISIX              = AccessProviderType("apisix")
+	AccessProviderTypeArvanCloud          = AccessProviderType("arvancloud")
+	AccessProviderTypeAWS                 = AccessProviderType("aws")
+	AccessProviderTypeAzure               = AccessProviderType("azure")
+	AccessProviderTypeBaiduCloud          = AccessProviderType("baiducloud")
+	AccessProviderTypeBaishan             = AccessProviderType("baishan")
+	AccessProviderTypeBaotaPanel          = AccessProviderType("baotapanel")
+	AccessProviderTypeBaotaPanelGo        = AccessProviderType("baotapanelgo")
+	AccessProviderTypeBaotaWAF            = AccessProviderType("baotawaf")
+	AccessProviderTypeBookMyName          = AccessProviderType("bookmyname")
+	AccessProviderTypeBunny               = AccessProviderType("bunny")
+	AccessProviderTypeBytePlus            = AccessProviderType("byteplus")
+	AccessProviderTypeCacheFly            = AccessProviderType("cachefly")
+	AccessProviderTypeCdnfly              = AccessProviderType("cdnfly")
+	AccessProviderTypeCloudflare          = AccessProviderType("cloudflare")
+	AccessProviderTypeClouDNS             = AccessProviderType("cloudns")
+	AccessProviderTypeCMCCCloud           = AccessProviderType("cmcccloud")
+	AccessProviderTypeConstellix          = AccessProviderType("constellix")
+	AccessProviderTypeCPanel              = AccessProviderType("cpanel")
+	AccessProviderTypeCTCCCloud           = AccessProviderType("ctcccloud")
+	AccessProviderTypeCUCCCloud           = AccessProviderType("cucccloud") // 联通云（预留）
+	AccessProviderTypeDeSEC               = AccessProviderType("desec")
+	AccessProviderTypeDigitalOcean        = AccessProviderType("digitalocean")
+	AccessProviderTypeDingTalkBot         = AccessProviderType("dingtalkbot")
+	AccessProviderTypeDiscordBot          = AccessProviderType("discordbot")
+	AccessProviderTypeDNSExit             = AccessProviderType("dnsexit")
+	AccessProviderTypeDNSLA               = AccessProviderType("dnsla")
+	AccessProviderTypeDNSMadeEasy         = AccessProviderType("dnsmadeeasy")
+	AccessProviderTypeDogeCloud           = AccessProviderType("dogecloud")
+	AccessProviderTypeDokploy             = AccessProviderType("dokploy")
+	AccessProviderTypeDuckDNS             = AccessProviderType("duckdns")
+	AccessProviderTypeDynu                = AccessProviderType("dynu")
+	AccessProviderTypeDynv6               = AccessProviderType("dynv6")
+	AccessProviderTypeEmail               = AccessProviderType("email")
+	AccessProviderTypeFastly              = AccessProviderType("fastly") // Fastly（预留）
+	AccessProviderTypeFlexCDN             = AccessProviderType("flexcdn")
+	AccessProviderTypeGandinet            = AccessProviderType("gandinet")
+	AccessProviderTypeGcore               = AccessProviderType("gcore")
+	AccessProviderTypeGlobalSignAtlas     = AccessProviderType("globalsignatlas")
+	AccessProviderTypeGname               = AccessProviderType("gname")
+	AccessProviderTypeGoDaddy             = AccessProviderType("godaddy")
+	AccessProviderTypeGoEdge              = AccessProviderType("goedge")
+	AccessProviderTypeGoogleTrustServices = AccessProviderType("googletrustservices")
+	AccessProviderTypeHetzner             = AccessProviderType("hetzner")
+	AccessProviderTypeHostingde           = AccessProviderType("hostingde")
+	AccessProviderTypeHostinger           = AccessProviderType("hostinger")
+	AccessProviderTypeHuaweiCloud         = AccessProviderType("huaweicloud")
+	AccessProviderTypeInfomaniak          = AccessProviderType("infomaniak")
+	AccessProviderTypeIONOS               = AccessProviderType("ionos")
+	AccessProviderTypeJDCloud             = AccessProviderType("jdcloud")
+	AccessProviderTypeKong                = AccessProviderType("kong")
+	AccessProviderTypeKsyun               = AccessProviderType("ksyun")
+	AccessProviderTypeKubernetes          = AccessProviderType("k8s")
+	AccessProviderTypeLarkBot             = AccessProviderType("larkbot")
+	AccessProviderTypeLeCDN               = AccessProviderType("lecdn")
+	AccessProviderTypeLetsEncrypt         = AccessProviderType("letsencrypt")
+	AccessProviderTypeLetsEncryptStaging  = AccessProviderType("letsencryptstaging")
+	AccessProviderTypeLinode              = AccessProviderType("linode")
+	AccessProviderTypeLiteSSL             = AccessProviderType("litessl")
+	AccessProviderTypeLocal               = AccessProviderType("local")
+	AccessProviderTypeMattermost          = AccessProviderType("mattermost")
+	AccessProviderTypeMohua               = AccessProviderType("mohua")
+	AccessProviderTypeNamecheap           = AccessProviderType("namecheap")
+	AccessProviderTypeNameDotCom          = AccessProviderType("namedotcom")
+	AccessProviderTypeNameSilo            = AccessProviderType("namesilo")
+	AccessProviderTypeNetcup              = AccessProviderType("netcup")
+	AccessProviderTypeNetlify             = AccessProviderType("netlify")
+	AccessProviderTypeNginxProxyManager   = AccessProviderType("nginxproxymanager")
+	AccessProviderTypeNS1                 = AccessProviderType("ns1")
+	AccessProviderTypeOVHcloud            = AccessProviderType("ovhcloud")
+	AccessProviderTypePorkbun             = AccessProviderType("porkbun")
+	AccessProviderTypePowerDNS            = AccessProviderType("powerdns")
+	AccessProviderTypeProxmoxVE           = AccessProviderType("proxmoxve")
+	AccessProviderTypeQiniu               = AccessProviderType("qiniu")
+	AccessProviderTypeQingCloud           = AccessProviderType("qingcloud")
+	AccessProviderTypeRainYun             = AccessProviderType("rainyun")
+	AccessProviderTypeRatPanel            = AccessProviderType("ratpanel")
+	AccessProviderTypeRFC2136             = AccessProviderType("rfc2136")
+	AccessProviderTypeS3                  = AccessProviderType("s3")
+	AccessProviderTypeSafeLine            = AccessProviderType("safeline")
+	AccessProviderTypeSectigo             = AccessProviderType("sectigo")
+	AccessProviderTypeSlackBot            = AccessProviderType("slackbot")
+	AccessProviderTypeSpaceship           = AccessProviderType("spaceship")
+	AccessProviderTypeSSH                 = AccessProviderType("ssh")
+	AccessProviderTypeSSLCOM              = AccessProviderType("sslcom")
+	AccessProviderTypeSynologyDSM         = AccessProviderType("synologydsm")
+	AccessProviderTypeTechnitiumDNS       = AccessProviderType("technitiumdns")
+	AccessProviderTypeTelegramBot         = AccessProviderType("telegrambot")
+	AccessProviderTypeTencentCloud        = AccessProviderType("tencentcloud")
+	AccessProviderTypeUCloud              = AccessProviderType("ucloud")
+	AccessProviderTypeUniCloud            = AccessProviderType("unicloud")
+	AccessProviderTypeUpyun               = AccessProviderType("upyun")
+	AccessProviderTypeVercel              = AccessProviderType("vercel")
+	AccessProviderTypeVolcEngine          = AccessProviderType("volcengine")
+	AccessProviderTypeVultr               = AccessProviderType("vultr")
+	AccessProviderTypeWangsu              = AccessProviderType("wangsu")
+	AccessProviderTypeWebhook             = AccessProviderType("webhook")
+	AccessProviderTypeWeComBot            = AccessProviderType("wecombot")
+	AccessProviderTypeWestcn              = AccessProviderType("westcn")
+	AccessProviderTypeXinnet              = AccessProviderType("xinnet")
+	AccessProviderTypeZeroSSL             = AccessProviderType("zerossl")
+)
+
+type CAProviderType string
+
+/*
+证书颁发机构提供商常量值。
+短横线前的部分始终等于授权提供商类型。
+
+注意：如果追加新的常量值，请保持以 ASCII 排序。
+NOTICE: If you add new constant, please keep ASCII order.
+*/
+const (
+	CAProviderTypeACMECA              = CAProviderType(AccessProviderTypeACMECA)
+	CAProviderTypeActalisSSL          = CAProviderType(AccessProviderTypeActalisSSL)
+	CAProviderTypeGlobalSignAtlas     = CAProviderType(AccessProviderTypeGlobalSignAtlas)
+	CAProviderTypeGoogleTrustServices = CAProviderType(AccessProviderTypeGoogleTrustServices)
+	CAProviderTypeLetsEncrypt         = CAProviderType(AccessProviderTypeLetsEncrypt)
+	CAProviderTypeLetsEncryptStaging  = CAProviderType(AccessProviderTypeLetsEncryptStaging)
+	CAProviderTypeLiteSSL             = CAProviderType(AccessProviderTypeLiteSSL)
+	CAProviderTypeSectigo             = CAProviderType(AccessProviderTypeSectigo)
+	CAProviderTypeSSLCom              = CAProviderType(AccessProviderTypeSSLCOM)
+	CAProviderTypeZeroSSL             = CAProviderType(AccessProviderTypeZeroSSL)
+)
+
+type ACMEDns01ProviderType string
+
+/*
+ACME DNS-01 提供商常量值。
+短横线前的部分始终等于授权提供商类型。
+
+注意：如果追加新的常量值，请保持以 ASCII 排序。
+NOTICE: If you add new constant, please keep ASCII order.
+*/
+const (
+	ACMEDns01ProviderType35cn              = ACMEDns01ProviderType(AccessProviderType35cn)
+	ACMEDns01ProviderType51DNScom          = ACMEDns01ProviderType(AccessProviderType51DNScom)
+	ACMEDns01ProviderTypeACMEDNS           = ACMEDns01ProviderType(AccessProviderTypeACMEDNS)
+	ACMEDns01ProviderTypeACMEHttpReq       = ACMEDns01ProviderType(AccessProviderTypeACMEHttpReq)
+	ACMEDns01ProviderTypeAkamai            = ACMEDns01ProviderType(AccessProviderTypeAkamai) // 兼容旧值，等同于 [ACMEDns01ProviderTypeAkamaiEdgeDNS]
+	ACMEDns01ProviderTypeAkamaiEdgeDNS     = ACMEDns01ProviderType(AccessProviderTypeAkamai + "-edgedns")
+	ACMEDns01ProviderTypeAliyun            = ACMEDns01ProviderType(AccessProviderTypeAliyun) // 兼容旧值，等同于 [ACMEDns01ProviderTypeAliyunDNS]
+	ACMEDns01ProviderTypeAliyunDNS         = ACMEDns01ProviderType(AccessProviderTypeAliyun + "-dns")
+	ACMEDns01ProviderTypeAliyunESA         = ACMEDns01ProviderType(AccessProviderTypeAliyun + "-esa")
+	ACMEDns01ProviderTypeArvanCloud        = ACMEDns01ProviderType(AccessProviderTypeArvanCloud)
+	ACMEDns01ProviderTypeAWS               = ACMEDns01ProviderType(AccessProviderTypeAWS) // 兼容旧值，等同于 [ACMEDns01ProviderTypeAWSRoute53]
+	ACMEDns01ProviderTypeAWSRoute53        = ACMEDns01ProviderType(AccessProviderTypeAWS + "-route53")
+	ACMEDns01ProviderTypeAzure             = ACMEDns01ProviderType(AccessProviderTypeAzure) // 兼容旧值，等同于 [ACMEDns01ProviderTypeAzure]
+	ACMEDns01ProviderTypeAzureDNS          = ACMEDns01ProviderType(AccessProviderTypeAzure + "-dns")
+	ACMEDns01ProviderTypeBaiduCloud        = ACMEDns01ProviderType(AccessProviderTypeBaiduCloud) // 兼容旧值，等同于 [ACMEDns01ProviderTypeBaiduCloudDNS]
+	ACMEDns01ProviderTypeBaiduCloudDNS     = ACMEDns01ProviderType(AccessProviderTypeBaiduCloud + "-dns")
+	ACMEDns01ProviderTypeBookMyName        = ACMEDns01ProviderType(AccessProviderTypeBookMyName)
+	ACMEDns01ProviderTypeBunny             = ACMEDns01ProviderType(AccessProviderTypeBunny)
+	ACMEDns01ProviderTypeCloudflare        = ACMEDns01ProviderType(AccessProviderTypeCloudflare)
+	ACMEDns01ProviderTypeClouDNS           = ACMEDns01ProviderType(AccessProviderTypeClouDNS)
+	ACMEDns01ProviderTypeCMCCCloud         = ACMEDns01ProviderType(AccessProviderTypeCMCCCloud) // 兼容旧值，等同于 [ACMEDns01ProviderTypeCMCCCloudDNS]
+	ACMEDns01ProviderTypeCMCCCloudDNS      = ACMEDns01ProviderType(AccessProviderTypeCMCCCloud + "-dns")
+	ACMEDns01ProviderTypeConstellix        = ACMEDns01ProviderType(AccessProviderTypeConstellix)
+	ACMEDns01ProviderTypeCPanel            = ACMEDns01ProviderType(AccessProviderTypeCPanel)
+	ACMEDns01ProviderTypeCTCCCloud         = ACMEDns01ProviderType(AccessProviderTypeCTCCCloud) // 兼容旧值，等同于 [ACMEDns01ProviderTypeCTCCCloudSmartDNS]
+	ACMEDns01ProviderTypeCTCCCloudSmartDNS = ACMEDns01ProviderType(AccessProviderTypeCTCCCloud + "-smartdns")
+	ACMEDns01ProviderTypeDeSEC             = ACMEDns01ProviderType(AccessProviderTypeDeSEC)
+	ACMEDns01ProviderTypeDigitalOcean      = ACMEDns01ProviderType(AccessProviderTypeDigitalOcean)
+	ACMEDns01ProviderTypeDNSExit           = ACMEDns01ProviderType(AccessProviderTypeDNSExit)
+	ACMEDns01ProviderTypeDNSLA             = ACMEDns01ProviderType(AccessProviderTypeDNSLA)
+	ACMEDns01ProviderTypeDNSMadeEasy       = ACMEDns01ProviderType(AccessProviderTypeDNSMadeEasy)
+	ACMEDns01ProviderTypeDuckDNS           = ACMEDns01ProviderType(AccessProviderTypeDuckDNS)
+	ACMEDns01ProviderTypeDynu              = ACMEDns01ProviderType(AccessProviderTypeDynu)
+	ACMEDns01ProviderTypeDynv6             = ACMEDns01ProviderType(AccessProviderTypeDynv6)
+	ACMEDns01ProviderTypeGandinet          = ACMEDns01ProviderType(AccessProviderTypeGandinet)
+	ACMEDns01ProviderTypeGcore             = ACMEDns01ProviderType(AccessProviderTypeGcore)
+	ACMEDns01ProviderTypeGname             = ACMEDns01ProviderType(AccessProviderTypeGname)
+	ACMEDns01ProviderTypeGoDaddy           = ACMEDns01ProviderType(AccessProviderTypeGoDaddy)
+	ACMEDns01ProviderTypeHetzner           = ACMEDns01ProviderType(AccessProviderTypeHetzner)
+	ACMEDns01ProviderTypeHostingde         = ACMEDns01ProviderType(AccessProviderTypeHostingde)
+	ACMEDns01ProviderTypeHostinger         = ACMEDns01ProviderType(AccessProviderTypeHostinger)
+	ACMEDns01ProviderTypeHuaweiCloud       = ACMEDns01ProviderType(AccessProviderTypeHuaweiCloud) // 兼容旧值，等同于 [ACMEDns01ProviderTypeHuaweiCloudDNS]
+	ACMEDns01ProviderTypeHuaweiCloudDNS    = ACMEDns01ProviderType(AccessProviderTypeHuaweiCloud + "-dns")
+	ACMEDns01ProviderTypeInfomaniak        = ACMEDns01ProviderType(AccessProviderTypeInfomaniak)
+	ACMEDns01ProviderTypeIONOS             = ACMEDns01ProviderType(AccessProviderTypeIONOS)
+	ACMEDns01ProviderTypeJDCloud           = ACMEDns01ProviderType(AccessProviderTypeJDCloud) // 兼容旧值，等同于 [ACMEDns01ProviderTypeJDCloudDNS]
+	ACMEDns01ProviderTypeJDCloudDNS        = ACMEDns01ProviderType(AccessProviderTypeJDCloud + "-dns")
+	ACMEDns01ProviderTypeLinode            = ACMEDns01ProviderType(AccessProviderTypeLinode)
+	ACMEDns01ProviderTypeNamecheap         = ACMEDns01ProviderType(AccessProviderTypeNamecheap)
+	ACMEDns01ProviderTypeNameDotCom        = ACMEDns01ProviderType(AccessProviderTypeNameDotCom)
+	ACMEDns01ProviderTypeNameSilo          = ACMEDns01ProviderType(AccessProviderTypeNameSilo)
+	ACMEDns01ProviderTypeNetcup            = ACMEDns01ProviderType(AccessProviderTypeNetcup)
+	ACMEDns01ProviderTypeNetlify           = ACMEDns01ProviderType(AccessProviderTypeNetlify)
+	ACMEDns01ProviderTypeNS1               = ACMEDns01ProviderType(AccessProviderTypeNS1)
+	ACMEDns01ProviderTypeOVHcloud          = ACMEDns01ProviderType(AccessProviderTypeOVHcloud)
+	ACMEDns01ProviderTypePorkbun           = ACMEDns01ProviderType(AccessProviderTypePorkbun)
+	ACMEDns01ProviderTypePowerDNS          = ACMEDns01ProviderType(AccessProviderTypePowerDNS)
+	ACMEDns01ProviderTypeQingCloud         = ACMEDns01ProviderType(AccessProviderTypeQingCloud) // 兼容旧值，等同于 [ACMEDns01ProviderTypeQingCloudDNS]
+	ACMEDns01ProviderTypeQingCloudDNS      = ACMEDns01ProviderType(AccessProviderTypeQingCloud + "-dns")
+	ACMEDns01ProviderTypeRainYun           = ACMEDns01ProviderType(AccessProviderTypeRainYun)
+	ACMEDns01ProviderTypeRFC2136           = ACMEDns01ProviderType(AccessProviderTypeRFC2136)
+	ACMEDns01ProviderTypeSpaceship         = ACMEDns01ProviderType(AccessProviderTypeSpaceship)
+	ACMEDns01ProviderTypeTechnitiumDNS     = ACMEDns01ProviderType(AccessProviderTypeTechnitiumDNS)
+	ACMEDns01ProviderTypeTencentCloud      = ACMEDns01ProviderType(AccessProviderTypeTencentCloud) // 兼容旧值，等同于 [ACMEDns01ProviderTypeTencentCloudDNS]
+	ACMEDns01ProviderTypeTencentCloudDNS   = ACMEDns01ProviderType(AccessProviderTypeTencentCloud + "-dns")
+	ACMEDns01ProviderTypeTencentCloudEO    = ACMEDns01ProviderType(AccessProviderTypeTencentCloud + "-eo")
+	ACMEDns01ProviderTypeUCloud            = ACMEDns01ProviderType(AccessProviderTypeUCloud) // 兼容旧值，等同于 [ACMEDns01ProviderTypeUCloudUDNR]
+	ACMEDns01ProviderTypeUCloudUDNR        = ACMEDns01ProviderType(AccessProviderTypeUCloud + "-udnr")
+	ACMEDns01ProviderTypeVercel            = ACMEDns01ProviderType(AccessProviderTypeVercel)
+	ACMEDns01ProviderTypeVolcEngine        = ACMEDns01ProviderType(AccessProviderTypeVolcEngine) // 兼容旧值，等同于 [ACMEDns01ProviderTypeVolcEngineDNS]
+	ACMEDns01ProviderTypeVolcEngineDNS     = ACMEDns01ProviderType(AccessProviderTypeVolcEngine + "-dns")
+	ACMEDns01ProviderTypeVultr             = ACMEDns01ProviderType(AccessProviderTypeVultr)
+	ACMEDns01ProviderTypeWestcn            = ACMEDns01ProviderType(AccessProviderTypeWestcn)
+	ACMEDns01ProviderTypeXinnet            = ACMEDns01ProviderType(AccessProviderTypeXinnet)
+)
+
+type ACMEHttp01ProviderType string
+
+/*
+ACME HTTP-01 提供商常量值。
+短横线前的部分始终等于授权提供商类型。
+
+注意：如果追加新的常量值，请保持以 ASCII 排序。
+NOTICE: If you add new constant, please keep ASCII order.
+*/
+const (
+	ACMEHttp01ProviderTypeLocal = ACMEHttp01ProviderType(AccessProviderTypeLocal)
+	ACMEHttp01ProviderTypeS3    = ACMEHttp01ProviderType(AccessProviderTypeS3)
+	ACMEHttp01ProviderTypeSSH   = ACMEHttp01ProviderType(AccessProviderTypeSSH)
+)
+
+type DeploymentProviderType string
+
+/*
+部署证书主机提供商常量值。
+短横线前的部分始终等于授权提供商类型。
+
+注意：如果追加新的常量值，请保持以 ASCII 排序。
+NOTICE: If you add new constant, please keep ASCII order.
+*/
+const (
+	DeploymentProviderType1Panel                = DeploymentProviderType(AccessProviderType1Panel)
+	DeploymentProviderType1PanelConsole         = DeploymentProviderType(AccessProviderType1Panel + "-console")
+	DeploymentProviderTypeAliyunALB             = DeploymentProviderType(AccessProviderTypeAliyun + "-alb")
+	DeploymentProviderTypeAliyunAPIGW           = DeploymentProviderType(AccessProviderTypeAliyun + "-apigw")
+	DeploymentProviderTypeAliyunCAS             = DeploymentProviderType(AccessProviderTypeAliyun + "-cas")
+	DeploymentProviderTypeAliyunCASDeploy       = DeploymentProviderType(AccessProviderTypeAliyun + "-casdeploy")
+	DeploymentProviderTypeAliyunCDN             = DeploymentProviderType(AccessProviderTypeAliyun + "-cdn")
+	DeploymentProviderTypeAliyunCLB             = DeploymentProviderType(AccessProviderTypeAliyun + "-clb")
+	DeploymentProviderTypeAliyunDCDN            = DeploymentProviderType(AccessProviderTypeAliyun + "-dcdn")
+	DeploymentProviderTypeAliyunDDoSPro         = DeploymentProviderType(AccessProviderTypeAliyun + "-ddospro")
+	DeploymentProviderTypeAliyunESA             = DeploymentProviderType(AccessProviderTypeAliyun + "-esa")
+	DeploymentProviderTypeAliyunFC              = DeploymentProviderType(AccessProviderTypeAliyun + "-fc")
+	DeploymentProviderTypeAliyunGA              = DeploymentProviderType(AccessProviderTypeAliyun + "-ga")
+	DeploymentProviderTypeAliyunLive            = DeploymentProviderType(AccessProviderTypeAliyun + "-live")
+	DeploymentProviderTypeAliyunNLB             = DeploymentProviderType(AccessProviderTypeAliyun + "-nlb")
+	DeploymentProviderTypeAliyunOSS             = DeploymentProviderType(AccessProviderTypeAliyun + "-oss")
+	DeploymentProviderTypeAliyunVOD             = DeploymentProviderType(AccessProviderTypeAliyun + "-vod")
+	DeploymentProviderTypeAliyunWAF             = DeploymentProviderType(AccessProviderTypeAliyun + "-waf")
+	DeploymentProviderTypeAPISIX                = DeploymentProviderType(AccessProviderTypeAPISIX)
+	DeploymentProviderTypeAWSACM                = DeploymentProviderType(AccessProviderTypeAWS + "-acm")
+	DeploymentProviderTypeAWSCloudFront         = DeploymentProviderType(AccessProviderTypeAWS + "-cloudfront")
+	DeploymentProviderTypeAWSIAM                = DeploymentProviderType(AccessProviderTypeAWS + "-iam")
+	DeploymentProviderTypeAzureKeyVault         = DeploymentProviderType(AccessProviderTypeAzure + "-keyvault")
+	DeploymentProviderTypeBaiduCloudAppBLB      = DeploymentProviderType(AccessProviderTypeBaiduCloud + "-appblb")
+	DeploymentProviderTypeBaiduCloudBLB         = DeploymentProviderType(AccessProviderTypeBaiduCloud + "-blb")
+	DeploymentProviderTypeBaiduCloudCDN         = DeploymentProviderType(AccessProviderTypeBaiduCloud + "-cdn")
+	DeploymentProviderTypeBaiduCloudCert        = DeploymentProviderType(AccessProviderTypeBaiduCloud + "-cert")
+	DeploymentProviderTypeBaishanCDN            = DeploymentProviderType(AccessProviderTypeBaishan + "-cdn")
+	DeploymentProviderTypeBaotaPanel            = DeploymentProviderType(AccessProviderTypeBaotaPanel)
+	DeploymentProviderTypeBaotaPanelConsole     = DeploymentProviderType(AccessProviderTypeBaotaPanel + "-console")
+	DeploymentProviderTypeBaotaPanelGo          = DeploymentProviderType(AccessProviderTypeBaotaPanelGo)
+	DeploymentProviderTypeBaotaPanelGoConsole   = DeploymentProviderType(AccessProviderTypeBaotaPanelGo + "-console")
+	DeploymentProviderTypeBaotaWAF              = DeploymentProviderType(AccessProviderTypeBaotaWAF)
+	DeploymentProviderTypeBaotaWAFConsole       = DeploymentProviderType(AccessProviderTypeBaotaWAF + "-console")
+	DeploymentProviderTypeBunnyCDN              = DeploymentProviderType(AccessProviderTypeBunny + "-cdn")
+	DeploymentProviderTypeBytePlusCDN           = DeploymentProviderType(AccessProviderTypeBytePlus + "-cdn")
+	DeploymentProviderTypeCacheFly              = DeploymentProviderType(AccessProviderTypeCacheFly)
+	DeploymentProviderTypeCdnfly                = DeploymentProviderType(AccessProviderTypeCdnfly)
+	DeploymentProviderTypeCPanel                = DeploymentProviderType(AccessProviderTypeCPanel)
+	DeploymentProviderTypeCTCCCloudAO           = DeploymentProviderType(AccessProviderTypeCTCCCloud + "-ao")
+	DeploymentProviderTypeCTCCCloudCDN          = DeploymentProviderType(AccessProviderTypeCTCCCloud + "-cdn")
+	DeploymentProviderTypeCTCCCloudCMS          = DeploymentProviderType(AccessProviderTypeCTCCCloud + "-cms")
+	DeploymentProviderTypeCTCCCloudELB          = DeploymentProviderType(AccessProviderTypeCTCCCloud + "-elb")
+	DeploymentProviderTypeCTCCCloudFaaS         = DeploymentProviderType(AccessProviderTypeCTCCCloud + "-faas")
+	DeploymentProviderTypeCTCCCloudICDN         = DeploymentProviderType(AccessProviderTypeCTCCCloud + "-icdn")
+	DeploymentProviderTypeCTCCCloudLVDN         = DeploymentProviderType(AccessProviderTypeCTCCCloud + "-ldvn")
+	DeploymentProviderTypeDogeCloudCDN          = DeploymentProviderType(AccessProviderTypeDogeCloud + "-cdn")
+	DeploymentProviderTypeDokploy               = DeploymentProviderType(AccessProviderTypeDokploy)
+	DeploymentProviderTypeFlexCDN               = DeploymentProviderType(AccessProviderTypeFlexCDN)
+	DeploymentProviderTypeGcoreCDN              = DeploymentProviderType(AccessProviderTypeGcore + "-cdn")
+	DeploymentProviderTypeGoEdge                = DeploymentProviderType(AccessProviderTypeGoEdge)
+	DeploymentProviderTypeHuaweiCloudCDN        = DeploymentProviderType(AccessProviderTypeHuaweiCloud + "-cdn")
+	DeploymentProviderTypeHuaweiCloudELB        = DeploymentProviderType(AccessProviderTypeHuaweiCloud + "-elb")
+	DeploymentProviderTypeHuaweiCloudSCM        = DeploymentProviderType(AccessProviderTypeHuaweiCloud + "-scm")
+	DeploymentProviderTypeHuaweiCloudOBS        = DeploymentProviderType(AccessProviderTypeHuaweiCloud + "-obs")
+	DeploymentProviderTypeHuaweiCloudWAF        = DeploymentProviderType(AccessProviderTypeHuaweiCloud + "-waf")
+	DeploymentProviderTypeJDCloudALB            = DeploymentProviderType(AccessProviderTypeJDCloud + "-alb")
+	DeploymentProviderTypeJDCloudCDN            = DeploymentProviderType(AccessProviderTypeJDCloud + "-cdn")
+	DeploymentProviderTypeJDCloudLive           = DeploymentProviderType(AccessProviderTypeJDCloud + "-live")
+	DeploymentProviderTypeJDCloudVOD            = DeploymentProviderType(AccessProviderTypeJDCloud + "-vod")
+	DeploymentProviderTypeKong                  = DeploymentProviderType(AccessProviderTypeKong)
+	DeploymentProviderTypeKubernetesSecret      = DeploymentProviderType(AccessProviderTypeKubernetes + "-secret")
+	DeploymentProviderTypeKsyunCDN              = DeploymentProviderType(AccessProviderTypeKsyun + "-cdn")
+	DeploymentProviderTypeLeCDN                 = DeploymentProviderType(AccessProviderTypeLeCDN)
+	DeploymentProviderTypeLocal                 = DeploymentProviderType(AccessProviderTypeLocal)
+	DeploymentProviderTypeMohuaMVH              = DeploymentProviderType(AccessProviderTypeMohua + "-mvh")
+	DeploymentProviderTypeNetlify               = DeploymentProviderType(AccessProviderTypeNetlify)
+	DeploymentProviderTypeNginxProxyManager     = DeploymentProviderType(AccessProviderTypeNginxProxyManager)
+	DeploymentProviderTypeProxmoxVE             = DeploymentProviderType(AccessProviderTypeProxmoxVE)
+	DeploymentProviderTypeQiniuCDN              = DeploymentProviderType(AccessProviderTypeQiniu + "-cdn")
+	DeploymentProviderTypeQiniuKodo             = DeploymentProviderType(AccessProviderTypeQiniu + "-kodo")
+	DeploymentProviderTypeQiniuPili             = DeploymentProviderType(AccessProviderTypeQiniu + "-pili")
+	DeploymentProviderTypeRainYunRCDN           = DeploymentProviderType(AccessProviderTypeRainYun + "-rcdn")
+	DeploymentProviderTypeRainYunSSLCenter      = DeploymentProviderType(AccessProviderTypeRainYun + "-sslcenter")
+	DeploymentProviderTypeRatPanel              = DeploymentProviderType(AccessProviderTypeRatPanel)
+	DeploymentProviderTypeRatPanelConsole       = DeploymentProviderType(AccessProviderTypeRatPanel + "-console")
+	DeploymentProviderTypeS3                    = DeploymentProviderType(AccessProviderTypeS3)
+	DeploymentProviderTypeSafeLine              = DeploymentProviderType(AccessProviderTypeSafeLine)
+	DeploymentProviderTypeSSH                   = DeploymentProviderType(AccessProviderTypeSSH)
+	DeploymentProviderTypeSynologyDSM           = DeploymentProviderType(AccessProviderTypeSynologyDSM)
+	DeploymentProviderTypeTencentCloudCDN       = DeploymentProviderType(AccessProviderTypeTencentCloud + "-cdn")
+	DeploymentProviderTypeTencentCloudCLB       = DeploymentProviderType(AccessProviderTypeTencentCloud + "-clb")
+	DeploymentProviderTypeTencentCloudCOS       = DeploymentProviderType(AccessProviderTypeTencentCloud + "-cos")
+	DeploymentProviderTypeTencentCloudCSS       = DeploymentProviderType(AccessProviderTypeTencentCloud + "-css")
+	DeploymentProviderTypeTencentCloudECDN      = DeploymentProviderType(AccessProviderTypeTencentCloud + "-ecdn")
+	DeploymentProviderTypeTencentCloudEO        = DeploymentProviderType(AccessProviderTypeTencentCloud + "-eo")
+	DeploymentProviderTypeTencentCloudGAAP      = DeploymentProviderType(AccessProviderTypeTencentCloud + "-gaap")
+	DeploymentProviderTypeTencentCloudSCF       = DeploymentProviderType(AccessProviderTypeTencentCloud + "-scf")
+	DeploymentProviderTypeTencentCloudSSL       = DeploymentProviderType(AccessProviderTypeTencentCloud + "-ssl")
+	DeploymentProviderTypeTencentCloudSSLDeploy = DeploymentProviderType(AccessProviderTypeTencentCloud + "-ssldeploy")
+	DeploymentProviderTypeTencentCloudSSLUpdate = DeploymentProviderType(AccessProviderTypeTencentCloud + "-sslupdate")
+	DeploymentProviderTypeTencentCloudVOD       = DeploymentProviderType(AccessProviderTypeTencentCloud + "-vod")
+	DeploymentProviderTypeTencentCloudWAF       = DeploymentProviderType(AccessProviderTypeTencentCloud + "-waf")
+	DeploymentProviderTypeUCloudUALB            = DeploymentProviderType(AccessProviderTypeUCloud + "-ualb")
+	DeploymentProviderTypeUCloudUCDN            = DeploymentProviderType(AccessProviderTypeUCloud + "-ucdn")
+	DeploymentProviderTypeUCloudUCLB            = DeploymentProviderType(AccessProviderTypeUCloud + "-uclb")
+	DeploymentProviderTypeUCloudUEWAF           = DeploymentProviderType(AccessProviderTypeUCloud + "-uewaf")
+	DeploymentProviderTypeUCloudUPathX          = DeploymentProviderType(AccessProviderTypeUCloud + "-pathx")
+	DeploymentProviderTypeUCloudUS3             = DeploymentProviderType(AccessProviderTypeUCloud + "-us3")
+	DeploymentProviderTypeUniCloudWebHost       = DeploymentProviderType(AccessProviderTypeUniCloud + "-webhost")
+	DeploymentProviderTypeUpyunCDN              = DeploymentProviderType(AccessProviderTypeUpyun + "-cdn")
+	DeploymentProviderTypeUpyunFile             = DeploymentProviderType(AccessProviderTypeUpyun + "-file")
+	DeploymentProviderTypeVolcEngineALB         = DeploymentProviderType(AccessProviderTypeVolcEngine + "-alb")
+	DeploymentProviderTypeVolcEngineCDN         = DeploymentProviderType(AccessProviderTypeVolcEngine + "-cdn")
+	DeploymentProviderTypeVolcEngineCertCenter  = DeploymentProviderType(AccessProviderTypeVolcEngine + "-certcenter")
+	DeploymentProviderTypeVolcEngineCLB         = DeploymentProviderType(AccessProviderTypeVolcEngine + "-clb")
+	DeploymentProviderTypeVolcEngineDCDN        = DeploymentProviderType(AccessProviderTypeVolcEngine + "-dcdn")
+	DeploymentProviderTypeVolcEngineImageX      = DeploymentProviderType(AccessProviderTypeVolcEngine + "-imagex")
+	DeploymentProviderTypeVolcEngineLive        = DeploymentProviderType(AccessProviderTypeVolcEngine + "-live")
+	DeploymentProviderTypeVolcEngineTOS         = DeploymentProviderType(AccessProviderTypeVolcEngine + "-tos")
+	DeploymentProviderTypeVolcEngineVOD         = DeploymentProviderType(AccessProviderTypeVolcEngine + "-vod")
+	DeploymentProviderTypeVolcEngineWAF         = DeploymentProviderType(AccessProviderTypeVolcEngine + "-waf")
+	DeploymentProviderTypeWangsuCDN             = DeploymentProviderType(AccessProviderTypeWangsu + "-cdn")
+	DeploymentProviderTypeWangsuCDNPro          = DeploymentProviderType(AccessProviderTypeWangsu + "-cdnpro")
+	DeploymentProviderTypeWangsuCertificate     = DeploymentProviderType(AccessProviderTypeWangsu + "-certificate")
+	DeploymentProviderTypeWebhook               = DeploymentProviderType(AccessProviderTypeWebhook)
+)
+
+type NotificationProviderType string
+
+/*
+消息通知提供商常量值。
+短横线前的部分始终等于授权提供商类型。
+
+注意：如果追加新的常量值，请保持以 ASCII 排序。
+NOTICE: If you add new constant, please keep ASCII order.
+*/
+const (
+	NotificationProviderTypeDingTalkBot = NotificationProviderType(AccessProviderTypeDingTalkBot)
+	NotificationProviderTypeDiscordBot  = NotificationProviderType(AccessProviderTypeDiscordBot)
+	NotificationProviderTypeEmail       = NotificationProviderType(AccessProviderTypeEmail)
+	NotificationProviderTypeLarkBot     = NotificationProviderType(AccessProviderTypeLarkBot)
+	NotificationProviderTypeMattermost  = NotificationProviderType(AccessProviderTypeMattermost)
+	NotificationProviderTypeSlackBot    = NotificationProviderType(AccessProviderTypeSlackBot)
+	NotificationProviderTypeTelegramBot = NotificationProviderType(AccessProviderTypeTelegramBot)
+	NotificationProviderTypeWebhook     = NotificationProviderType(AccessProviderTypeWebhook)
+	NotificationProviderTypeWeComBot    = NotificationProviderType(AccessProviderTypeWeComBot)
+)

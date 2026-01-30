@@ -1,63 +1,79 @@
 package main
 
 import (
-	"flag"
-	"log"
+	"log/slog"
 	"os"
 	"strings"
+	_ "time/tzdata"
 
-	"github.com/labstack/echo/v5"
-	"github.com/labstack/echo/v5/middleware"
+	"github.com/pocketbase/pocketbase"
+	"github.com/pocketbase/pocketbase/apis"
 	"github.com/pocketbase/pocketbase/core"
 	"github.com/pocketbase/pocketbase/plugins/migratecmd"
+	"github.com/pocketbase/pocketbase/tools/hook"
+	"github.com/spf13/pflag"
 
-	_ "github.com/usual2970/certimate/migrations"
+	"github.com/certimate-go/certimate/cmd"
+	"github.com/certimate-go/certimate/internal/app"
+	"github.com/certimate-go/certimate/internal/rest/routes"
+	"github.com/certimate-go/certimate/internal/scheduler"
+	"github.com/certimate-go/certimate/internal/workflow"
+	"github.com/certimate-go/certimate/ui"
 
-	"github.com/usual2970/certimate/internal/domains"
-	"github.com/usual2970/certimate/internal/routes"
-	"github.com/usual2970/certimate/internal/utils/app"
-	"github.com/usual2970/certimate/ui"
-
-	_ "time/tzdata"
+	_ "github.com/certimate-go/certimate/migrations"
 )
 
 func main() {
-	app := app.GetApp()
+	pb := app.GetApp().(*pocketbase.PocketBase)
+	if len(os.Args) < 2 {
+		slog.Error("[CERTIMATE] missing exec args, maybe you forget the 'serve' command?")
+		os.Exit(1)
+		return
+	}
 
-	isGoRun := strings.HasPrefix(os.Args[0], os.TempDir())
+	var flagHttp string
+	pflag.CommandLine = pflag.NewFlagSet(os.Args[0], pflag.ContinueOnError)
+	pflag.CommandLine.Parse(os.Args[2:]) // skip the first two arguments: "main.go serve"
+	pflag.StringVar(&flagHttp, "http", "127.0.0.1:8090", "HTTP server address")
+	pflag.Parse()
 
-	// 获取启动命令中的http参数
-	var httpFlag string
-	flag.StringVar(&httpFlag, "http", "127.0.0.1:8090", "HTTP server address")
-	// "serve"影响解析
-	_ = flag.CommandLine.Parse(os.Args[2:])
-
-	migratecmd.MustRegister(app, app.RootCmd, migratecmd.Config{
+	migratecmd.MustRegister(pb, pb.RootCmd, migratecmd.Config{
 		// enable auto creation of migration files when making collection changes in the Admin UI
 		// (the isGoRun check is to enable it only during development)
-		Automigrate: isGoRun,
+		Automigrate: strings.HasPrefix(os.Args[0], os.TempDir()),
 	})
 
-	domains.AddEvent()
+	pb.RootCmd.AddCommand(cmd.NewInternalCommand(pb))
+	pb.RootCmd.AddCommand(cmd.NewWinscCommand(pb))
 
-	app.OnBeforeServe().Add(func(e *core.ServeEvent) error {
-		domains.InitSchedule()
-
-		routes.Register(e.Router)
-
-		e.Router.GET(
-			"/*",
-			echo.StaticDirectoryHandler(ui.DistDirFS, false),
-			middleware.Gzip(),
-		)
-
-		return nil
+	pb.OnServe().BindFunc(func(e *core.ServeEvent) error {
+		scheduler.Setup()
+		workflow.Setup()
+		routes.BindRouter(e.Router)
+		return e.Next()
 	})
 
-	defer log.Println("Exit!")
-	log.Printf("Visit the website: http://%s", httpFlag)
+	pb.OnServe().Bind(&hook.Handler[*core.ServeEvent]{
+		Func: func(e *core.ServeEvent) error {
+			e.Router.
+				GET("/{path...}", apis.Static(ui.DistDirFS, false)).
+				Bind(apis.Gzip())
+			return e.Next()
+		},
+		Priority: 999,
+	})
 
-	if err := app.Start(); err != nil {
-		log.Fatal(err)
+	pb.OnServe().BindFunc(func(e *core.ServeEvent) error {
+		slog.Info("[CERTIMATE] Visit the website: http://" + flagHttp)
+		return e.Next()
+	})
+
+	pb.OnTerminate().BindFunc(func(e *core.TerminateEvent) error {
+		workflow.Teardown()
+		return e.Next()
+	})
+
+	if err := cmd.Serve(pb); err != nil {
+		slog.Error("[CERTIMATE] Start failed.", slog.Any("error", err))
 	}
 }

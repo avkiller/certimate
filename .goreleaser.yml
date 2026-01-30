@@ -10,10 +10,12 @@ builds:
   - id: build_noncgo
     main: ./
     binary: certimate
-    ldflags:
-      - -s -w -X github.com/usual2970/certimate.Version={{ .Version }}
     env:
       - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X github.com/certimate-go/certimate.Version={{ .Version }}
     goos:
       - linux
       - windows
@@ -21,7 +23,6 @@ builds:
     goarch:
       - amd64
       - arm64
-      - arm
     goarm:
       - 7
     ignore:
@@ -30,24 +31,26 @@ builds:
       - goos: darwin
         goarch: arm
 
+# upx:
+#   - enabled: true
+
 release:
   draft: true
 
 archives:
   - id: archive_noncgo
     builds: [build_noncgo]
-    format: zip
+    format: "zip"
     files:
-      - CHANGELOG.md
-      - LICENSE.md
+      - LICENSE
       - README.md
+      - CHANGELOG.md
 
 checksum:
   name_template: "checksums.txt"
-
+  
 snapshot:
   name_template: "{{ incpatch .Version }}-next"
-
 changelog:
   sort: asc
   filters:

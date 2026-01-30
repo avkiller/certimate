@@ -1,6 +1,5 @@
 # 定义变量
 BINARY_NAME=certimate
-VERSION=$(shell git describe --tags --always)
 BUILD_DIR=build
 
 # 支持的操作系统和架构列表
@@ -21,7 +20,8 @@ $(OS_ARCH):
 	@mkdir -p $(BUILD_DIR)
 	GOOS=$(word 1,$(subst /, ,$@)) \
 	GOARCH=$(word 2,$(subst /, ,$@)) \
-	go build -o $(BUILD_DIR)/$(BINARY_NAME)_$(word 1,$(subst /, ,$@))_$(word 2,$(subst /, ,$@)) -ldflags="-X main.version=$(VERSION)" .
+	CGO_ENABLED=0 \
+	go build -trimpath -ldflags="-s -w" -o $(BUILD_DIR)/$(BINARY_NAME)_$(word 1,$(subst /, ,$@))_$(word 2,$(subst /, ,$@)) .
 
 # 清理构建文件
 clean:

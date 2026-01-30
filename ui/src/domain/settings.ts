@@ -1,97 +1,59 @@
-export type Setting<T> = {
-  id?: string;
-  name?: string;
-  content?: T;
-};
+import { type CAProviderType } from "./provider";
 
-export type EmailsSetting = {
+export const SETTINGS_NAMES = Object.freeze({
+  EMAILS: "emails",
+  NOTIFY_TEMPLATE: "notifyTemplate",
+  SCRIPT_TEMPLATE: "scriptTemplate",
+  SSL_PROVIDER: "sslProvider",
+  PERSISTENCE: "persistence",
+} as const);
+
+export type SettingsNames = (typeof SETTINGS_NAMES)[keyof typeof SETTINGS_NAMES];
+
+export interface SettingsModel<T extends NonNullable<unknown> = any> extends BaseModel {
+  name: string;
+  content: T;
+}
+
+// #region Settings: Emails
+export type EmailsSettingsContent = {
   emails: string[];
 };
+// #endregion
 
-export type NotifyTemplates = {
-  notifyTemplates: NotifyTemplate[];
+// #region Settings: NotifyTemplate
+export type NotifyTemplateContent = {
+  templates: Array<{
+    name: string;
+    subject: string;
+    message: string;
+  }>;
 };
+// #endregion
 
-export type NotifyTemplate = {
-  title: string;
-  content: string;
+// #region Settings: ScriptTemplate
+export type ScriptTemplateContent = {
+  templates: Array<{
+    name: string;
+    command: string;
+  }>;
 };
+// #endregion
 
-export type NotifyChannels = {
-  email?: NotifyChannelEmail;
-  webhook?: NotifyChannel;
-  dingtalk?: NotifyChannel;
-  lark?: NotifyChannel;
-  telegram?: NotifyChannel;
-  serverchan?: NotifyChannel;
-  bark?: NotifyChannelBark;
-};
-
-export type NotifyChannel =
-  | NotifyChannelEmail
-  | NotifyChannelWebhook
-  | NotifyChannelDingTalk
-  | NotifyChannelLark
-  | NotifyChannelTelegram
-  | NotifyChannelServerChan
-  | NotifyChannelBark;
-
-export type NotifyChannelEmail = {
-  smtpHost: string;
-  smtpPort: number;
-  smtpTLS: boolean;
-  username: string;
-  password: string;
-  senderAddress: string;
-  receiverAddress: string;
-  enabled: boolean;
-};
-
-export type NotifyChannelWebhook = {
-  url: string;
-  enabled: boolean;
-};
-
-export type NotifyChannelDingTalk = {
-  accessToken: string;
-  secret: string;
-  enabled: boolean;
-};
-
-export type NotifyChannelLark = {
-  webhookUrl: string;
-  enabled: boolean;
-};
-
-export type NotifyChannelTelegram = {
-  apiToken: string;
-  chatId: string;
-  enabled: boolean;
-};
-
-export type NotifyChannelServerChan = {
-  url: string;
-  enabled: boolean;
-};
-
-export type NotifyChannelBark = {
-  deviceKey: string;
-  serverUrl: string;
-  enabled: boolean;
-};
-
-export const defaultNotifyTemplate: NotifyTemplate = {
-  title: "您有 {COUNT} 张证书即将过期",
-  content: "有 {COUNT} 张证书即将过期，域名分别为 {DOMAINS}，请保持关注！",
-};
-
-export type SSLProvider = "letsencrypt" | "zerossl" | "gts";
-
-export type SSLProviderSetting = {
-  provider: SSLProvider;
-  config: {
-    [key: string]: {
-      [key: string]: string;
-    };
+// #region Settings: SSLProvider
+export type SSLProviderSettingsContent = {
+  provider: CAProviderType;
+  configs: {
+    [key: string]: Record<string, unknown> | undefined;
   };
+  timeout?: number;
 };
+// #endregion
+
+// #region Settings: Persistence
+export type PersistenceSettingsContent = {
+  certificatesWarningDaysBeforeExpire?: number;
+  certificatesRetentionMaxDays?: number;
+  workflowRunsRetentionMaxDays?: number;
+};
+// #endregion
