@@ -178,6 +178,9 @@ jobs:
   create-release:
     needs: [build-linux, build-macos, build-windows]
     runs-on: ubuntu-latest
+    env:
+          VERSION: ${{ inputs.version }}
+          TAG_NAME: ${VERSION}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -221,11 +224,21 @@ jobs:
             rm -rf "$tmpdir"
           done
 
-          sha256sum *.zip > checksums.txt
+          sha256sum *.zip > checksums.txt   
+          
+      - name: get tag
+        
+        run: |
+          if [ "$GITHUB_EVENT_NAME" != "workflow_dispatch" ]; then
+            # 使用当前的tags
+            tag="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "TAG_NAME=$tag" >> $GITHUB_ENV
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.TAG_NAME }}
           files: |
             dist/*.zip
             dist/checksums.txt
