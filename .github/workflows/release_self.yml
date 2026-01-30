@@ -69,7 +69,7 @@ jobs:
             # 使用当前的tags
             VERSION = "GITHUB_REF#refs/tags/"
           fi
-          for ARCH in amd64 arm64 armv7; do
+          for ARCH in amd64 arm64; do
             if [ "$ARCH" == "armv7" ]; then
               go env -w GOARCH=arm
               go env -w GOARM=7
@@ -162,8 +162,7 @@ jobs:
             # 使用当前的tags
             VERSION = "GITHUB_REF#refs/tags/"
           fi
-          if
-          for ARCH in amd64 arm64 386; do
+          for ARCH in amd64 arm64; do
             go env -w GOARCH=$ARCH
             go build -trimpath -ldflags="-s -w" -o dist/windows/certimate_${VERSION}_windows_$ARCH.exe
           done
