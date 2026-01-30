@@ -9,7 +9,7 @@ on:
       version:
         type: string
         description: 'release tags(Default: v0.4.15)'
-        required: false
+        required: true
         default: 'v0.4.15'
 
 jobs:
