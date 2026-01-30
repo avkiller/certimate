@@ -1,0 +1,26 @@
+name: test action
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        type: string
+        description: 'release tags(Default: v0.4.15)'
+        required: false
+        default: 'v0.4.15'
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build Linux binaries
+        env:
+          CGO_ENABLED: 0
+          GOOS: linux
+          VERSION: ${{ inputs.version }}
+        run: |
+          
+          if [ "$GITHUB_EVENT_NAME" != "workflow_dispatch" ]; then
+            # 使用当前的tags
+            VERSION = "GITHUB_REF#refs/tags/"
+          fi
+          echo ${VERSION｝
