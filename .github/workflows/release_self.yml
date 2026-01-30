@@ -231,8 +231,9 @@ jobs:
           if [ "$GITHUB_EVENT_NAME" != "workflow_dispatch" ]; then
             # 使用当前的tags
             tag="${GITHUB_REF#refs/tags/}"
+            echo "TAG_NAME=$tag" >> $GITHUB_ENV
           fi
-          echo "TAG_NAME=$tag" >> $GITHUB_ENV
+          
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
