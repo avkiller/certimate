@@ -139,7 +139,7 @@ const SettingsDiagnosticsLogs = ({ className, style }: { className?: string; sty
             <Show.Case when={listData.length === 0}>
               <div className="px-4 py-2">
                 <div className="w-full overflow-hidden">
-                  <div className="text-xs leading-relaxed text-stone-400">{loadError ? `> ${unwrapErrMsg(loadError)}` : "> no logs avaiable"}</div>
+                  <div className="text-xs/relaxed text-stone-400">{loadError ? `> ${unwrapErrMsg(loadError)}` : "> no logs avaiable"}</div>
                 </div>
                 <div className="flex w-full items-center">
                   <a onClick={handleReloadClick}>
@@ -154,7 +154,7 @@ const SettingsDiagnosticsLogs = ({ className, style }: { className?: string; sty
                 <div className="flex w-full flex-col overflow-hidden">
                   {listData.map((record) => {
                     return (
-                      <div key={record.id} className="text-xs leading-relaxed">
+                      <div key={record.id} className="text-xs/relaxed">
                         {renderLogRecord(record)}
                       </div>
                     );

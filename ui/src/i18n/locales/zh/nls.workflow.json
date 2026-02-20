@@ -9,10 +9,9 @@
   "workflow.search.placeholder": "按工作流名称搜索……",
 
   "workflow.action.create.button": "新建工作流",
+  "workflow.action.create.modal.title": "新建工作流",
   "workflow.action.modify.menu": "编辑工作流",
   "workflow.action.duplicate.menu": "复制工作流",
-  "workflow.action.duplicate.modal.title": "复制「{{name}}」",
-  "workflow.action.duplicate.modal.content": "确定要复制该工作流吗？",
   "workflow.action.delete.menu": "删除工作流",
   "workflow.action.delete.modal.title": "删除「{{name}}」",
   "workflow.action.delete.modal.content": "确定要删除该工作流吗？<br>注意此操作不可撤销，请谨慎操作。",
@@ -53,7 +52,9 @@
   "workflow.new.templates.default_name": "未命名工作流",
   "workflow.new.templates.default_description": "",
 
+  "workflow.detail.baseinfo.name.label": "工作流名称",
   "workflow.detail.baseinfo.name.placeholder": "请输入工作流名称",
+  "workflow.detail.baseinfo.description.label": "工作流描述",
   "workflow.detail.baseinfo.description.placeholder": "请输入工作流描述",
   "workflow.detail.design.tab": "流程编排",
   "workflow.detail.design.editor.placeholder": "请完成配置",

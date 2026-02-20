@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	aliopen "github.com/alibabacloud-go/darabonba-openapi/v2/client"
-	aliddoscoo "github.com/alibabacloud-go/ddoscoo-20200101/v4/client"
+	aliddoscoo "github.com/alibabacloud-go/ddoscoo-20200101/v5/client"
 	"github.com/alibabacloud-go/tea/dara"
 	"github.com/alibabacloud-go/tea/tea"
 	"github.com/samber/lo"

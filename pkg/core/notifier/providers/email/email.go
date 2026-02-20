@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log/slog"
 
+	"github.com/microcosm-cc/bluemonday"
+
 	"github.com/certimate-go/certimate/internal/tools/smtp"
 	"github.com/certimate-go/certimate/pkg/core/notifier"
 )
@@ -28,6 +30,10 @@ type NotifierConfig struct {
 	SenderName string `json:"senderName,omitempty"`
 	// 收件人邮箱。
 	ReceiverAddress string `json:"receiverAddress"`
+	// 消息格式。
+	// 可取值 [MESSAGE_FORMAT_PLAIN]、[MESSAGE_FORMAT_HTML]。
+	// 零值时默认值 [MESSAGE_FORMAT_PLAIN]。
+	MessageFormat string `json:"messageFormat,omitempty"`
 	// 是否允许不安全的连接。
 	AllowInsecureConnections bool `json:"allowInsecureConnections,omitempty"`
 }
@@ -75,7 +81,16 @@ func (n *Notifier) Notify(ctx context.Context, subject string, message string) (
 
 	msg := smtp.NewMessage()
 	msg.Subject(subject)
-	msg.SetBodyString(smtp.MIMETypeTextPlain, message)
+	switch n.config.MessageFormat {
+	case "", MESSAGE_FORMAT_PLAIN:
+		msg.SetBodyString(smtp.MIMETypeTextPlain, message)
+	case MESSAGE_FORMAT_HTML:
+		msg.SetBodyString(smtp.MIMETypeTextHTML, bluemonday.UGCPolicy().Sanitize(message))
+		msg.AddAlternativeString(smtp.MIMETypeTextPlain, bluemonday.StrictPolicy().Sanitize(message))
+	default:
+		return nil, fmt.Errorf("unsupported message format: '%s'", n.config.MessageFormat)
+	}
+
 	if n.config.SenderName == "" {
 		msg.From(n.config.SenderAddress)
 	} else {

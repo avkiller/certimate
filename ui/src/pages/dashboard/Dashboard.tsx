@@ -227,7 +227,7 @@ const Shortcuts = ({ className, style }: { className?: string; style?: React.CSS
     <div className={className} style={style}>
       <div className="flex items-center gap-4 not-md:flex-wrap">
         <Button
-          className="shadow"
+          className="shadow-sm"
           icon={<IconCirclePlus color="var(--color-primary)" size="1.25em" />}
           shape="round"
           size="large"
@@ -236,7 +236,7 @@ const Shortcuts = ({ className, style }: { className?: string; style?: React.CSS
           <span className="text-sm">{t("dashboard.shortcut.create_workflow")}</span>
         </Button>
         <Button
-          className="shadow"
+          className="shadow-sm"
           icon={<IconLock color="var(--color-warning)" size="1.25em" />}
           shape="round"
           size="large"
@@ -245,7 +245,7 @@ const Shortcuts = ({ className, style }: { className?: string; style?: React.CSS
           <span className="text-sm">{t("dashboard.shortcut.change_account")}</span>
         </Button>
         <Button
-          className="shadow"
+          className="shadow-sm"
           icon={<IconPlugConnected color="var(--color-info)" size="1.25em" />}
           shape="round"
           size="large"
@@ -255,7 +255,7 @@ const Shortcuts = ({ className, style }: { className?: string; style?: React.CSS
         </Button>
         {hasUpdate && (
           <Button
-            className="shadow"
+            className="shadow-sm"
             icon={<IconConfetti className="animate-bounce" color="var(--color-error)" size="1.25em" />}
             shape="round"
             size="large"

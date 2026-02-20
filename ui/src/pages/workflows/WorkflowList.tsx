@@ -2,17 +2,20 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { IconCirclePlus, IconCopy, IconDots, IconEdit, IconHierarchy3, IconPlayerPlay, IconPlus, IconReload, IconTrash } from "@tabler/icons-react";
-import { useRequest } from "ahooks";
-import { App, Button, Dropdown, Input, Segmented, Skeleton, Switch, Table, type TableProps, Typography, theme } from "antd";
+import { useControllableValue, useRequest } from "ahooks";
+import { App, Button, Dropdown, Form, Input, Segmented, Skeleton, Switch, Table, type TableProps, Typography, theme } from "antd";
+import { createSchemaFieldRule } from "antd-zod";
 import dayjs from "dayjs";
 import { ClientResponseError } from "pocketbase";
+import { z } from "zod";
 
 import { startRun as startWorkflowRun } from "@/api/workflows";
+import DrawerForm from "@/components/DrawerForm";
 import Empty from "@/components/Empty";
 import Show from "@/components/Show";
 import WorkflowStatus from "@/components/workflow/WorkflowStatus";
 import { WORKFLOW_TRIGGERS, type WorkflowModel, duplicateNodes } from "@/domain/workflow";
-import { useAppSettings } from "@/hooks";
+import { useAntdForm, useAppSettings } from "@/hooks";
 import { get as getWorkflow, list as listWorkflows, remove as removeWorkflow, save as saveWorkflow } from "@/repository/workflow";
 import { unwrapErrMsg } from "@/utils/error";
 
@@ -287,6 +290,9 @@ const WorkflowList = () => {
     }
   );
 
+  const [duplicateDrawerOpen, setDuplicateDrawerOpen] = useState(false);
+  const [duplicateDrawerData, setDuplicateDrawerData] = useState<Nullish<WorkflowModel>>();
+
   const handleSearch = (value: string) => {
     setFilters((prev) => ({ ...prev, keyword: value.trim() }));
     setPage(1);
@@ -350,30 +356,16 @@ const WorkflowList = () => {
     }
   };
 
-  const handleRecordDuplicateClick = (workflow: WorkflowModel) => {
-    modal.confirm({
-      title: t("workflow.action.duplicate.modal.title", { name: workflow.name }),
-      content: t("workflow.action.duplicate.modal.content"),
-      onOk: async () => {
-        try {
-          workflow = await getWorkflow(workflow.id);
-          const workflowCopy = {
-            name: `${workflow.name}-copy`,
-            description: workflow.description,
-            trigger: workflow.trigger,
-            triggerCron: workflow.triggerCron,
-            graphDraft: { nodes: duplicateNodes(workflow.graphDraft?.nodes ?? [], { withCopySuffix: false }) },
-            hasDraft: true,
-          } as WorkflowModel;
-          const resp = await saveWorkflow(workflowCopy);
-          if (resp) {
-            refreshData();
-          }
-        } catch (err) {
-          console.error(err);
-          notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
-        }
-      },
+  const handleRecordDuplicateClick = async (workflow: WorkflowModel) => {
+    const data = await getWorkflow(workflow.id);
+    setDuplicateDrawerOpen(true);
+    setDuplicateDrawerData({
+      name: `${data.name}-copy`,
+      description: data.description,
+      trigger: data.trigger,
+      triggerCron: data.triggerCron,
+      graphDraft: { nodes: duplicateNodes(data.graphDraft?.nodes ?? [], { withCopySuffix: false }) },
+      hasDraft: true,
     });
   };
 
@@ -433,6 +425,18 @@ const WorkflowList = () => {
         }
       },
     });
+  };
+
+  const handleDuplicateDrawerSubmit = async (values: Nullish<WorkflowModel>) => {
+    try {
+      const resp = await saveWorkflow(values);
+      if (resp) {
+        refreshData();
+      }
+    } catch (err) {
+      console.error(err);
+      notification.error({ title: t("common.text.request_error"), description: unwrapErrMsg(err) });
+    }
   };
 
   return (
@@ -547,9 +551,85 @@ const WorkflowList = () => {
               </div>
             </div>
           </Show>
+
+          <InternalDuplicateDrawer
+            data={duplicateDrawerData}
+            open={duplicateDrawerOpen}
+            afterClose={() => setDuplicateDrawerOpen(false)}
+            onOpenChange={(open) => setDuplicateDrawerOpen(open)}
+            onSubmit={handleDuplicateDrawerSubmit}
+          />
         </div>
       </div>
     </div>
+  );
+};
+
+const InternalDuplicateDrawer = ({
+  data,
+  trigger,
+  onSubmit,
+  ...props
+}: {
+  afterClose?: () => void;
+  data?: Nullish<WorkflowModel>;
+  open: boolean;
+  trigger?: React.ReactNode;
+  onOpenChange?: (open: boolean) => void;
+  onSubmit?: (record: Nullish<WorkflowModel>) => void;
+}) => {
+  const { t } = useTranslation();
+
+  const [open, setOpen] = useControllableValue<boolean>(props, {
+    valuePropName: "open",
+    defaultValuePropName: "defaultOpen",
+    trigger: "onOpenChange",
+  });
+
+  const afterClose = () => {
+    formInst.resetFields();
+    props.afterClose?.();
+  };
+
+  const formSchema = z.object({
+    name: z.string().nonempty(t("workflow.detail.baseinfo.name.placeholder")),
+    description: z.string().nullish(),
+  });
+  const formRule = createSchemaFieldRule(formSchema);
+  const { form: formInst, formProps } = useAntdForm<z.infer<typeof formSchema>>({
+    name: "viewWorkflowList_InternalDuplicateDrawer",
+    initialValues: data,
+  });
+
+  const handleFormFinish = async (values: z.infer<typeof formSchema>) => {
+    await onSubmit?.(values);
+    setOpen(false);
+  };
+
+  return (
+    <DrawerForm
+      {...formProps}
+      clearOnDestroy
+      drawerProps={{ autoFocus: true, destroyOnHidden: true, size: "large", afterOpenChange: (open) => !open && afterClose?.() }}
+      form={formInst}
+      layout="vertical"
+      okText={t("common.button.create")}
+      open={open}
+      preserve={false}
+      title={t("workflow.action.create.modal.title")}
+      trigger={trigger}
+      validateTrigger="onSubmit"
+      onFinish={handleFormFinish}
+      onOpenChange={props.onOpenChange}
+    >
+      <Form.Item name="name" label={t("workflow.detail.baseinfo.name.label")} rules={[formRule]}>
+        <Input maxLength={100} placeholder={t("workflow.detail.baseinfo.name.placeholder")} />
+      </Form.Item>
+
+      <Form.Item name="description" label={t("workflow.detail.baseinfo.description.label")} rules={[formRule]}>
+        <Input placeholder={t("workflow.detail.baseinfo.name.placeholder")} />
+      </Form.Item>
+    </DrawerForm>
   );
 };
 

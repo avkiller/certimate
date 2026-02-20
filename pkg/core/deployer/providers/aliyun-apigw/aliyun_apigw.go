@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	aliapig "github.com/alibabacloud-go/apig-20240327/v5/client"
+	aliapig "github.com/alibabacloud-go/apig-20240327/v6/client"
 	alicloudapi "github.com/alibabacloud-go/cloudapi-20160714/v5/client"
 	aliopen "github.com/alibabacloud-go/darabonba-openapi/v2/client"
 	"github.com/alibabacloud-go/tea/dara"

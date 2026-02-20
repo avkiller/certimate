@@ -2,9 +2,10 @@ package internal
 
 import (
 	openapi "github.com/alibabacloud-go/darabonba-openapi/v2/client"
-	aliga "github.com/alibabacloud-go/ga-20191120/v3/client"
+	aliga "github.com/alibabacloud-go/ga-20191120/v4/client"
 	openapiutil "github.com/alibabacloud-go/openapi-util/service"
 	util "github.com/alibabacloud-go/tea-utils/v2/service"
+	"github.com/alibabacloud-go/tea/dara"
 	"github.com/alibabacloud-go/tea/tea"
 )
 
@@ -111,6 +112,10 @@ func (client *GaClient) ListListenersWithOptions(request *aliga.ListListenersReq
 
 	if !tea.BoolValue(util.IsUnset(request.PageSize)) {
 		query["PageSize"] = request.PageSize
+	}
+
+	if !dara.IsNil(request.Protocol) {
+		query["Protocol"] = request.Protocol
 	}
 
 	if !tea.BoolValue(util.IsUnset(request.RegionId)) {

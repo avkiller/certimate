@@ -3,7 +3,7 @@ package internal
 import (
 	"context"
 
-	aliapig "github.com/alibabacloud-go/apig-20240327/v5/client"
+	aliapig "github.com/alibabacloud-go/apig-20240327/v6/client"
 	alicloudapi "github.com/alibabacloud-go/cloudapi-20160714/v5/client"
 	openapi "github.com/alibabacloud-go/darabonba-openapi/v2/client"
 	openapiutil "github.com/alibabacloud-go/darabonba-openapi/v2/utils"

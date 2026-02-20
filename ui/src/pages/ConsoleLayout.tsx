@@ -104,7 +104,7 @@ const ConsoleLayout = () => {
           </div>
           <div className="absolute top-1/2 right-0 translate-x-1/2 -translate-y-1/2 opacity-0 transition-opacity group-hover/sider:opacity-100">
             <Button
-              className="bg-background shadow"
+              className="bg-background shadow-sm"
               icon={
                 siderCollapsed ? (
                   <IconLayoutSidebarRightCollapse size="1.5em" stroke="1.25" color="#999" />

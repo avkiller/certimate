@@ -35,7 +35,7 @@ const NotificationProviderPicker = forwardRef<NotificationProviderPickerInstance
       return (
         <div key={provider.type}>
           <Card
-            className="group/provider h-16 w-full overflow-hidden shadow"
+            className="group/provider h-16 w-full overflow-hidden shadow-sm"
             styles={{ body: { height: "100%", padding: "0.5rem 1rem" } }}
             hoverable
             onClick={() => {

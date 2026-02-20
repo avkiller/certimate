@@ -20,7 +20,7 @@ const DraggingAdder = ({ from }: DraggingAdderProps) => {
   }
 
   return (
-    <div className="size-4 animate-bounce rounded-full bg-primary text-white shadow">
+    <div className="size-4 animate-bounce rounded-full bg-primary text-white shadow-sm">
       <div className="flex size-full items-center justify-center">
         <IconChevronsDown size="1em" />
       </div>

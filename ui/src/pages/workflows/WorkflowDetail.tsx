@@ -109,14 +109,14 @@ const WorkflowDetail = () => {
   return (
     <div className="flex size-full flex-col">
       <div className="px-6 py-4" ref={divHeaderRef}>
-        <div className="relative z-11 container flex justify-between gap-4 not-md:flex-wrap">
+        <div className="container relative z-11 flex justify-between gap-4 not-md:flex-wrap">
           <div className="flex-1 not-md:w-full not-md:flex-none">
             <WorkflowDetailBaseName />
             <WorkflowDetailBaseDescription />
 
             <div className="absolute -bottom-12 left-1/2 z-1 -translate-x-1/2">
               <Segmented
-                className="shadow"
+                className="shadow-sm"
                 options={tabs.map(([key, label, icon]) => ({
                   value: key,
                   label: <span className="px-2 text-sm">{t(label)}</span>,

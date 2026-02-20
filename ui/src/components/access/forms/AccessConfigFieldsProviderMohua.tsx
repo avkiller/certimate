@@ -17,12 +17,7 @@ const AccessConfigFormFieldsProviderMohua = () => {
 
   return (
     <>
-      <Form.Item
-        name={[parentNamePath, "username"]}
-        initialValue={initialValues.username}
-        label={t("access.form.mohua_username.label")}
-        rules={[formRule]}
-      >
+      <Form.Item name={[parentNamePath, "username"]} initialValue={initialValues.username} label={t("access.form.mohua_username.label")} rules={[formRule]}>
         <Input autoComplete="new-password" placeholder={t("access.form.mohua_username.placeholder")} />
       </Form.Item>
 

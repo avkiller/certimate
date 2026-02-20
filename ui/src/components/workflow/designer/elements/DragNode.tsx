@@ -13,7 +13,7 @@ const DragNode = ({ dragStart, dragNodes }: DragNodeProps) => {
   return (
     <Badge count={count > 1 ? count : 0} size="small">
       <div className="relative w-[160px]">
-        <Card className="bg-transparent shadow" styles={{ body: { padding: 0 } }}>
+        <Card className="bg-transparent shadow-sm" styles={{ body: { padding: 0 } }}>
           <div className="overflow-hidden px-4 py-2 text-primary">
             <div className="truncate">{dragStart ? dragStart.form?.getValueIn("name") || `#${dragStart?.id}` : "\u00A0"}</div>
           </div>

@@ -9,10 +9,9 @@
   "workflow.search.placeholder": "Search by workflow name ...",
 
   "workflow.action.create.button": "Create workflow",
+  "workflow.action.create.modal.title": "Create workflow",
   "workflow.action.modify.menu": "Edit",
   "workflow.action.duplicate.menu": "Duplicate",
-  "workflow.action.duplicate.modal.title": "Duplicate \"{{name}}\"",
-  "workflow.action.duplicate.modal.content": "Are you sure to duplicate this workflow?",
   "workflow.action.delete.menu": "Delete",
   "workflow.action.delete.modal.title": "Delete \"{{name}}\"",
   "workflow.action.delete.modal.content": "Are you sure want to delete this workflow? <br>This action cannot be undone.",
@@ -53,7 +52,9 @@
   "workflow.new.templates.default_name": "Untitled workflow",
   "workflow.new.templates.default_description": "",
 
+  "workflow.detail.baseinfo.name.label": "Workflow name",
   "workflow.detail.baseinfo.name.placeholder": "Please enter workflow name",
+  "workflow.detail.baseinfo.description.label": "Workflow description",
   "workflow.detail.baseinfo.description.placeholder": "Please enter workflow description",
   "workflow.detail.design.tab": "Orchestration",
   "workflow.detail.design.editor.placeholder": "Please configure",

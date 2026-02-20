@@ -41,6 +41,9 @@ func (client *EsaClient) SetCertificateWithContext(ctx context.Context, request 
 		return _result, _err
 	}
 	query := map[string]interface{}{}
+	if !dara.IsNil(request.KeyServerId) {
+		query["KeyServerId"] = request.KeyServerId
+	}
 
 	if !dara.IsNil(request.OwnerId) {
 		query["OwnerId"] = request.OwnerId

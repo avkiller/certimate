@@ -297,7 +297,7 @@ const InternalEditDrawer = ({
       case "create":
       case "modify":
         {
-          onSubmit?.(values);
+          await onSubmit?.(values);
         }
         break;
 

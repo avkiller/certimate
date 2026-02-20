@@ -51,8 +51,8 @@ const serialize = (graph: WorkflowGraph | undefined, format: WorkflowGraphExport
       ] as string[];
       const hasChildren = node.blocks.length > 0 || branchLikeNodeTypes.includes(nodeRegistries.find((r) => r.type === node.type)?.extend ?? "");
       if (hasChildren) {
-        const childern = node.blocks.map((block) => deepConvert(block));
-        map.set("blocks", childern);
+        const children = node.blocks.map((block) => deepConvert(block));
+        map.set("blocks", children);
       }
     }
 
