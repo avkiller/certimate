@@ -54,6 +54,7 @@ const (
 	AccessProviderTypeEmail               = AccessProviderType("email")
 	AccessProviderTypeFastly              = AccessProviderType("fastly") // Fastly（预留）
 	AccessProviderTypeFlexCDN             = AccessProviderType("flexcdn")
+	AccessProviderTypeFlyIO               = AccessProviderType("flyio")
 	AccessProviderTypeGandinet            = AccessProviderType("gandinet")
 	AccessProviderTypeGcore               = AccessProviderType("gcore")
 	AccessProviderTypeGlobalSignAtlas     = AccessProviderType("globalsignatlas")
@@ -107,6 +108,7 @@ const (
 	AccessProviderTypeTechnitiumDNS       = AccessProviderType("technitiumdns")
 	AccessProviderTypeTelegramBot         = AccessProviderType("telegrambot")
 	AccessProviderTypeTencentCloud        = AccessProviderType("tencentcloud")
+	AccessProviderTypeTodayNIC            = AccessProviderType("todaynic")
 	AccessProviderTypeUCloud              = AccessProviderType("ucloud")
 	AccessProviderTypeUniCloud            = AccessProviderType("unicloud")
 	AccessProviderTypeUpyun               = AccessProviderType("upyun")
@@ -219,6 +221,7 @@ const (
 	ACMEDns01ProviderTypeTencentCloud      = ACMEDns01ProviderType(AccessProviderTypeTencentCloud) // 兼容旧值，等同于 [ACMEDns01ProviderTypeTencentCloudDNS]
 	ACMEDns01ProviderTypeTencentCloudDNS   = ACMEDns01ProviderType(AccessProviderTypeTencentCloud + "-dns")
 	ACMEDns01ProviderTypeTencentCloudEO    = ACMEDns01ProviderType(AccessProviderTypeTencentCloud + "-eo")
+	ACMEDns01ProviderTypeTodayNIC          = ACMEDns01ProviderType(AccessProviderTypeTodayNIC)
 	ACMEDns01ProviderTypeUCloud            = ACMEDns01ProviderType(AccessProviderTypeUCloud) // 兼容旧值，等同于 [ACMEDns01ProviderTypeUCloudUDNR]
 	ACMEDns01ProviderTypeUCloudUDNR        = ACMEDns01ProviderType(AccessProviderTypeUCloud + "-udnr")
 	ACMEDns01ProviderTypeVercel            = ACMEDns01ProviderType(AccessProviderTypeVercel)
@@ -265,6 +268,7 @@ const (
 	DeploymentProviderTypeAliyunDCDN            = DeploymentProviderType(AccessProviderTypeAliyun + "-dcdn")
 	DeploymentProviderTypeAliyunDDoSPro         = DeploymentProviderType(AccessProviderTypeAliyun + "-ddospro")
 	DeploymentProviderTypeAliyunESA             = DeploymentProviderType(AccessProviderTypeAliyun + "-esa")
+	DeploymentProviderTypeAliyunESASaaS         = DeploymentProviderType(AccessProviderTypeAliyun + "-esasaas")
 	DeploymentProviderTypeAliyunFC              = DeploymentProviderType(AccessProviderTypeAliyun + "-fc")
 	DeploymentProviderTypeAliyunGA              = DeploymentProviderType(AccessProviderTypeAliyun + "-ga")
 	DeploymentProviderTypeAliyunLive            = DeploymentProviderType(AccessProviderTypeAliyun + "-live")
@@ -303,6 +307,7 @@ const (
 	DeploymentProviderTypeDogeCloudCDN          = DeploymentProviderType(AccessProviderTypeDogeCloud + "-cdn")
 	DeploymentProviderTypeDokploy               = DeploymentProviderType(AccessProviderTypeDokploy)
 	DeploymentProviderTypeFlexCDN               = DeploymentProviderType(AccessProviderTypeFlexCDN)
+	DeploymentProviderTypeFlyIO                 = DeploymentProviderType(AccessProviderTypeFlyIO)
 	DeploymentProviderTypeGcoreCDN              = DeploymentProviderType(AccessProviderTypeGcore + "-cdn")
 	DeploymentProviderTypeGoEdge                = DeploymentProviderType(AccessProviderTypeGoEdge)
 	DeploymentProviderTypeHuaweiCloudCDN        = DeploymentProviderType(AccessProviderTypeHuaweiCloud + "-cdn")

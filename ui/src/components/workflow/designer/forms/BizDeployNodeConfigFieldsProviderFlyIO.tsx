@@ -1,4 +1,4 @@
-﻿import { getI18n, useTranslation } from "react-i18next";
+import { getI18n, useTranslation } from "react-i18next";
 import { Form, Input } from "antd";
 import { createSchemaFieldRule } from "antd-zod";
 import { z } from "zod";
@@ -7,7 +7,7 @@ import { isDomain } from "@/utils/validator";
 
 import { useFormNestedFieldsContext } from "./_context";
 
-const BizDeployNodeConfigFieldsProviderCTCCCloudFaaS = () => {
+const BizDeployNodeConfigFieldsProviderFlyIO = () => {
   const { i18n, t } = useTranslation();
 
   const { parentNamePath } = useFormNestedFieldsContext();
@@ -20,22 +20,22 @@ const BizDeployNodeConfigFieldsProviderCTCCCloudFaaS = () => {
   return (
     <>
       <Form.Item
-        name={[parentNamePath, "regionId"]}
-        initialValue={initialValues.regionId}
-        label={t("workflow_node.deploy.form.ctcccloud_faas_region_id.label")}
+        name={[parentNamePath, "appName"]}
+        initialValue={initialValues.appName}
+        label={t("workflow_node.deploy.form.flyio_app_name.label")}
         rules={[formRule]}
-        tooltip={<span dangerouslySetInnerHTML={{ __html: t("workflow_node.deploy.form.ctcccloud_faas_region_id.tooltip") }}></span>}
       >
-        <Input placeholder={t("workflow_node.deploy.form.ctcccloud_faas_region_id.placeholder")} />
+        <Input placeholder={t("workflow_node.deploy.form.flyio_app_name.placeholder")} />
       </Form.Item>
 
       <Form.Item
         name={[parentNamePath, "domain"]}
         initialValue={initialValues.domain}
-        label={t("workflow_node.deploy.form.ctcccloud_faas_domain.label")}
+        label={t("workflow_node.deploy.form.flyio_domain.label")}
+        extra={t("workflow_node.deploy.form.flyio_domain.help")}
         rules={[formRule]}
       >
-        <Input placeholder={t("workflow_node.deploy.form.ctcccloud_faas_domain.placeholder")} />
+        <Input placeholder={t("workflow_node.deploy.form.flyio_domain.placeholder")} />
       </Form.Item>
     </>
   );
@@ -43,7 +43,7 @@ const BizDeployNodeConfigFieldsProviderCTCCCloudFaaS = () => {
 
 const getInitialValues = (): Nullish<z.infer<ReturnType<typeof getSchema>>> => {
   return {
-    regionId: "",
+    appName: "",
     domain: "",
   };
 };
@@ -52,12 +52,12 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
   const { t } = i18n;
 
   return z.object({
-    regionId: z.string().nonempty(t("workflow_node.deploy.form.ctcccloud_faas_region_id.placeholder")),
-    domain: z.string().refine((v) => isDomain(v), t("common.errmsg.domain_invalid")),
+    appName: z.string().nonempty(t("workflow_node.deploy.form.flyio_app_name.placeholder")),
+    domain: z.string().refine((v) => isDomain(v, { allowWildcard: true }), t("common.errmsg.domain_invalid")),
   });
 };
 
-const _default = Object.assign(BizDeployNodeConfigFieldsProviderCTCCCloudFaaS, {
+const _default = Object.assign(BizDeployNodeConfigFieldsProviderFlyIO, {
   getInitialValues,
   getSchema,
 });

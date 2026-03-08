@@ -1,4 +1,4 @@
-﻿{
+{
   "access.page.title": "授权凭据",
   "access.page.subtitle": "授权凭据中存储有用于访问特定第三方应用程序或服务的身份验证信息（如账号密码、接口密钥、API 令牌等）。",
 
@@ -320,6 +320,9 @@
   "access.form.flexcdn_access_key.label": "FlexCDN AccessKey",
   "access.form.flexcdn_access_key.placeholder": "请输入 FlexCDN AccessKey",
   "access.form.flexcdn_access_key.tooltip": "这是什么？请参阅 <a href=\"https://flexcdn.cn/docs/api/auth\" target=\"_blank\">https://flexcdn.cn/docs/api/auth</a>",
+  "access.form.flyio_api_token.label": "Fly.io API Token",
+  "access.form.flyio_api_token.placeholder": "请输入 Fly.io API Token",
+  "access.form.flyio_api_token.tooltip": "这是什么？请参阅 <a href=\"https://fly.io/docs/security/tokens/\" target=\"_blank\">https://fly.io/docs/security/tokens/</a>",
   "access.form.gandinet_personal_access_token.label": "Gandi.net Personal Access Token",
   "access.form.gandinet_personal_access_token.placeholder": "请输入 Gandi.net Personal Access Token",
   "access.form.gandinet_personal_access_token.tooltip": "这是什么？请参阅 <a href=\"https://api.gandi.net/docs/authentication/\" target=\"_blank\">https://api.gandi.net/docs/authentication/</a>",
@@ -641,6 +644,11 @@
   "access.form.tencentcloud_secret_key.label": "腾讯云 SecretKey",
   "access.form.tencentcloud_secret_key.placeholder": "请输入腾讯云 SecretKey",
   "access.form.tencentcloud_secret_key.tooltip": "这是什么？请参阅 <a href=\"https://cloud.tencent.com/document/product/598/40488\" target=\"_blank\">https://cloud.tencent.com/document/product/598/40488</a>",
+  "access.form.todaynic_user_id.label": "时代互联代理商用户 ID",
+  "access.form.todaynic_user_id.placeholder": "请输入时代互联代理商用户 ID",
+  "access.form.todaynic_api_key.label": "时代互联代理商 API Key",
+  "access.form.todaynic_api_key.placeholder": "请输入时代互联代理商 API Key",
+  "access.form.todaynic_agent.guide": "时代互联 API 仅支持代理商调用。点击下方链接了解更多：<br><a href=\"https://docs.apipost.net/docs/detail/49dcef10a876000?target_id=371b384\" target=\"_blank\">https://docs.apipost.net/docs/detail/49dcef10a876000?target_id=371b384</a>",
   "access.form.ucloud_private_key.label": "优刻得 API 私钥",
   "access.form.ucloud_private_key.placeholder": "请输入优刻得 API 私钥",
   "access.form.ucloud_private_key.tooltip": "这是什么？请参阅 <a href=\"https://console.ucloud.cn/uaccount/api_manage\" target=\"_blank\">https://console.ucloud.cn/uaccount/api_manage</a>",

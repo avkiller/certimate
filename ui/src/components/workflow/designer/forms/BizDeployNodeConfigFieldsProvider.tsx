@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { DEPLOYMENT_PROVIDERS, type DeploymentProviderType } from "@/domain/provider";
 
@@ -13,6 +13,7 @@ import BizDeployNodeConfigFieldsProviderAliyunCLB from "./BizDeployNodeConfigFie
 import BizDeployNodeConfigFieldsProviderAliyunDCDN from "./BizDeployNodeConfigFieldsProviderAliyunDCDN";
 import BizDeployNodeConfigFieldsProviderAliyunDDoSPro from "./BizDeployNodeConfigFieldsProviderAliyunDDoSPro";
 import BizDeployNodeConfigFieldsProviderAliyunESA from "./BizDeployNodeConfigFieldsProviderAliyunESA";
+import BizDeployNodeConfigFieldsProviderAliyunESASaaS from "./BizDeployNodeConfigFieldsProviderAliyunESASaaS";
 import BizDeployNodeConfigFieldsProviderAliyunFC from "./BizDeployNodeConfigFieldsProviderAliyunFC";
 import BizDeployNodeConfigFieldsProviderAliyunGA from "./BizDeployNodeConfigFieldsProviderAliyunGA";
 import BizDeployNodeConfigFieldsProviderAliyunLive from "./BizDeployNodeConfigFieldsProviderAliyunLive";
@@ -47,6 +48,7 @@ import BizDeployNodeConfigFieldsProviderCTCCCloudICDN from "./BizDeployNodeConfi
 import BizDeployNodeConfigFieldsProviderCTCCCloudLVDN from "./BizDeployNodeConfigFieldsProviderCTCCCloudLVDN";
 import BizDeployNodeConfigFieldsProviderDogeCloudCDN from "./BizDeployNodeConfigFieldsProviderDogeCloudCDN";
 import BizDeployNodeConfigFieldsProviderFlexCDN from "./BizDeployNodeConfigFieldsProviderFlexCDN";
+import BizDeployNodeConfigFieldsProviderFlyIO from "./BizDeployNodeConfigFieldsProviderFlyIO";
 import BizDeployNodeConfigFieldsProviderGcoreCDN from "./BizDeployNodeConfigFieldsProviderGcoreCDN";
 import BizDeployNodeConfigFieldsProviderGoEdge from "./BizDeployNodeConfigFieldsProviderGoEdge";
 import BizDeployNodeConfigFieldsProviderHuaweiCloudCDN from "./BizDeployNodeConfigFieldsProviderHuaweiCloudCDN";
@@ -129,6 +131,7 @@ const providerComponentMap: Partial<Record<DeploymentProviderType, React.Compone
   [DEPLOYMENT_PROVIDERS.ALIYUN_DCDN]: BizDeployNodeConfigFieldsProviderAliyunDCDN,
   [DEPLOYMENT_PROVIDERS.ALIYUN_DDOSPRO]: BizDeployNodeConfigFieldsProviderAliyunDDoSPro,
   [DEPLOYMENT_PROVIDERS.ALIYUN_ESA]: BizDeployNodeConfigFieldsProviderAliyunESA,
+  [DEPLOYMENT_PROVIDERS.ALIYUN_ESA_SAAS]: BizDeployNodeConfigFieldsProviderAliyunESASaaS,
   [DEPLOYMENT_PROVIDERS.ALIYUN_FC]: BizDeployNodeConfigFieldsProviderAliyunFC,
   [DEPLOYMENT_PROVIDERS.ALIYUN_GA]: BizDeployNodeConfigFieldsProviderAliyunGA,
   [DEPLOYMENT_PROVIDERS.ALIYUN_LIVE]: BizDeployNodeConfigFieldsProviderAliyunLive,
@@ -163,6 +166,7 @@ const providerComponentMap: Partial<Record<DeploymentProviderType, React.Compone
   [DEPLOYMENT_PROVIDERS.CTCCCLOUD_LVDN]: BizDeployNodeConfigFieldsProviderCTCCCloudLVDN,
   [DEPLOYMENT_PROVIDERS.DOGECLOUD_CDN]: BizDeployNodeConfigFieldsProviderDogeCloudCDN,
   [DEPLOYMENT_PROVIDERS.FLEXCDN]: BizDeployNodeConfigFieldsProviderFlexCDN,
+  [DEPLOYMENT_PROVIDERS.FLYIO]: BizDeployNodeConfigFieldsProviderFlyIO,
   [DEPLOYMENT_PROVIDERS.GCORE_CDN]: BizDeployNodeConfigFieldsProviderGcoreCDN,
   [DEPLOYMENT_PROVIDERS.GOEDGE]: BizDeployNodeConfigFieldsProviderGoEdge,
   [DEPLOYMENT_PROVIDERS.HUAWEICLOUD_CDN]: BizDeployNodeConfigFieldsProviderHuaweiCloudCDN,

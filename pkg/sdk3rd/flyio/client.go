@@ -1,9 +1,8 @@
-package dnsexit
+package flyio
 
 import (
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -15,21 +14,17 @@ type Client struct {
 	client *resty.Client
 }
 
-func NewClient(apiKey string) (*Client, error) {
-	if apiKey == "" {
-		return nil, fmt.Errorf("sdkerr: unset apiKey")
+func NewClient(apiToken string) (*Client, error) {
+	if apiToken == "" {
+		return nil, fmt.Errorf("sdkerr: unset apiToken")
 	}
 
 	client := resty.New().
-		SetBaseURL("https://api.dnsexit.com").
+		SetBaseURL("https://api.machines.dev/v1").
 		SetHeader("Accept", "application/json").
+		SetHeader("Authorization", "Bearer "+apiToken).
 		SetHeader("Content-Type", "application/json").
-		SetHeader("User-Agent", app.AppUserAgent).
-		SetPreRequestHook(func(c *resty.Client, req *http.Request) error {
-			req.Header.Set("apikey", apiKey)
-
-			return nil
-		})
+		SetHeader("User-Agent", app.AppUserAgent)
 
 	return &Client{client}, nil
 }
@@ -87,10 +82,6 @@ func (c *Client) doRequestWithResult(req *resty.Request, res sdkResponse) (*rest
 	if len(resp.Body()) != 0 {
 		if err := json.Unmarshal(resp.Body(), &res); err != nil {
 			return resp, fmt.Errorf("sdkerr: failed to unmarshal response: %w (resp: %s)", err, resp.String())
-		} else {
-			if tcode := res.GetCode(); tcode != 0 {
-				return resp, fmt.Errorf("sdkerr: code='%d', message='%s'", tcode, res.GetMessage())
-			}
 		}
 	}
 

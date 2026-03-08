@@ -21,7 +21,7 @@ English ｜ [简体中文](README_zh.md)
 
 ## 🚩 Introduction
 
-An open-source and free self-hosted SSL certificates ACME tool, automates the full-cycle of issuance, deployment, and renewal visually.
+An open-source and free self-hosted SSL certificates ACME tool, automates the full-cycle of issuance, deployment, renewal, and monitoring visually.
 
 - **Self-Hosted**: Private deployment. All data is stored locally, giving you full control to ensure data privacy and security.
 - **Zero Dependencies**: No need to install databases, runtimes, or any complex frameworks. Truly ready to use out of the box with a single click.

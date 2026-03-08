@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { ACCESS_PROVIDERS, type AccessProviderType } from "@/domain/provider";
 
@@ -45,6 +45,7 @@ import AccessConfigFieldsProviderDynu from "./AccessConfigFieldsProviderDynu";
 import AccessConfigFieldsProviderDynv6 from "./AccessConfigFieldsProviderDynv6";
 import AccessConfigFieldsProviderEmail from "./AccessConfigFieldsProviderEmail";
 import AccessConfigFieldsProviderFlexCDN from "./AccessConfigFieldsProviderFlexCDN";
+import AccessConfigFieldsProviderFlyIO from "./AccessConfigFieldsProviderFlyIO";
 import AccessConfigFieldsProviderGandinet from "./AccessConfigFieldsProviderGandinet";
 import AccessConfigFieldsProviderGcore from "./AccessConfigFieldsProviderGcore";
 import AccessConfigFieldsProviderGlobalSignAtlas from "./AccessConfigFieldsProviderGlobalSignAtlas";
@@ -95,6 +96,7 @@ import AccessConfigFieldsProviderSynologyDSM from "./AccessConfigFieldsProviderS
 import AccessConfigFieldsProviderTechnitiumDNS from "./AccessConfigFieldsProviderTechnitiumDNS";
 import AccessConfigFieldsProviderTelegramBot from "./AccessConfigFieldsProviderTelegramBot";
 import AccessConfigFieldsProviderTencentCloud from "./AccessConfigFieldsProviderTencentCloud";
+import AccessConfigFieldsProviderTodayNIC from "./AccessConfigFieldsProviderTodayNIC";
 import AccessConfigFieldsProviderUCloud from "./AccessConfigFieldsProviderUCloud";
 import AccessConfigFieldsProviderUniCloud from "./AccessConfigFieldsProviderUniCloud";
 import AccessConfigFieldsProviderUpyun from "./AccessConfigFieldsProviderUpyun";
@@ -156,6 +158,7 @@ const providerComponentMap: Partial<Record<AccessProviderType, React.ComponentTy
   [ACCESS_PROVIDERS.DYNV6]: AccessConfigFieldsProviderDynv6,
   [ACCESS_PROVIDERS.EMAIL]: AccessConfigFieldsProviderEmail,
   [ACCESS_PROVIDERS.FLEXCDN]: AccessConfigFieldsProviderFlexCDN,
+  [ACCESS_PROVIDERS.FLYIO]: AccessConfigFieldsProviderFlyIO,
   [ACCESS_PROVIDERS.GANDINET]: AccessConfigFieldsProviderGandinet,
   [ACCESS_PROVIDERS.GCORE]: AccessConfigFieldsProviderGcore,
   [ACCESS_PROVIDERS.GNAME]: AccessConfigFieldsProviderGname,
@@ -206,6 +209,7 @@ const providerComponentMap: Partial<Record<AccessProviderType, React.ComponentTy
   [ACCESS_PROVIDERS.TECHNITIUMDNS]: AccessConfigFieldsProviderTechnitiumDNS,
   [ACCESS_PROVIDERS.TELEGRAMBOT]: AccessConfigFieldsProviderTelegramBot,
   [ACCESS_PROVIDERS.TENCENTCLOUD]: AccessConfigFieldsProviderTencentCloud,
+  [ACCESS_PROVIDERS.TODAYNIC]: AccessConfigFieldsProviderTodayNIC,
   [ACCESS_PROVIDERS.UCLOUD]: AccessConfigFieldsProviderUCloud,
   [ACCESS_PROVIDERS.UNICLOUD]: AccessConfigFieldsProviderUniCloud,
   [ACCESS_PROVIDERS.UPYUN]: AccessConfigFieldsProviderUpyun,

@@ -253,6 +253,10 @@ type AccessConfigForFlexCDN struct {
 	AllowInsecureConnections bool   `json:"allowInsecureConnections,omitempty"`
 }
 
+type AccessConfigForFlyIO struct {
+	ApiToken string `json:"apiToken"`
+}
+
 type AccessConfigForGandinet struct {
 	PersonalAccessToken string `json:"personalAccessToken"`
 }
@@ -533,6 +537,11 @@ type AccessConfigForTechnitiumDNS struct {
 type AccessConfigForTelegramBot struct {
 	BotToken string `json:"botToken"`
 	ChatId   string `json:"chatId,omitempty"`
+}
+
+type AccessConfigForTodayNIC struct {
+	UserId string `json:"userId"`
+	ApiKey string `json:"apiKey"`
 }
 
 type AccessConfigForTencentCloud struct {
