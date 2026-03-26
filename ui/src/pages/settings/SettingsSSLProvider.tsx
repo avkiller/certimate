@@ -8,7 +8,7 @@ import { z } from "zod";
 
 import Show from "@/components/Show";
 import Tips from "@/components/Tips";
-import { type CAProviderType, CA_PROVIDERS } from "@/domain/provider";
+import { type CAProviderType, CA_PROVIDERS, caProvidersMap } from "@/domain/provider";
 import { type SSLProviderSettingsContent } from "@/domain/settings";
 import { useAntdForm, useZustandShallowSelector } from "@/hooks";
 import { useSSLProviderSettingsStore } from "@/stores/settings";
@@ -66,25 +66,17 @@ const SettingsSSLProviderCA = ({ className, style }: { className?: string; style
   const formRule = createSchemaFieldRule(formSchema);
   const [formInst] = Form.useForm<z.infer<typeof formSchema>>();
 
-  const providers = [
-    [CA_PROVIDERS.LETSENCRYPT, "provider.letsencrypt", "letsencrypt.org", "/imgs/providers/letsencrypt.svg"],
-    [CA_PROVIDERS.LETSENCRYPTSTAGING, "provider.letsencryptstaging", "letsencrypt.org", "/imgs/providers/letsencrypt.svg"],
-    [CA_PROVIDERS.ACTALISSSL, "provider.actalisssl", "actalis.com", "/imgs/providers/actalisssl.png"],
-    [CA_PROVIDERS.GLOBALSIGNATLAS, "provider.globalsignatlas", "atlas.globalsign.com", "/imgs/providers/globalsignatlas.png"],
-    [CA_PROVIDERS.GOOGLETRUSTSERVICES, "provider.googletrustservices", "pki.goog", "/imgs/providers/google.svg"],
-    [CA_PROVIDERS.SECTIGO, "provider.sectigo", "sectigo.com", "/imgs/providers/sectigo.svg"],
-    [CA_PROVIDERS.SSLCOM, "provider.sslcom", "ssl.com", "/imgs/providers/sslcom.svg"],
-    [CA_PROVIDERS.ZEROSSL, "provider.zerossl", "zerossl.com", "/imgs/providers/zerossl.svg"],
-    [CA_PROVIDERS.LITESSL, "provider.litessl", "litessl.cn (freessl.cn)", "/imgs/providers/litessl.svg"],
-    [CA_PROVIDERS.ACMECA, "provider.acmeca", "ACME v2 (RFC 8555)", "/imgs/providers/acmeca.svg"],
-  ].map(([value, name, description, icon]) => {
-    return {
-      value: value as CAProviderType,
-      name: t(name),
-      description,
-      icon,
-    };
-  });
+  const providers = caProvidersMap
+    .values()
+    .toArray()
+    .map((item) => {
+      return {
+        value: item.type,
+        name: t(item.name),
+        description: item.description,
+        icon: item.icon,
+      };
+    });
   const [providerValue, setProviderValue] = useState(settings.provider);
 
   const renderSiblingFieldProviderComponent = useMemo(() => {
@@ -95,6 +87,8 @@ const SettingsSSLProviderCA = ({ className, style }: { className?: string; style
         return <InternalCASettingsFormProviderLetsEncryptStaging />;
       case CA_PROVIDERS.ACTALISSSL:
         return <InternalCASettingsFormProviderActalisSSL />;
+      case CA_PROVIDERS.DIGICERT:
+        return <InternalCASettingsFormProviderDigiCert />;
       case CA_PROVIDERS.GLOBALSIGNATLAS:
         return <InternalCASettingsFormProviderGlobalSignAtlas />;
       case CA_PROVIDERS.GOOGLETRUSTSERVICES:
@@ -335,6 +329,14 @@ const InternalCASettingsFormProviderActalisSSL = () => {
   return (
     <InternalCASharedForm provider={CA_PROVIDERS.ACTALISSSL}>
       <InternalCASharedFormEabFields i18nKey="actalisssl" />
+    </InternalCASharedForm>
+  );
+};
+
+const InternalCASettingsFormProviderDigiCert = () => {
+  return (
+    <InternalCASharedForm provider={CA_PROVIDERS.DIGICERT}>
+      <InternalCASharedFormEabFields i18nKey="digicert" />
     </InternalCASharedForm>
   );
 };
