@@ -257,6 +257,13 @@ type AccessConfigForFlyIO struct {
 	ApiToken string `json:"apiToken"`
 }
 
+type AccessConfigForFTP struct {
+	Host     string `json:"host"`
+	Port     int32  `json:"port"`
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
+}
+
 type AccessConfigForGandinet struct {
 	PersonalAccessToken string `json:"personalAccessToken"`
 }
@@ -484,6 +491,12 @@ type AccessConfigForS3 struct {
 type AccessConfigForSafeLine struct {
 	ServerUrl                string `json:"serverUrl"`
 	ApiToken                 string `json:"apiToken"`
+	AllowInsecureConnections bool   `json:"allowInsecureConnections,omitempty"`
+}
+
+type AccessConfigForSamWAF struct {
+	ServerUrl                string `json:"serverUrl"`
+	ApiKey                   string `json:"apiKey"`
 	AllowInsecureConnections bool   `json:"allowInsecureConnections,omitempty"`
 }
 

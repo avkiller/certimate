@@ -81,6 +81,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 	addWafDomainCertificateInfoReq.SslPublicKey = ucloud.String(certPEMBase64)
 	addWafDomainCertificateInfoReq.SslPrivateKey = ucloud.String(privkeyPEMBase64)
 	addWafDomainCertificateInfoReq.SslMD = ucloud.String(certMd5Hex)
+	addWafDomainCertificateInfoReq.SslKeyLess = ucloud.String("off")
 	addWafDomainCertificateInfoResp, err := d.sdkClient.AddWafDomainCertificateInfo(addWafDomainCertificateInfoReq)
 	d.logger.Debug("sdk request 'uewaf.AddWafDomainCertificateInfo'", slog.Any("request", addWafDomainCertificateInfoReq), slog.Any("response", addWafDomainCertificateInfoResp))
 	if err != nil {

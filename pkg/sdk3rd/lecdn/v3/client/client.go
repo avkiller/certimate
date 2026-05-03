@@ -44,7 +44,7 @@ func NewClient(serverUrl, username, password string) (*Client, error) {
 		password: password,
 	}
 	client.client = resty.New().
-		SetBaseURL(strings.TrimRight(serverUrl, "/")+"/prod-api").
+		SetBaseURL(strings.TrimSuffix(serverUrl, "/")+"/prod-api").
 		SetHeader("User-Agent", app.AppUserAgent).
 		SetPreRequestHook(func(c *resty.Client, req *http.Request) error {
 			if client.accessToken != "" {

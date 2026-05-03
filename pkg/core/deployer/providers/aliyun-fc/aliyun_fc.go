@@ -17,7 +17,6 @@ import (
 
 	"github.com/certimate-go/certimate/pkg/core/deployer"
 	"github.com/certimate-go/certimate/pkg/core/deployer/providers/aliyun-fc/internal"
-	xcert "github.com/certimate-go/certimate/pkg/utils/cert"
 	xcerthostname "github.com/certimate-go/certimate/pkg/utils/cert/hostname"
 )
 
@@ -135,18 +134,13 @@ func (d *Deployer) deployToFC3(ctx context.Context, certPEM, privkeyPEM string) 
 
 	case DOMAIN_MATCH_PATTERN_CERTSAN:
 		{
-			certX509, err := xcert.ParseCertificateFromPEM(certPEM)
-			if err != nil {
-				return err
-			}
-
 			domainCandidates, err := d.getFC3AllDomains(ctx)
 			if err != nil {
 				return err
 			}
 
 			domains = lo.Filter(domainCandidates, func(domain string, _ int) bool {
-				return certX509.VerifyHostname(domain) == nil
+				return xcerthostname.IsMatchByCertificatePEM(certPEM, domain)
 			})
 			if len(domains) == 0 {
 				return errors.New("could not find any domains matched by certificate")
@@ -221,18 +215,13 @@ func (d *Deployer) deployToFC2(ctx context.Context, certPEM, privkeyPEM string) 
 
 	case DOMAIN_MATCH_PATTERN_CERTSAN:
 		{
-			certX509, err := xcert.ParseCertificateFromPEM(certPEM)
-			if err != nil {
-				return err
-			}
-
 			domainCandidates, err := d.getFC2AllDomains(ctx)
 			if err != nil {
 				return err
 			}
 
 			domains = lo.Filter(domainCandidates, func(domain string, _ int) bool {
-				return certX509.VerifyHostname(domain) == nil
+				return xcerthostname.IsMatchByCertificatePEM(certPEM, domain)
 			})
 			if len(domains) == 0 {
 				return errors.New("could not find any domains matched by certificate")

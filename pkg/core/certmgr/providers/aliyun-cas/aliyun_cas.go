@@ -106,8 +106,8 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 
 			// 对比证书序列号
 			// 注意阿里云 CAS 会在序列号前补零，需去除后再比较
-			oldCertSN := strings.TrimLeft(tea.StringValue(certItem.SerialNo), "0")
-			newCertSN := strings.TrimLeft(certX509.SerialNumber.Text(16), "0")
+			oldCertSN := strings.TrimPrefix(tea.StringValue(certItem.SerialNo), "0")
+			newCertSN := strings.TrimPrefix(certX509.SerialNumber.Text(16), "0")
 			if !strings.EqualFold(newCertSN, oldCertSN) {
 				continue
 			}

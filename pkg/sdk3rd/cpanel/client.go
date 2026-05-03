@@ -32,7 +32,7 @@ func NewClient(serverUrl string, username, apiToken string) (*Client, error) {
 	}
 
 	client := resty.New().
-		SetBaseURL(strings.TrimRight(serverUrl, "/")+"/execute").
+		SetBaseURL(strings.TrimSuffix(serverUrl, "/")+"/execute").
 		SetHeader("Accept", "application/json").
 		SetHeader("Authorization", fmt.Sprintf("cpanel %s:%s", username, apiToken)).
 		SetHeader("User-Agent", app.AppUserAgent)

@@ -42,7 +42,7 @@ Shell command to run this test:
 func TestDeploy(t *testing.T) {
 	flag.Parse()
 
-	t.Run("Deploy", func(t *testing.T) {
+	t.Run("Deploy_ToCertificate", func(t *testing.T) {
 		t.Log(strings.Join([]string{
 			"args:",
 			fmt.Sprintf("INPUTCERTPATH: %v", fInputCertPath),

@@ -18,7 +18,6 @@ import (
 	mcertmgr "github.com/certimate-go/certimate/pkg/core/certmgr/providers/aliyun-cas"
 	"github.com/certimate-go/certimate/pkg/core/deployer"
 	"github.com/certimate-go/certimate/pkg/core/deployer/providers/aliyun-esa-saas/internal"
-	xcert "github.com/certimate-go/certimate/pkg/utils/cert"
 	xcerthostname "github.com/certimate-go/certimate/pkg/utils/cert/hostname"
 )
 
@@ -155,18 +154,13 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 
 	case DOMAIN_MATCH_PATTERN_CERTSAN:
 		{
-			certX509, err := xcert.ParseCertificateFromPEM(certPEM)
-			if err != nil {
-				return nil, err
-			}
-
 			hostnameCandidates, err := d.getAllHostnames(ctx)
 			if err != nil {
 				return nil, err
 			}
 
 			hostnames := lo.Filter(hostnameCandidates, func(hostname *aliesa.ListCustomHostnamesResponseBodyHostnames, _ int) bool {
-				return certX509.VerifyHostname(tea.StringValue(hostname.Hostname)) == nil
+				return xcerthostname.IsMatchByCertificatePEM(certPEM, tea.StringValue(hostname.Hostname))
 			})
 			if len(hostnames) == 0 {
 				return nil, errors.New("could not find any hostnames matched by certificate")

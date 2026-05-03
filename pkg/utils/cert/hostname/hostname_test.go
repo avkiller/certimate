@@ -9,12 +9,14 @@ import (
 func TestCertHostnameUtil_IsMatch(t *testing.T) {
 	t.Run("IsMatch", func(t *testing.T) {
 		testCases := []struct {
-			wildcard string
-			target   string
+			pattern  string
+			hostname string
 			expected bool
 		}{
 			{"*.example.com", "sub.example.com", true},
 			{"*.example.com", "sub.sub.example.com", false},
+			{"*.example.com", "*.example.com", true},
+			{"*.example.com", ".example.com", true},
 			{"*.example.com", "example.com", false},
 
 			{"*.*.example.com", "a.b.example.com", false},
@@ -36,7 +38,7 @@ func TestCertHostnameUtil_IsMatch(t *testing.T) {
 		}
 
 		for _, tc := range testCases {
-			result := xcerthostname.IsMatch(tc.wildcard, tc.target)
+			result := xcerthostname.IsMatch(tc.pattern, tc.hostname)
 			status := "✓"
 			pf := t.Logf
 			if result != tc.expected {
@@ -44,7 +46,7 @@ func TestCertHostnameUtil_IsMatch(t *testing.T) {
 				pf = t.Errorf
 			}
 
-			pf("%s Wildcard: %-20s Target: %-20s Expected: %-5v Got: %-5v\n", status, tc.wildcard, tc.target, tc.expected, result)
+			pf("%s Pattern: %-20s Hostname: %-20s Expected: %-5v Got: %-5v\n", status, tc.pattern, tc.hostname, tc.expected, result)
 		}
 	})
 }

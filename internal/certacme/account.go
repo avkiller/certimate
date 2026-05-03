@@ -82,7 +82,7 @@ func NewACMEAccount(config *ACMEConfig, email string, register bool) (*ACMEAccou
 			keyId := strings.TrimSpace(config.EABKid)
 			keyEncoded := strings.TrimSpace(config.EABHmacKey)
 			keyEncoded = strings.ReplaceAll(strings.ReplaceAll(keyEncoded, "+", "-"), "/", "_")
-			keyEncoded = strings.TrimRight(keyEncoded, "=")
+			keyEncoded = strings.TrimSuffix(keyEncoded, "=")
 
 			regres, regerr = legoClient.Registration.RegisterWithExternalAccountBinding(registration.RegisterEABOptions{
 				TermsOfServiceAgreed: true,

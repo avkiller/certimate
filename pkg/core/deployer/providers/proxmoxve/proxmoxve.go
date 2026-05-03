@@ -111,7 +111,7 @@ func createSDKClient(serverUrl, apiToken, apiTokenSecret string, skipTlsVerify b
 		httpClient.Transport = transport
 	}
 	client := proxmox.NewClient(
-		strings.TrimRight(serverUrl, "/")+"/api2/json",
+		strings.TrimSuffix(serverUrl, "/")+"/api2/json",
 		proxmox.WithHTTPClient(httpClient),
 		proxmox.WithAPIToken(apiToken, apiTokenSecret),
 	)

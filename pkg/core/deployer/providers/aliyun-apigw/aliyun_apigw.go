@@ -19,7 +19,6 @@ import (
 	mcertmgr "github.com/certimate-go/certimate/pkg/core/certmgr/providers/aliyun-cas"
 	"github.com/certimate-go/certimate/pkg/core/deployer"
 	"github.com/certimate-go/certimate/pkg/core/deployer/providers/aliyun-apigw/internal"
-	xcert "github.com/certimate-go/certimate/pkg/utils/cert"
 	xcerthostname "github.com/certimate-go/certimate/pkg/utils/cert/hostname"
 )
 
@@ -160,18 +159,13 @@ func (d *Deployer) deployToTraditional(ctx context.Context, certPEM, privkeyPEM 
 
 	case DOMAIN_MATCH_PATTERN_CERTSAN:
 		{
-			certX509, err := xcert.ParseCertificateFromPEM(certPEM)
-			if err != nil {
-				return err
-			}
-
 			domainCandidates, err := d.getTraditionalAllDomainsByGroupId(ctx, d.config.GroupId)
 			if err != nil {
 				return err
 			}
 
 			domains = lo.Filter(domainCandidates, func(domain string, _ int) bool {
-				return certX509.VerifyHostname(domain) == nil
+				return xcerthostname.IsMatchByCertificatePEM(certPEM, domain)
 			})
 			if len(domains) == 0 {
 				return errors.New("could not find any domains matched by certificate")
@@ -258,18 +252,13 @@ func (d *Deployer) deployToCloudNative(ctx context.Context, certPEM, privkeyPEM 
 
 	case DOMAIN_MATCH_PATTERN_CERTSAN:
 		{
-			certX509, err := xcert.ParseCertificateFromPEM(certPEM)
-			if err != nil {
-				return err
-			}
-
 			domainCandidates, err := d.getCloudNativeAllDomainsByGatewayId(ctx, d.config.GatewayId)
 			if err != nil {
 				return err
 			}
 
 			domains = lo.Filter(domainCandidates, func(domain string, _ int) bool {
-				return certX509.VerifyHostname(domain) == nil
+				return xcerthostname.IsMatchByCertificatePEM(certPEM, domain)
 			})
 			if len(domains) == 0 {
 				return errors.New("could not find any domains matched by certificate")

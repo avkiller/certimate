@@ -45,7 +45,7 @@ Shell command to run this test:
 func TestDeploy(t *testing.T) {
 	flag.Parse()
 
-	t.Run("Deploy", func(t *testing.T) {
+	t.Run("Deploy_ToDomain", func(t *testing.T) {
 		t.Log(strings.Join([]string{
 			"args:",
 			fmt.Sprintf("INPUTCERTPATH: %v", fInputCertPath),
@@ -53,15 +53,46 @@ func TestDeploy(t *testing.T) {
 			fmt.Sprintf("ACCESSKEYID: %v", fAccessKeyId),
 			fmt.Sprintf("SECRETACCESSKEY: %v", fSecretAccessKey),
 			fmt.Sprintf("DOMAIN: %v", fDomain),
-			fmt.Sprintf("CERTIFICATEID: %v", fCertificateId),
 		}, "\n"))
 
 		provider, err := provider.NewDeployer(&provider.DeployerConfig{
 			AccessKeyId:        fAccessKeyId,
 			SecretAccessKey:    fSecretAccessKey,
+			ResourceType:       provider.RESOURCE_TYPE_DOMAIN,
 			DomainMatchPattern: provider.DOMAIN_MATCH_PATTERN_EXACT,
 			Domain:             fDomain,
-			CertificateId:      fCertificateId,
+		})
+		if err != nil {
+			t.Errorf("err: %+v", err)
+			return
+		}
+
+		fInputCertData, _ := os.ReadFile(fInputCertPath)
+		fInputKeyData, _ := os.ReadFile(fInputKeyPath)
+		res, err := provider.Deploy(context.Background(), string(fInputCertData), string(fInputKeyData))
+		if err != nil {
+			t.Errorf("err: %+v", err)
+			return
+		}
+
+		t.Logf("ok: %v", res)
+	})
+
+	t.Run("Deploy_ToCertificate", func(t *testing.T) {
+		t.Log(strings.Join([]string{
+			"args:",
+			fmt.Sprintf("INPUTCERTPATH: %v", fInputCertPath),
+			fmt.Sprintf("INPUTKEYPATH: %v", fInputKeyPath),
+			fmt.Sprintf("ACCESSKEYID: %v", fAccessKeyId),
+			fmt.Sprintf("SECRETACCESSKEY: %v", fSecretAccessKey),
+			fmt.Sprintf("CERTIFICATEID: %v", fCertificateId),
+		}, "\n"))
+
+		provider, err := provider.NewDeployer(&provider.DeployerConfig{
+			AccessKeyId:     fAccessKeyId,
+			SecretAccessKey: fSecretAccessKey,
+			ResourceType:    provider.RESOURCE_TYPE_CERTIFICATE,
+			CertificateId:   fCertificateId,
 		})
 		if err != nil {
 			t.Errorf("err: %+v", err)

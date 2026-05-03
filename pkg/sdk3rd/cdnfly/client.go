@@ -32,7 +32,7 @@ func NewClient(serverUrl, apiKey, apiSecret string) (*Client, error) {
 	}
 
 	client := resty.New().
-		SetBaseURL(strings.TrimRight(serverUrl, "/")+"/v1").
+		SetBaseURL(strings.TrimSuffix(serverUrl, "/")+"/v1").
 		SetHeader("Accept", "application/json").
 		SetHeader("Content-Type", "application/json").
 		SetHeader("User-Agent", app.AppUserAgent).

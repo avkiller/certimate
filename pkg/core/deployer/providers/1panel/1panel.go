@@ -14,7 +14,7 @@ import (
 	"github.com/certimate-go/certimate/pkg/core/deployer"
 	onepanelsdk "github.com/certimate-go/certimate/pkg/sdk3rd/1panel"
 	onepanelsdk2 "github.com/certimate-go/certimate/pkg/sdk3rd/1panel/v2"
-	xcert "github.com/certimate-go/certimate/pkg/utils/cert"
+	xcerthostname "github.com/certimate-go/certimate/pkg/utils/cert/hostname"
 	xwait "github.com/certimate-go/certimate/pkg/utils/wait"
 )
 
@@ -196,11 +196,6 @@ func (d *Deployer) deployToCertificate(ctx context.Context, certPEM, privkeyPEM 
 func (d *Deployer) getMatchedWebsiteIdsByCertificate(ctx context.Context, certPEM string) ([]int64, error) {
 	var websiteIds []int64
 
-	certX509, err := xcert.ParseCertificateFromPEM(certPEM)
-	if err != nil {
-		return nil, err
-	}
-
 	switch sdkClient := d.sdkClient.(type) {
 	case *onepanelsdk.Client:
 		{
@@ -229,7 +224,7 @@ func (d *Deployer) getMatchedWebsiteIdsByCertificate(ctx context.Context, certPE
 				}
 
 				for _, websiteItem := range websiteSearchResp.Data.Items {
-					if certX509.VerifyHostname(websiteItem.PrimaryDomain) != nil {
+					if !xcerthostname.IsMatchByCertificatePEM(certPEM, websiteItem.PrimaryDomain) {
 						continue
 					}
 
@@ -240,7 +235,7 @@ func (d *Deployer) getMatchedWebsiteIdsByCertificate(ctx context.Context, certPE
 					}
 
 					for _, domainInfo := range websiteGetResp.Data.Domains {
-						if domainInfo.SSL || certX509.VerifyHostname(domainInfo.Domain) == nil {
+						if domainInfo.SSL || xcerthostname.IsMatchByCertificatePEM(certPEM, domainInfo.Domain) {
 							websiteIds = append(websiteIds, websiteItem.ID)
 							break
 						}
@@ -283,7 +278,7 @@ func (d *Deployer) getMatchedWebsiteIdsByCertificate(ctx context.Context, certPE
 				}
 
 				for _, websiteItem := range websiteSearchResp.Data.Items {
-					if certX509.VerifyHostname(websiteItem.PrimaryDomain) != nil {
+					if !xcerthostname.IsMatchByCertificatePEM(certPEM, websiteItem.PrimaryDomain) {
 						continue
 					}
 
@@ -294,7 +289,7 @@ func (d *Deployer) getMatchedWebsiteIdsByCertificate(ctx context.Context, certPE
 					}
 
 					for _, domainInfo := range websiteGetResp.Data.Domains {
-						if domainInfo.SSL || certX509.VerifyHostname(domainInfo.Domain) == nil {
+						if domainInfo.SSL || xcerthostname.IsMatchByCertificatePEM(certPEM, domainInfo.Domain) {
 							websiteIds = append(websiteIds, websiteItem.ID)
 							break
 						}

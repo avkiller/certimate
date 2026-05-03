@@ -132,7 +132,7 @@ func (ne *bizMonitorNodeExecutor) tryRetrievePeerCertificates(execCtx *NodeExecu
 		Transport: transport,
 	}
 
-	url := fmt.Sprintf("https://%s/%s", addr, strings.TrimLeft(requestPath, "/"))
+	url := fmt.Sprintf("https://%s/%s", addr, strings.TrimPrefix(requestPath, "/"))
 	req, err := http.NewRequestWithContext(execCtx.Context(), http.MethodHead, url, nil)
 	if err != nil {
 		err = fmt.Errorf("failed to create http request: %w", err)

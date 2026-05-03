@@ -44,7 +44,7 @@ func NewClient(serverUrl, identity, secret string) (*Client, error) {
 		secret:   secret,
 	}
 	client.client = resty.New().
-		SetBaseURL(strings.TrimRight(serverUrl, "/")+"/api").
+		SetBaseURL(strings.TrimSuffix(serverUrl, "/")+"/api").
 		SetHeader("Accept", "application/json").
 		SetHeader("Content-Type", "application/json").
 		SetHeader("User-Agent", app.AppUserAgent).
@@ -74,7 +74,7 @@ func NewClientWithJwtToken(serverUrl, jwtToken string) (*Client, error) {
 		jwtToken: jwtToken,
 	}
 	client.client = resty.New().
-		SetBaseURL(strings.TrimRight(serverUrl, "/")+"/api").
+		SetBaseURL(strings.TrimSuffix(serverUrl, "/")+"/api").
 		SetHeader("Accept", "application/json").
 		SetHeader("Content-Type", "application/json").
 		SetHeader("User-Agent", app.AppUserAgent).

@@ -57,7 +57,7 @@ func (n *Notifier) SetLogger(logger *slog.Logger) {
 }
 
 func (n *Notifier) Notify(ctx context.Context, subject string, message string) (*notifier.NotifyResult, error) {
-	serverUrl := strings.TrimRight(n.config.ServerUrl, "/")
+	serverUrl := strings.TrimSuffix(n.config.ServerUrl, "/")
 
 	// REF: https://developers.mattermost.com/api-documentation/#/operations/Login
 	loginReq := n.httpClient.R().

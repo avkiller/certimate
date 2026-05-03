@@ -47,6 +47,7 @@ import AccessConfigFieldsProviderDynv6 from "./AccessConfigFieldsProviderDynv6";
 import AccessConfigFieldsProviderEmail from "./AccessConfigFieldsProviderEmail";
 import AccessConfigFieldsProviderFlexCDN from "./AccessConfigFieldsProviderFlexCDN";
 import AccessConfigFieldsProviderFlyIO from "./AccessConfigFieldsProviderFlyIO";
+import AccessConfigFieldsProviderFTP from "./AccessConfigFieldsProviderFTP";
 import AccessConfigFieldsProviderGandinet from "./AccessConfigFieldsProviderGandinet";
 import AccessConfigFieldsProviderGcore from "./AccessConfigFieldsProviderGcore";
 import AccessConfigFieldsProviderGlobalSignAtlas from "./AccessConfigFieldsProviderGlobalSignAtlas";
@@ -88,6 +89,7 @@ import AccessConfigFieldsProviderRatPanel from "./AccessConfigFieldsProviderRatP
 import AccessConfigFieldsProviderRFC2136 from "./AccessConfigFieldsProviderRFC2136";
 import AccessConfigFieldsProviderS3 from "./AccessConfigFieldsProviderS3";
 import AccessConfigFieldsProviderSafeLine from "./AccessConfigFieldsProviderSafeLine";
+import AccessConfigFieldsProviderSamWAF from "./AccessConfigFieldsProviderSamWAF";
 import AccessConfigFieldsProviderSectigo from "./AccessConfigFieldsProviderSectigo";
 import AccessConfigFieldsProviderSlackBot from "./AccessConfigFieldsProviderSlackBot";
 import AccessConfigFieldsProviderSpaceship from "./AccessConfigFieldsProviderSpaceship";
@@ -161,6 +163,7 @@ const providerComponentMap: Partial<Record<AccessProviderType, React.ComponentTy
   [ACCESS_PROVIDERS.EMAIL]: AccessConfigFieldsProviderEmail,
   [ACCESS_PROVIDERS.FLEXCDN]: AccessConfigFieldsProviderFlexCDN,
   [ACCESS_PROVIDERS.FLYIO]: AccessConfigFieldsProviderFlyIO,
+  [ACCESS_PROVIDERS.FTP]: AccessConfigFieldsProviderFTP,
   [ACCESS_PROVIDERS.GANDINET]: AccessConfigFieldsProviderGandinet,
   [ACCESS_PROVIDERS.GCORE]: AccessConfigFieldsProviderGcore,
   [ACCESS_PROVIDERS.GNAME]: AccessConfigFieldsProviderGname,
@@ -202,6 +205,7 @@ const providerComponentMap: Partial<Record<AccessProviderType, React.ComponentTy
   [ACCESS_PROVIDERS.RFC2136]: AccessConfigFieldsProviderRFC2136,
   [ACCESS_PROVIDERS.S3]: AccessConfigFieldsProviderS3,
   [ACCESS_PROVIDERS.SAFELINE]: AccessConfigFieldsProviderSafeLine,
+  [ACCESS_PROVIDERS.SAMWAF]: AccessConfigFieldsProviderSamWAF,
   [ACCESS_PROVIDERS.SECTIGO]: AccessConfigFieldsProviderSectigo,
   [ACCESS_PROVIDERS.SLACKBOT]: AccessConfigFieldsProviderSlackBot,
   [ACCESS_PROVIDERS.SPACESHIP]: AccessConfigFieldsProviderSpaceship,

@@ -23,10 +23,11 @@
 
 完全开源免费的自托管 SSL 证书 ACME 工具，申请、部署、续期、监控全流程自动化可视化，支持各大主流云厂商。
 
-- **自托管**：私有化部署，所有数据本地化存储，掌控数据的隐私与安全。
+- **自托管**：私有化安装，所有数据本地化存储，掌控数据的隐私与安全。
+- **跨平台**：Windows/Linux/macOS，全平台多架构可运行。
 - **零依赖**：无需安装数据库、运行时或复杂框架，一键启动，开箱即用。
-- **低占用**：超轻量的资源开销，仅需 ~16 MB 内存，甚至可以运行在家用路由器。
-- **易操作**：图形化界面，通过简单配置即可完成证书申请、部署和续期的自动化工作。
+- **低占用**：超轻量的资源开销，仅需 ~16 MB 内存。
+- **易操作**：图形化界面，通过简单配置即可完成证书的自动化管理。
 
 ## 💡 功能特性
 
@@ -35,7 +36,7 @@
 - 支持 DNS-01（即基于域名解析验证）、HTTP-01（即基于文件验证）两种质询方式。
 - 支持 PEM、PFX、JKS 等多种格式输出证书。
 - 支持 60+ 域名托管商（如阿里云、腾讯云、AWS、Cloudflare、GoDaddy 等，[点此查看完整清单](https://docs.certimate.me/zh-CN/docs/reference/providers#supported-dns-providers)）。
-- 支持 110+ 部署目标（如 Kubernetes、CDN、WAF、负载均衡等，[点此查看完整清单](https://docs.certimate.me/zh-CN/docs/reference/providers#supported-hosting-providers)）。
+- 支持 120+ 部署目标（如 Kubernetes、CDN、WAF、负载均衡等，[点此查看完整清单](https://docs.certimate.me/zh-CN/docs/reference/providers#supported-hosting-providers)）。
 - 支持邮件、钉钉、飞书、企业微信、Discord、Slack、Telegram 等多种通知渠道。
 - 支持 Let's Encrypt、Actalis、Google Trust Services、SSL.com、ZeroSSL 等多种 ACME 证书颁发机构。
 - 更多特性等待探索。
@@ -100,7 +101,7 @@ docker run -d \
 
 Certimate 是一个免费且开源的项目。我们欢迎任何人为 Certimate 做出贡献，以帮助改善 Certimate。包括但不限于：提交代码、反馈缺陷、交流想法，或分享你基于 Certimate 的使用案例。同时，我们也欢迎用户在个人博客或社交媒体上分享 Certimate。
 
-如果你想要贡献代码，请先阅读我们的[贡献指南](./CONTRIBUTING.md)。
+如果你想要贡献代码，请先阅读我们的[贡献指南](./CONTRIBUTING_zh.md)。
 
 请在 https://github.com/certimate-go/certimate 提交 [Issues](https://github.com/certimate-go/certimate/issues) 和 [Pull Requests](https://github.com/certimate-go/certimate/pulls)。
 

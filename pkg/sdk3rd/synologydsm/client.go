@@ -36,7 +36,7 @@ func NewClient(serverUrl string) (*Client, error) {
 
 	client := &Client{}
 	client.client = resty.New().
-		SetBaseURL(strings.TrimRight(serverUrl, "/")).
+		SetBaseURL(strings.TrimSuffix(serverUrl, "/")).
 		SetHeader("User-Agent", app.AppUserAgent).
 		SetPreRequestHook(func(c *resty.Client, req *http.Request) error {
 			if client.synoToken != "" {

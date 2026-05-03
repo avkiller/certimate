@@ -17,7 +17,6 @@ import (
 	mcertmgr "github.com/certimate-go/certimate/pkg/core/certmgr/providers/huaweicloud-scm"
 	"github.com/certimate-go/certimate/pkg/core/deployer"
 	"github.com/certimate-go/certimate/pkg/core/deployer/providers/huaweicloud-cdn/internal"
-	xcert "github.com/certimate-go/certimate/pkg/utils/cert"
 	xcerthostname "github.com/certimate-go/certimate/pkg/utils/cert/hostname"
 )
 
@@ -133,18 +132,13 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 
 	case DOMAIN_MATCH_PATTERN_CERTSAN:
 		{
-			certX509, err := xcert.ParseCertificateFromPEM(certPEM)
-			if err != nil {
-				return nil, err
-			}
-
 			domainCandidates, err := d.getAllDomains(ctx)
 			if err != nil {
 				return nil, err
 			}
 
 			domains = lo.Filter(domainCandidates, func(domain string, _ int) bool {
-				return certX509.VerifyHostname(domain) == nil
+				return xcerthostname.IsMatchByCertificatePEM(certPEM, domain)
 			})
 			if len(domains) == 0 {
 				return nil, errors.New("could not find any domains matched by certificate")
@@ -258,7 +252,7 @@ func (d *Deployer) updateDomainsCertificate(ctx context.Context, domains []strin
 
 func createSDKClient(accessKeyId, secretAccessKey, region string) (*internal.CdnClient, error) {
 	if region == "" {
-		region = "cn-north-1" // CDN 服务默认区域：华北一北京
+		region = "cn-north-1" // CDN 服务默认区域：华北北京一
 	}
 
 	auth, err := global.NewCredentialsBuilder().
