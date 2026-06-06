@@ -7,9 +7,9 @@ import Show from "@/components/Show";
 
 import { useFormNestedFieldsContext } from "./_context";
 
-const RESOURCE_TYPE_LOADBALANCER = "loadbalancer" as const;
-const RESOURCE_TYPE_LISTENER = "listener" as const;
-const RESOURCE_TYPE_CERTIFICATE = "certificate" as const;
+const DEPLOY_TARGET_LOADBALANCER = "loadbalancer" as const;
+const DEPLOY_TARGET_LISTENER = "listener" as const;
+const DEPLOY_TARGET_CERTIFICATE = "certificate" as const;
 
 const BizDeployNodeConfigFieldsProviderHuaweiCloudELB = () => {
   const { i18n, t } = useTranslation();
@@ -22,7 +22,7 @@ const BizDeployNodeConfigFieldsProviderHuaweiCloudELB = () => {
   const formInst = Form.useFormInstance();
   const initialValues = getInitialValues();
 
-  const fieldResourceType = Form.useWatch([parentNamePath, "resourceType"], formInst);
+  const fieldResourceType = Form.useWatch([parentNamePath, "deployTarget"], formInst);
 
   return (
     <>
@@ -37,21 +37,21 @@ const BizDeployNodeConfigFieldsProviderHuaweiCloudELB = () => {
       </Form.Item>
 
       <Form.Item
-        name={[parentNamePath, "resourceType"]}
-        initialValue={initialValues.resourceType}
-        label={t("workflow_node.deploy.form.shared_resource_type.label")}
+        name={[parentNamePath, "deployTarget"]}
+        initialValue={initialValues.deployTarget}
+        label={t("workflow_node.deploy.form.shared_deploy_target.label")}
         rules={[formRule]}
       >
         <Select
-          options={[RESOURCE_TYPE_LOADBALANCER, RESOURCE_TYPE_LISTENER, RESOURCE_TYPE_CERTIFICATE].map((s) => ({
+          options={[DEPLOY_TARGET_LOADBALANCER, DEPLOY_TARGET_LISTENER, DEPLOY_TARGET_CERTIFICATE].map((s) => ({
+            label: t(`workflow_node.deploy.form.huaweicloud_elb_deploy_target.option.${s}.label`),
             value: s,
-            label: t(`workflow_node.deploy.form.huaweicloud_elb_resource_type.option.${s}.label`),
           }))}
-          placeholder={t("workflow_node.deploy.form.shared_resource_type.placeholder")}
+          placeholder={t("workflow_node.deploy.form.shared_deploy_target.placeholder")}
         />
       </Form.Item>
 
-      <Show when={fieldResourceType === RESOURCE_TYPE_CERTIFICATE}>
+      <Show when={fieldResourceType === DEPLOY_TARGET_CERTIFICATE}>
         <Form.Item
           name={[parentNamePath, "certificateId"]}
           initialValue={initialValues.certificateId}
@@ -63,7 +63,7 @@ const BizDeployNodeConfigFieldsProviderHuaweiCloudELB = () => {
         </Form.Item>
       </Show>
 
-      <Show when={fieldResourceType === RESOURCE_TYPE_LOADBALANCER}>
+      <Show when={fieldResourceType === DEPLOY_TARGET_LOADBALANCER}>
         <Form.Item
           name={[parentNamePath, "loadbalancerId"]}
           initialValue={initialValues.loadbalancerId}
@@ -75,7 +75,7 @@ const BizDeployNodeConfigFieldsProviderHuaweiCloudELB = () => {
         </Form.Item>
       </Show>
 
-      <Show when={fieldResourceType === RESOURCE_TYPE_LISTENER}>
+      <Show when={fieldResourceType === DEPLOY_TARGET_LISTENER}>
         <Form.Item
           name={[parentNamePath, "listenerId"]}
           initialValue={initialValues.listenerId}
@@ -93,56 +93,59 @@ const BizDeployNodeConfigFieldsProviderHuaweiCloudELB = () => {
 const getInitialValues = (): Nullish<z.infer<ReturnType<typeof getSchema>>> => {
   return {
     region: "",
-    resourceType: RESOURCE_TYPE_LISTENER,
+    deployTarget: DEPLOY_TARGET_LISTENER,
   };
 };
 
 const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) => {
-  const { t } = i18n;
+  const { t: _ } = i18n;
 
   return z
     .object({
-      region: z.string().nonempty(t("workflow_node.deploy.form.huaweicloud_elb_region.placeholder")),
-      resourceType: z.literal(
-        [RESOURCE_TYPE_LOADBALANCER, RESOURCE_TYPE_LISTENER, RESOURCE_TYPE_CERTIFICATE],
-        t("workflow_node.deploy.form.shared_resource_type.placeholder")
-      ),
+      region: z.string().nonempty(),
+      deployTarget: z.enum([DEPLOY_TARGET_LOADBALANCER, DEPLOY_TARGET_LISTENER, DEPLOY_TARGET_CERTIFICATE]),
       loadbalancerId: z.string().nullish(),
       listenerId: z.string().nullish(),
       certificateId: z.string().nullish(),
     })
     .superRefine((values, ctx) => {
-      switch (values.resourceType) {
-        case RESOURCE_TYPE_LOADBALANCER:
+      switch (values.deployTarget) {
+        case DEPLOY_TARGET_LOADBALANCER:
           {
-            if (!values.loadbalancerId?.trim()) {
+            const scLoadbalancerId = z.string().nonempty();
+            const spLoadbalancerId = scLoadbalancerId.safeParse(values.loadbalancerId);
+            if (!spLoadbalancerId.success) {
               ctx.addIssue({
                 code: "custom",
-                message: t("workflow_node.deploy.form.huaweicloud_elb_loadbalancer_id.placeholder"),
+                message: z.treeifyError(spLoadbalancerId.error).errors.join(),
                 path: ["loadbalancerId"],
               });
             }
           }
           break;
 
-        case RESOURCE_TYPE_LISTENER:
+        case DEPLOY_TARGET_LISTENER:
           {
-            if (!values.listenerId?.trim()) {
+            const scListenerId = z.string().nonempty();
+            const spListenerId = scListenerId.safeParse(values.listenerId);
+            if (!spListenerId.success) {
               ctx.addIssue({
                 code: "custom",
-                message: t("workflow_node.deploy.form.huaweicloud_elb_listener_id.placeholder"),
+                message: z.treeifyError(spListenerId.error).errors.join(),
                 path: ["listenerId"],
               });
             }
           }
           break;
 
-        case RESOURCE_TYPE_CERTIFICATE:
+        case DEPLOY_TARGET_CERTIFICATE:
           {
-            if (!values.certificateId?.trim()) {
+            const scCertificateId = z.string().nonempty();
+            const spCertificateId = scCertificateId.safeParse(values.certificateId);
+            if (!spCertificateId.success) {
               ctx.addIssue({
                 code: "custom",
-                message: t("workflow_node.deploy.form.huaweicloud_elb_certificate_id.placeholder"),
+                message: z.treeifyError(spCertificateId.error).errors.join(),
                 path: ["certificateId"],
               });
             }

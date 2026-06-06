@@ -39,8 +39,8 @@ const BizDeployNodeConfigFieldsProviderVolcEngineWAF = () => {
       >
         <Select
           options={[ACCESS_MODE_CNAME].map((s) => ({
-            value: s,
             label: t(`workflow_node.deploy.form.volcengine_waf_access_mode.option.${s}.label`),
+            value: s,
           }))}
           placeholder={t("workflow_node.deploy.form.volcengine_waf_access_mode.placeholder")}
         />
@@ -70,8 +70,8 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
   const { t } = i18n;
 
   return z.object({
-    region: z.string().nonempty(t("workflow_node.deploy.form.volcengine_waf_region.placeholder")),
-    accessMode: z.literal([ACCESS_MODE_CNAME], t("workflow_node.deploy.form.volcengine_waf_access_mode.placeholder")),
+    region: z.string().nonempty(),
+    accessMode: z.enum([ACCESS_MODE_CNAME]),
     domain: z.string().refine((v) => isDomain(v, { allowWildcard: true }), t("common.errmsg.domain_invalid")),
   });
 };

@@ -1,22 +1,20 @@
 package local_test
 
 import (
-	"context"
-	"flag"
-	"fmt"
-	"os"
-	"strings"
 	"testing"
 
-	provider "github.com/certimate-go/certimate/pkg/core/deployer/providers/local"
+	"github.com/certimate-go/certimate/pkg/core/deployer/internal/tester"
+	impl "github.com/certimate-go/certimate/pkg/core/deployer/providers/local"
 )
 
 var (
-	fInputCertPath  string
-	fInputKeyPath   string
-	fOutputCertPath string
-	fOutputKeyPath  string
+	fp              = tester.Args("LOCAL_")
+	fTestCertPath   string
+	fTestKeyPath    string
+	fFilePathForCrt string
+	fFilePathForKey string
 	fPfxPassword    string
+	fPfxEncoder     string
 	fJksAlias       string
 	fJksKeypass     string
 	fJksStorepass   string
@@ -26,30 +24,30 @@ var (
 )
 
 func init() {
-	argsPrefix := "LOCAL_"
-
-	flag.StringVar(&fInputCertPath, argsPrefix+"INPUTCERTPATH", "", "")
-	flag.StringVar(&fInputKeyPath, argsPrefix+"INPUTKEYPATH", "", "")
-	flag.StringVar(&fOutputCertPath, argsPrefix+"OUTPUTCERTPATH", "", "")
-	flag.StringVar(&fOutputKeyPath, argsPrefix+"OUTPUTKEYPATH", "", "")
-	flag.StringVar(&fPfxPassword, argsPrefix+"PFXPASSWORD", "", "")
-	flag.StringVar(&fJksAlias, argsPrefix+"JKSALIAS", "", "")
-	flag.StringVar(&fJksKeypass, argsPrefix+"JKSKEYPASS", "", "")
-	flag.StringVar(&fJksStorepass, argsPrefix+"JKSSTOREPASS", "", "")
-	flag.StringVar(&fShellEnv, argsPrefix+"SHELLENV", "", "")
-	flag.StringVar(&fPreCommand, argsPrefix+"PRECOMMAND", "", "")
-	flag.StringVar(&fPostCommand, argsPrefix+"POSTCOMMAND", "", "")
+	fp.DefineString(&fTestCertPath, "TESTCERTPATH")
+	fp.DefineString(&fTestKeyPath, "TESTKEYPATH")
+	fp.DefineString(&fFilePathForCrt, "FILEPATHFORCRT")
+	fp.DefineString(&fFilePathForKey, "FILEPATHFORKEY")
+	fp.DefineString(&fPfxPassword, "PFXPASSWORD")
+	fp.DefineString(&fPfxEncoder, "PFXENCODER")
+	fp.DefineString(&fJksAlias, "JKSALIAS")
+	fp.DefineString(&fJksKeypass, "JKSKEYPASS")
+	fp.DefineString(&fJksStorepass, "JKSSTOREPASS")
+	fp.DefineString(&fShellEnv, "SHELLENV")
+	fp.DefineString(&fPreCommand, "PRECOMMAND")
+	fp.DefineString(&fPostCommand, "POSTCOMMAND")
 }
 
 /*
 Shell command to run this test:
 
 	go test -v ./local_test.go -args \
-	--LOCAL_INPUTCERTPATH="/path/to/your-input-cert.pem" \
-	--LOCAL_INPUTKEYPATH="/path/to/your-input-key.pem" \
-	--LOCAL_OUTPUTCERTPATH="/path/to/your-output-cert" \
-	--LOCAL_OUTPUTKEYPATH="/path/to/your-output-key" \
+	--LOCAL_TESTCERTPATH="/path/to/your-test-cert.pem" \
+	--LOCAL_TESTKEYPATH="/path/to/your-test-key.pem" \
+	--LOCAL_FILEPATHFORCRT="/path/to/your-output-cert" \
+	--LOCAL_FILEPATHFORKEY="/path/to/your-output-key" \
 	--LOCAL_PFXPASSWORD="your-pfx-password" \
+	--LOCAL_PFXENCODER="modern2023" \
 	--LOCAL_JKSALIAS="your-jks-alias" \
 	--LOCAL_JKSKEYPASS="your-jks-keypass" \
 	--LOCAL_JKSSTOREPASS="your-jks-storepass" \
@@ -57,25 +55,14 @@ Shell command to run this test:
 	--LOCAL_PRECOMMAND="echo 'hello world'" \
 	--LOCAL_POSTCOMMAND="echo 'bye-bye world'"
 */
-func TestDeploy(t *testing.T) {
-	flag.Parse()
+func TestProvider(t *testing.T) {
+	fp.Parse()
 
 	t.Run("Deploy_PEM", func(t *testing.T) {
-		t.Log(strings.Join([]string{
-			"args:",
-			fmt.Sprintf("INPUTCERTPATH: %v", fInputCertPath),
-			fmt.Sprintf("INPUTKEYPATH: %v", fInputKeyPath),
-			fmt.Sprintf("OUTPUTCERTPATH: %v", fOutputCertPath),
-			fmt.Sprintf("OUTPUTKEYPATH: %v", fOutputKeyPath),
-			fmt.Sprintf("SHELLENV: %v", fShellEnv),
-			fmt.Sprintf("PRECOMMAND: %v", fPreCommand),
-			fmt.Sprintf("POSTCOMMAND: %v", fPostCommand),
-		}, "\n"))
-
-		provider, err := provider.NewDeployer(&provider.DeployerConfig{
-			OutputFormat:   provider.OUTPUT_FORMAT_PEM,
-			OutputCertPath: fOutputCertPath + ".pem",
-			OutputKeyPath:  fOutputKeyPath + ".pem",
+		provider, err := impl.NewDeployer(&impl.DeployerConfig{
+			FileFormat:     impl.FILE_FORMAT_PEM,
+			FilePathForCrt: fFilePathForCrt + ".pem",
+			FilePathForKey: fFilePathForKey + ".pem",
 			ShellEnv:       fShellEnv,
 			PreCommand:     fPreCommand,
 			PostCommand:    fPostCommand,
@@ -85,88 +72,28 @@ func TestDeploy(t *testing.T) {
 			return
 		}
 
-		fInputCertData, _ := os.ReadFile(fInputCertPath)
-		fInputKeyData, _ := os.ReadFile(fInputKeyPath)
-		res, err := provider.Deploy(context.Background(), string(fInputCertData), string(fInputKeyData))
-		if err != nil {
-			t.Errorf("err: %+v", err)
-			return
-		}
-
-		fstat1, err := os.Stat(fOutputCertPath + ".pem")
-		if err != nil {
-			t.Errorf("err: %+v", err)
-			return
-		} else if fstat1.Size() == 0 {
-			t.Errorf("err: empty output certificate file")
-			return
-		}
-
-		fstat2, err := os.Stat(fOutputKeyPath + ".pem")
-		if err != nil {
-			t.Errorf("err: %+v", err)
-			return
-		} else if fstat2.Size() == 0 {
-			t.Errorf("err: empty output private key file")
-			return
-		}
-
-		t.Logf("ok: %v", res)
+		tester.TestDeploy(t, provider, tester.TestDeployArgs{CertPath: fTestCertPath, KeyPath: fTestKeyPath})
 	})
 
 	t.Run("Deploy_PFX", func(t *testing.T) {
-		t.Log(strings.Join([]string{
-			"args:",
-			fmt.Sprintf("INPUTCERTPATH: %v", fInputCertPath),
-			fmt.Sprintf("INPUTKEYPATH: %v", fInputKeyPath),
-			fmt.Sprintf("OUTPUTCERTPATH: %v", fOutputCertPath),
-			fmt.Sprintf("PFXPASSWORD: %v", fPfxPassword),
-		}, "\n"))
-
-		provider, err := provider.NewDeployer(&provider.DeployerConfig{
-			OutputFormat:   provider.OUTPUT_FORMAT_PFX,
-			OutputCertPath: fOutputCertPath + ".pfx",
+		provider, err := impl.NewDeployer(&impl.DeployerConfig{
+			FileFormat:     impl.FILE_FORMAT_PFX,
+			FilePathForCrt: fFilePathForCrt + ".pfx",
 			PfxPassword:    fPfxPassword,
+			PfxEncoder:     fPfxEncoder,
 		})
 		if err != nil {
 			t.Errorf("err: %+v", err)
 			return
 		}
 
-		fInputCertData, _ := os.ReadFile(fInputCertPath)
-		fInputKeyData, _ := os.ReadFile(fInputKeyPath)
-		res, err := provider.Deploy(context.Background(), string(fInputCertData), string(fInputKeyData))
-		if err != nil {
-			t.Errorf("err: %+v", err)
-			return
-		}
-
-		fstat, err := os.Stat(fOutputCertPath + ".pfx")
-		if err != nil {
-			t.Errorf("err: %+v", err)
-			return
-		} else if fstat.Size() == 0 {
-			t.Errorf("err: empty output certificate file")
-			return
-		}
-
-		t.Logf("ok: %v", res)
+		tester.TestDeploy(t, provider, tester.TestDeployArgs{CertPath: fTestCertPath, KeyPath: fTestKeyPath})
 	})
 
 	t.Run("Deploy_JKS", func(t *testing.T) {
-		t.Log(strings.Join([]string{
-			"args:",
-			fmt.Sprintf("INPUTCERTPATH: %v", fInputCertPath),
-			fmt.Sprintf("INPUTKEYPATH: %v", fInputKeyPath),
-			fmt.Sprintf("OUTPUTCERTPATH: %v", fOutputCertPath),
-			fmt.Sprintf("JKSALIAS: %v", fJksAlias),
-			fmt.Sprintf("JKSKEYPASS: %v", fJksKeypass),
-			fmt.Sprintf("JKSSTOREPASS: %v", fJksStorepass),
-		}, "\n"))
-
-		provider, err := provider.NewDeployer(&provider.DeployerConfig{
-			OutputFormat:   provider.OUTPUT_FORMAT_JKS,
-			OutputCertPath: fOutputCertPath + ".jks",
+		provider, err := impl.NewDeployer(&impl.DeployerConfig{
+			FileFormat:     impl.FILE_FORMAT_JKS,
+			FilePathForCrt: fFilePathForCrt + ".jks",
 			JksAlias:       fJksAlias,
 			JksKeypass:     fJksKeypass,
 			JksStorepass:   fJksStorepass,
@@ -176,23 +103,6 @@ func TestDeploy(t *testing.T) {
 			return
 		}
 
-		fInputCertData, _ := os.ReadFile(fInputCertPath)
-		fInputKeyData, _ := os.ReadFile(fInputKeyPath)
-		res, err := provider.Deploy(context.Background(), string(fInputCertData), string(fInputKeyData))
-		if err != nil {
-			t.Errorf("err: %+v", err)
-			return
-		}
-
-		fstat, err := os.Stat(fOutputCertPath + ".jks")
-		if err != nil {
-			t.Errorf("err: %+v", err)
-			return
-		} else if fstat.Size() == 0 {
-			t.Errorf("err: empty output certificate file")
-			return
-		}
-
-		t.Logf("ok: %v", res)
+		tester.TestDeploy(t, provider, tester.TestDeployArgs{CertPath: fTestCertPath, KeyPath: fTestKeyPath})
 	})
 }

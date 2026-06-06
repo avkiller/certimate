@@ -2,7 +2,6 @@ package tencentcloudsslupdate
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -11,13 +10,17 @@ import (
 	"github.com/samber/lo"
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common"
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/profile"
-	tcssl "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/ssl/v20191205"
 
-	"github.com/certimate-go/certimate/pkg/core/certmgr"
-	mcertmgr "github.com/certimate-go/certimate/pkg/core/certmgr/providers/tencentcloud-ssl"
-	"github.com/certimate-go/certimate/pkg/core/deployer"
-	"github.com/certimate-go/certimate/pkg/core/deployer/providers/tencentcloud-ssl-update/internal"
+	tcssl "github.com/certimate-go/certimate/pkg/sdk3rd-trimmed/github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/ssl/v20191205"
+
+	"github.com/certimate-go/certimate/pkg/core"
+	cmgrimpl "github.com/certimate-go/certimate/pkg/core/certmgr/providers/tencentcloud-ssl"
 	xwait "github.com/certimate-go/certimate/pkg/utils/wait"
+)
+
+type (
+	Provider     = core.Deployer
+	DeployResult = core.DeployerDeployResult
 )
 
 type DeployerConfig struct {
@@ -25,30 +28,32 @@ type DeployerConfig struct {
 	SecretId string `json:"secretId"`
 	// 腾讯云 SecretKey。
 	SecretKey string `json:"secretKey"`
+	// 腾讯云项目 ID。
+	ProjectId int64 `json:"projectId,omitempty"`
 	// 腾讯云接口端点。
 	Endpoint string `json:"endpoint,omitempty"`
 	// 原证书 ID。
 	CertificateId string `json:"certificateId"`
-	// 是否替换原有证书（即保持原证书 ID 不变）。
-	IsReplaced bool `json:"isReplaced,omitempty"`
+	// 云产品地域数组。
+	ResourceRegions []string `json:"resourceRegions,omitempty"`
 	// 云产品类型数组。
 	ResourceProducts []string `json:"resourceProducts"`
-	// 云产品地域数组。
-	ResourceRegions []string `json:"resourceRegions"`
+	// 是否替换原有证书（即保持原证书 ID 不变）。
+	IsReplaced bool `json:"isReplaced,omitempty"`
 }
 
 type Deployer struct {
 	config     *DeployerConfig
 	logger     *slog.Logger
-	sdkClient  *internal.SslClient
-	sdkCertmgr certmgr.Provider
+	sdkClient  *tcssl.Client
+	sdkCertmgr core.Certmgr
 }
 
-var _ deployer.Provider = (*Deployer)(nil)
+var _ Provider = (*Deployer)(nil)
 
 func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the deployer provider is nil")
+		return nil, fmt.Errorf("the configuration of the deployer provider is nil")
 	}
 
 	client, err := createSDKClient(config.SecretId, config.SecretKey, config.Endpoint)
@@ -56,9 +61,10 @@ func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 		return nil, fmt.Errorf("could not create client: %w", err)
 	}
 
-	pcertmgr, err := mcertmgr.NewCertmgr(&mcertmgr.CertmgrConfig{
+	pcertmgr, err := cmgrimpl.NewCertmgr(&cmgrimpl.CertmgrConfig{
 		SecretId:  config.SecretId,
 		SecretKey: config.SecretKey,
+		ProjectId: config.ProjectId,
 		Endpoint:  config.Endpoint,
 	})
 	if err != nil {
@@ -83,12 +89,12 @@ func (d *Deployer) SetLogger(logger *slog.Logger) {
 	d.sdkCertmgr.SetLogger(logger)
 }
 
-func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*deployer.DeployResult, error) {
+func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*DeployResult, error) {
 	if d.config.CertificateId == "" {
-		return nil, errors.New("config `certificateId` is required")
+		return nil, fmt.Errorf("config `certificateId` is required")
 	}
 	if len(d.config.ResourceProducts) == 0 {
-		return nil, errors.New("config `resourceProducts` is required")
+		return nil, fmt.Errorf("config `resourceProducts` is required")
 	}
 
 	if d.config.IsReplaced {
@@ -101,7 +107,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 		}
 	}
 
-	return &deployer.DeployResult{}, nil
+	return &DeployResult{}, nil
 }
 
 func (d *Deployer) executeUpdateCertificateInstance(ctx context.Context, certPEM, privkeyPEM string) error {
@@ -118,11 +124,12 @@ func (d *Deployer) executeUpdateCertificateInstance(ctx context.Context, certPEM
 	var deployRecordId string
 	if _, err := xwait.UntilWithContext(ctx, func(_ context.Context, _ int) (bool, error) {
 		updateCertificateInstanceReq := tcssl.NewUpdateCertificateInstanceRequest()
+		updateCertificateInstanceReq.ProjectId = lo.IfF(d.config.ProjectId != 0, func() *uint64 { return common.Uint64Ptr(uint64(d.config.ProjectId)) }).Else(nil)
 		updateCertificateInstanceReq.OldCertificateId = common.StringPtr(d.config.CertificateId)
 		updateCertificateInstanceReq.CertificateId = common.StringPtr(upres.CertId)
 		updateCertificateInstanceReq.ResourceTypes = common.StringPtrs(d.config.ResourceProducts)
 		updateCertificateInstanceReq.ResourceTypesRegions = wrapResourceProductRegions(d.config.ResourceProducts, d.config.ResourceRegions)
-		updateCertificateInstanceResp, err := d.sdkClient.UpdateCertificateInstance(updateCertificateInstanceReq)
+		updateCertificateInstanceResp, err := d.sdkClient.UpdateCertificateInstanceWithContext(ctx, updateCertificateInstanceReq)
 		d.logger.Debug("sdk request 'ssl.UpdateCertificateInstance'", slog.Any("request", updateCertificateInstanceReq), slog.Any("response", updateCertificateInstanceResp))
 		if err != nil {
 			return false, fmt.Errorf("failed to execute sdk request 'ssl.UpdateCertificateInstance': %w", err)
@@ -136,7 +143,7 @@ func (d *Deployer) executeUpdateCertificateInstance(ctx context.Context, certPEM
 		}
 
 		return false, nil
-	}, time.Second*5); err != nil {
+	}, 10*time.Second); err != nil {
 		return err
 	}
 
@@ -146,7 +153,7 @@ func (d *Deployer) executeUpdateCertificateInstance(ctx context.Context, certPEM
 		describeHostUpdateRecordDetailReq := tcssl.NewDescribeHostUpdateRecordDetailRequest()
 		describeHostUpdateRecordDetailReq.DeployRecordId = common.StringPtr(deployRecordId)
 		describeHostUpdateRecordDetailReq.Limit = common.StringPtr("200")
-		describeHostUpdateRecordDetailResp, err := d.sdkClient.DescribeHostUpdateRecordDetail(describeHostUpdateRecordDetailReq)
+		describeHostUpdateRecordDetailResp, err := d.sdkClient.DescribeHostUpdateRecordDetailWithContext(ctx, describeHostUpdateRecordDetailReq)
 		d.logger.Debug("sdk request 'ssl.DescribeHostUpdateRecordDetail'", slog.Any("request", describeHostUpdateRecordDetailReq), slog.Any("response", describeHostUpdateRecordDetailResp))
 		if err != nil {
 			return false, fmt.Errorf("failed to execute sdk request 'ssl.DescribeHostUpdateRecordDetail': %w", err)
@@ -172,7 +179,7 @@ func (d *Deployer) executeUpdateCertificateInstance(ctx context.Context, certPEM
 
 		d.logger.Info(fmt.Sprintf("waiting for tencentcloud deployment job completion (pending: %d, running: %d, succeeded: %d, failed: %d, total: %d) ...", pendingCount, runningCount, succeededCount, failedCount, totalCount))
 		return false, nil
-	}, time.Second*5); err != nil {
+	}, 10*time.Second); err != nil {
 		return err
 	}
 
@@ -190,7 +197,7 @@ func (d *Deployer) executeUploadUpdateCertificateInstance(ctx context.Context, c
 		uploadUpdateCertificateInstanceReq.CertificatePrivateKey = common.StringPtr(privkeyPEM)
 		uploadUpdateCertificateInstanceReq.ResourceTypes = common.StringPtrs(d.config.ResourceProducts)
 		uploadUpdateCertificateInstanceReq.ResourceTypesRegions = wrapResourceProductRegions(d.config.ResourceProducts, d.config.ResourceRegions)
-		uploadUpdateCertificateInstanceResp, err := d.sdkClient.UploadUpdateCertificateInstance(uploadUpdateCertificateInstanceReq)
+		uploadUpdateCertificateInstanceResp, err := d.sdkClient.UploadUpdateCertificateInstanceWithContext(ctx, uploadUpdateCertificateInstanceReq)
 		d.logger.Debug("sdk request 'ssl.UploadUpdateCertificateInstance'", slog.Any("request", uploadUpdateCertificateInstanceReq), slog.Any("response", uploadUpdateCertificateInstanceResp))
 		if err != nil {
 			return false, fmt.Errorf("failed to execute sdk request 'ssl.UploadUpdateCertificateInstance': %w", err)
@@ -204,7 +211,7 @@ func (d *Deployer) executeUploadUpdateCertificateInstance(ctx context.Context, c
 		}
 
 		return false, nil
-	}, time.Second*5); err != nil {
+	}, 10*time.Second); err != nil {
 		return err
 	}
 
@@ -214,7 +221,7 @@ func (d *Deployer) executeUploadUpdateCertificateInstance(ctx context.Context, c
 		describeHostUploadUpdateRecordDetailReq := tcssl.NewDescribeHostUploadUpdateRecordDetailRequest()
 		describeHostUploadUpdateRecordDetailReq.DeployRecordId = common.Int64Ptr(deployRecordId)
 		describeHostUploadUpdateRecordDetailReq.Limit = common.Int64Ptr(200)
-		describeHostUploadUpdateRecordDetailResp, err := d.sdkClient.DescribeHostUploadUpdateRecordDetail(describeHostUploadUpdateRecordDetailReq)
+		describeHostUploadUpdateRecordDetailResp, err := d.sdkClient.DescribeHostUploadUpdateRecordDetailWithContext(ctx, describeHostUploadUpdateRecordDetailReq)
 		d.logger.Debug("sdk request 'ssl.DescribeHostUploadUpdateRecordDetail'", slog.Any("request", describeHostUploadUpdateRecordDetailReq), slog.Any("response", describeHostUploadUpdateRecordDetailResp))
 		if err != nil {
 			return false, fmt.Errorf("failed to execute sdk request 'ssl.DescribeHostUploadUpdateRecordDetail': %w", err)
@@ -241,14 +248,14 @@ func (d *Deployer) executeUploadUpdateCertificateInstance(ctx context.Context, c
 
 		d.logger.Info(fmt.Sprintf("waiting for tencentcloud deployment job completion (running: %d, succeeded: %d, failed: %d, total: %d) ...", runningCount, succeededCount, failedCount, totalCount))
 		return false, nil
-	}, time.Second*5); err != nil {
+	}, 10*time.Second); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func createSDKClient(secretId, secretKey, endpoint string) (*internal.SslClient, error) {
+func createSDKClient(secretId, secretKey, endpoint string) (*tcssl.Client, error) {
 	credential := common.NewCredential(secretId, secretKey)
 
 	cpf := profile.NewClientProfile()
@@ -256,7 +263,7 @@ func createSDKClient(secretId, secretKey, endpoint string) (*internal.SslClient,
 		cpf.HttpProfile.Endpoint = endpoint
 	}
 
-	client, err := internal.NewSslClient(credential, "", cpf)
+	client, err := tcssl.NewClient(credential, "", cpf)
 	if err != nil {
 		return nil, err
 	}

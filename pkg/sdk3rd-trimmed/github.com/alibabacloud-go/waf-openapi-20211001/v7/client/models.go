@@ -1,0 +1,57 @@
+package client
+
+import (
+	"github.com/alibabacloud-go/waf-openapi-20211001/v7/client"
+)
+
+type DescribeCloudResourceAccessPortDetailsRequest = client.DescribeCloudResourceAccessPortDetailsRequest
+
+type DescribeCloudResourceAccessPortDetailsResponse = client.DescribeCloudResourceAccessPortDetailsResponse
+
+type DescribeCloudResourceAccessPortDetailsResponseBodyAccessPortDetails = client.DescribeCloudResourceAccessPortDetailsResponseBodyAccessPortDetails
+
+type DescribeCloudResourceAccessPortDetailsResponseBodyAccessPortDetailsCertificates = client.DescribeCloudResourceAccessPortDetailsResponseBodyAccessPortDetailsCertificates
+
+type DescribeDefaultHttpsRequest = client.DescribeDefaultHttpsRequest
+
+type DescribeDefaultHttpsResponse = client.DescribeDefaultHttpsResponse
+
+type DescribeDomainDetailRequest = client.DescribeDomainDetailRequest
+
+type DescribeDomainDetailResponseBodyRedirectRequestHeaders = client.DescribeDomainDetailResponseBodyRedirectRequestHeaders
+
+type DescribeDomainDetailResponse = client.DescribeDomainDetailResponse
+
+type DescribeDomainDetailResponseBody = client.DescribeDomainDetailResponseBody
+
+type DescribeDomainDetailResponseBodyRedirectBackends = client.DescribeDomainDetailResponseBodyRedirectBackends
+
+type DescribeDomainDetailResponseBodyRedirectBackupBackends = client.DescribeDomainDetailResponseBodyRedirectBackupBackends
+
+type DescribeResourceInstanceCertsRequest = client.DescribeResourceInstanceCertsRequest
+
+type DescribeResourceInstanceCertsResponse = client.DescribeResourceInstanceCertsResponse
+
+type DescribeResourceInstanceCertsResponseBodyCerts = client.DescribeResourceInstanceCertsResponseBodyCerts
+
+type ModifyCloudResourceCertRequest = client.ModifyCloudResourceCertRequest
+
+type ModifyCloudResourceCertRequestCertificates = client.ModifyCloudResourceCertRequestCertificates
+
+type ModifyCloudResourceCertResponse = client.ModifyCloudResourceCertResponse
+
+type ModifyDefaultHttpsRequest = client.ModifyDefaultHttpsRequest
+
+type ModifyDefaultHttpsResponse = client.ModifyDefaultHttpsResponse
+
+type ModifyDomainRequest = client.ModifyDomainRequest
+
+type ModifyDomainRequestListen = client.ModifyDomainRequestListen
+
+type ModifyDomainRequestRedirect = client.ModifyDomainRequestRedirect
+
+type ModifyDomainRequestRedirectRequestHeaders = client.ModifyDomainRequestRedirectRequestHeaders
+
+type ModifyDomainResponse = client.ModifyDomainResponse
+
+type ModifyDomainShrinkRequest = client.ModifyDomainShrinkRequest

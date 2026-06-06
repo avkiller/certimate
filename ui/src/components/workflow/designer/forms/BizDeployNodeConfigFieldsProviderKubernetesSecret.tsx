@@ -65,6 +65,16 @@ const BizDeployNodeConfigFieldsProviderKubernetesSecret = () => {
       </Form.Item>
 
       <Form.Item
+        name={[parentNamePath, "secretDataKeyForKey"]}
+        initialValue={initialValues.secretDataKeyForKey}
+        label={t("workflow_node.deploy.form.k8s_secret_data_key_for_key.label")}
+        rules={[formRule]}
+        tooltip={<span dangerouslySetInnerHTML={{ __html: t("workflow_node.deploy.form.k8s_secret_data_key_for_key.tooltip") }}></span>}
+      >
+        <Input placeholder={t("workflow_node.deploy.form.k8s_secret_data_key_for_key.placeholder")} />
+      </Form.Item>
+
+      <Form.Item
         name={[parentNamePath, "secretDataKeyForCrt"]}
         initialValue={initialValues.secretDataKeyForCrt}
         label={t("workflow_node.deploy.form.k8s_secret_data_key_for_crt.label")}
@@ -75,13 +85,23 @@ const BizDeployNodeConfigFieldsProviderKubernetesSecret = () => {
       </Form.Item>
 
       <Form.Item
-        name={[parentNamePath, "secretDataKeyForKey"]}
-        initialValue={initialValues.secretDataKeyForKey}
-        label={t("workflow_node.deploy.form.k8s_secret_data_key_for_key.label")}
+        name={[parentNamePath, "secretDataKeyForCrtOnlyServer"]}
+        initialValue={initialValues.secretDataKeyForCrtOnlyServer}
+        label={t("workflow_node.deploy.form.k8s_secret_data_key_for_servercrt.label")}
+        extra={t("workflow_node.deploy.form.k8s_secret_data_key_for_servercrt.help")}
         rules={[formRule]}
-        tooltip={<span dangerouslySetInnerHTML={{ __html: t("workflow_node.deploy.form.k8s_secret_data_key_for_key.tooltip") }}></span>}
       >
-        <Input placeholder={t("workflow_node.deploy.form.k8s_secret_data_key_for_key.placeholder")} />
+        <Input allowClear placeholder={t("workflow_node.deploy.form.k8s_secret_data_key_for_servercrt.placeholder")} />
+      </Form.Item>
+
+      <Form.Item
+        name={[parentNamePath, "secretDataKeyForCrtOnlyIntermedia"]}
+        initialValue={initialValues.secretDataKeyForCrtOnlyIntermedia}
+        label={t("workflow_node.deploy.form.k8s_secret_data_key_for_intermediacrt.label")}
+        extra={t("workflow_node.deploy.form.k8s_secret_data_key_for_intermediacrt.help")}
+        rules={[formRule]}
+      >
+        <Input allowClear placeholder={t("workflow_node.deploy.form.k8s_secret_data_key_for_intermediacrt.placeholder")} />
       </Form.Item>
 
       <Form.Item
@@ -136,11 +156,13 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
   const { t } = i18n;
 
   return z.object({
-    namespace: z.string().nonempty(t("workflow_node.deploy.form.k8s_namespace.placeholder")),
-    secretName: z.string().nonempty(t("workflow_node.deploy.form.k8s_secret_name.placeholder")),
-    secretType: z.string().nonempty(t("workflow_node.deploy.form.k8s_secret_type.placeholder")),
-    secretDataKeyForCrt: z.string().nonempty(t("workflow_node.deploy.form.k8s_secret_data_key_for_crt.placeholder")),
-    secretDataKeyForKey: z.string().nonempty(t("workflow_node.deploy.form.k8s_secret_data_key_for_key.placeholder")),
+    namespace: z.string().nonempty(),
+    secretName: z.string().nonempty(),
+    secretType: z.string().nonempty(),
+    secretDataKeyForCrt: z.string().nonempty(),
+    secretDataKeyForKey: z.string().nonempty(),
+    secretDataKeyForCrtOnlyServer: z.string().nullish(),
+    secretDataKeyForCrtOnlyIntermedia: z.string().nullish(),
     secretAnnotations: z
       .string()
       .nullish()

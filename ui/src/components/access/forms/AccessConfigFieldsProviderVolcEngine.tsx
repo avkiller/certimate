@@ -36,6 +36,16 @@ const AccessConfigFormFieldsProviderVolcEngine = () => {
       >
         <Input.Password autoComplete="new-password" placeholder={t("access.form.volcengine_secret_access_key.placeholder")} />
       </Form.Item>
+
+      <Form.Item
+        name={[parentNamePath, "projectName"]}
+        initialValue={initialValues.projectName}
+        label={t("access.form.volcengine_project_name.label")}
+        rules={[formRule]}
+        tooltip={<span dangerouslySetInnerHTML={{ __html: t("access.form.volcengine_project_name.tooltip") }}></span>}
+      >
+        <Input allowClear placeholder={t("access.form.volcengine_project_name.placeholder")} />
+      </Form.Item>
     </>
   );
 };
@@ -48,11 +58,12 @@ const getInitialValues = (): Nullish<z.infer<ReturnType<typeof getSchema>>> => {
 };
 
 const getSchema = ({ i18n = getI18n() }: { i18n: ReturnType<typeof getI18n> }) => {
-  const { t } = i18n;
+  const { t: _ } = i18n;
 
   return z.object({
-    accessKeyId: z.string().nonempty(t("access.form.volcengine_access_key_id.placeholder")),
-    secretAccessKey: z.string().nonempty(t("access.form.volcengine_secret_access_key.placeholder")),
+    accessKeyId: z.string().nonempty(),
+    secretAccessKey: z.string().nonempty(),
+    projectName: z.string().nullish(),
   });
 };
 

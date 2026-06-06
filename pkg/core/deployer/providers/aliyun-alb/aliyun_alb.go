@@ -9,19 +9,23 @@ import (
 	"strings"
 	"time"
 
-	alialb "github.com/alibabacloud-go/alb-20200616/v2/client"
-	alicas "github.com/alibabacloud-go/cas-20200407/v4/client"
 	aliopen "github.com/alibabacloud-go/darabonba-openapi/v2/client"
 	"github.com/alibabacloud-go/tea/dara"
 	"github.com/alibabacloud-go/tea/tea"
 	"github.com/samber/lo"
 
-	"github.com/certimate-go/certimate/pkg/core/certmgr"
-	mcertmgr "github.com/certimate-go/certimate/pkg/core/certmgr/providers/aliyun-cas"
-	"github.com/certimate-go/certimate/pkg/core/deployer"
-	"github.com/certimate-go/certimate/pkg/core/deployer/providers/aliyun-alb/internal"
+	alialb "github.com/certimate-go/certimate/pkg/sdk3rd-trimmed/github.com/alibabacloud-go/alb-20200616/v2/client"
+	alicas "github.com/certimate-go/certimate/pkg/sdk3rd-trimmed/github.com/alibabacloud-go/cas-20200407/v4/client"
+
+	"github.com/certimate-go/certimate/pkg/core"
+	cmgrimpl "github.com/certimate-go/certimate/pkg/core/certmgr/providers/aliyun-cas"
 	xcert "github.com/certimate-go/certimate/pkg/utils/cert"
 	xwait "github.com/certimate-go/certimate/pkg/utils/wait"
+)
+
+type (
+	Provider     = core.Deployer
+	DeployResult = core.DeployerDeployResult
 )
 
 type DeployerConfig struct {
@@ -33,16 +37,16 @@ type DeployerConfig struct {
 	ResourceGroupId string `json:"resourceGroupId,omitempty"`
 	// 阿里云地域。
 	Region string `json:"region"`
-	// 部署资源类型。
-	ResourceType string `json:"resourceType"`
+	// 部署目标。
+	DeployTarget string `json:"deployTarget"`
 	// 负载均衡实例 ID。
-	// 部署资源类型为 [RESOURCE_TYPE_LOADBALANCER] 时必填。
+	// 部署目标为 [DEPLOY_TARGET_LOADBALANCER] 时必填。
 	LoadbalancerId string `json:"loadbalancerId,omitempty"`
 	// 负载均衡监听 ID。
-	// 部署资源类型为 [RESOURCE_TYPE_LISTENER] 时必填。
+	// 部署目标为 [DEPLOY_TARGET_LISTENER] 时必填。
 	ListenerId string `json:"listenerId,omitempty"`
 	// SNI 域名（支持泛域名）。
-	// 部署资源类型为 [RESOURCE_TYPE_LOADBALANCER]、[RESOURCE_TYPE_LISTENER] 时选填。
+	// 部署目标为 [DEPLOY_TARGET_LOADBALANCER]、[DEPLOY_TARGET_LISTENER] 时选填。
 	Domain string `json:"domain,omitempty"`
 }
 
@@ -50,19 +54,19 @@ type Deployer struct {
 	config     *DeployerConfig
 	logger     *slog.Logger
 	sdkClients *wSDKClients
-	sdkCertmgr certmgr.Provider
+	sdkCertmgr core.Certmgr
 }
 
-var _ deployer.Provider = (*Deployer)(nil)
+var _ Provider = (*Deployer)(nil)
 
 type wSDKClients struct {
-	ALB *internal.AlbClient
-	CAS *internal.CasClient
+	ALB *alialb.Client
+	CAS *alicas.Client
 }
 
 func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the deployer provider is nil")
+		return nil, fmt.Errorf("the configuration of the deployer provider is nil")
 	}
 
 	clients, err := createSDKClients(config.AccessKeyId, config.AccessKeySecret, config.Region)
@@ -70,7 +74,7 @@ func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 		return nil, fmt.Errorf("could not create client: %w", err)
 	}
 
-	pcertmgr, err := mcertmgr.NewCertmgr(&mcertmgr.CertmgrConfig{
+	pcertmgr, err := cmgrimpl.NewCertmgr(&cmgrimpl.CertmgrConfig{
 		AccessKeyId:     config.AccessKeyId,
 		AccessKeySecret: config.AccessKeySecret,
 		ResourceGroupId: config.ResourceGroupId,
@@ -100,7 +104,7 @@ func (d *Deployer) SetLogger(logger *slog.Logger) {
 	d.sdkCertmgr.SetLogger(logger)
 }
 
-func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*deployer.DeployResult, error) {
+func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*DeployResult, error) {
 	// 解析证书内容
 	certX509, err := xcert.ParseCertificateFromPEM(certPEM)
 	if err != nil {
@@ -115,28 +119,28 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 		d.logger.Info("ssl certificate uploaded", slog.Any("result", upres))
 	}
 
-	// 根据部署资源类型决定部署方式
-	switch d.config.ResourceType {
-	case RESOURCE_TYPE_LOADBALANCER:
+	// 根据部署目标决定业务流程
+	switch d.config.DeployTarget {
+	case DEPLOY_TARGET_LOADBALANCER:
 		if err := d.deployToLoadbalancer(ctx, upres.ExtendedData["CertIdentifier"].(string), certX509.DNSNames); err != nil {
 			return nil, err
 		}
 
-	case RESOURCE_TYPE_LISTENER:
+	case DEPLOY_TARGET_LISTENER:
 		if err := d.deployToListener(ctx, upres.ExtendedData["CertIdentifier"].(string), certX509.DNSNames); err != nil {
 			return nil, err
 		}
 
 	default:
-		return nil, fmt.Errorf("unsupported resource type '%s'", d.config.ResourceType)
+		return nil, fmt.Errorf("unsupported deploy target '%s'", d.config.DeployTarget)
 	}
 
-	return &deployer.DeployResult{}, nil
+	return &DeployResult{}, nil
 }
 
 func (d *Deployer) deployToLoadbalancer(ctx context.Context, cloudCertId string, cloudCertSANs []string) error {
 	if d.config.LoadbalancerId == "" {
-		return errors.New("config `loadbalancerId` is required")
+		return fmt.Errorf("config `loadbalancerId` is required")
 	}
 
 	// 查询负载均衡实例的详细信息
@@ -253,7 +257,7 @@ func (d *Deployer) deployToLoadbalancer(ctx context.Context, cloudCertId string,
 
 func (d *Deployer) deployToListener(ctx context.Context, cloudCertId string, cloudCertSANs []string) error {
 	if d.config.ListenerId == "" {
-		return errors.New("config `listenerId` is required")
+		return fmt.Errorf("config `listenerId` is required")
 	}
 
 	// 更新监听
@@ -344,20 +348,21 @@ func (d *Deployer) updateListenerCertificate(ctx context.Context, cloudListenerI
 					continue
 				}
 
-				if tea.StringValue(listenerCertificate.CertificateId) == cloudCertId {
+				certIdWithRegion := tea.StringValue(listenerCertificate.CertificateId)
+				if certIdWithRegion == cloudCertId {
 					certificateIsAlreadyAssociated = true
 					break
 				}
 
-				certificateId := strings.SplitN(tea.StringValue(listenerCertificate.CertificateId), "-", 2)[0]
-				certificateIdAsInt64, err := strconv.ParseInt(certificateId, 10, 64)
+				certIdBare := strings.SplitN(certIdWithRegion, "-", 2)[0]
+				certIdBareAsInt64, err := strconv.ParseInt(certIdBare, 10, 64)
 				if err != nil {
 					errs = append(errs, err)
 					continue
 				}
 
 				getCertificateDetailReq := &alicas.GetCertificateDetailRequest{
-					CertificateId: tea.Int64(certificateIdAsInt64),
+					CertificateId: tea.Int64(certIdBareAsInt64),
 				}
 				getCertificateDetailResp, err := d.sdkClients.CAS.GetCertificateDetailWithContext(ctx, getCertificateDetailReq, &dara.RuntimeOptions{})
 				d.logger.Debug("sdk request 'cas.GetCertificateDetail'", slog.Any("request", getCertificateDetailReq), slog.Any("response", getCertificateDetailResp))
@@ -374,13 +379,13 @@ func (d *Deployer) updateListenerCertificate(ctx context.Context, cloudListenerI
 					certCNMatched := tea.StringValue(getCertificateDetailResp.Body.CommonName) == d.config.Domain
 					certSANDiff, _ := lo.Difference(tea.StringSliceValue(getCertificateDetailResp.Body.SubjectAlternativeNames), cloudCertSANs)
 					if certCNMatched || len(certSANDiff) == 0 {
-						certificateIdsToDissociate = append(certificateIdsToDissociate, certificateId)
+						certificateIdsToDissociate = append(certificateIdsToDissociate, certIdWithRegion)
 						continue
 					}
 
 					certNotAfter := time.Unix(tea.Int64Value(getCertificateDetailResp.Body.NotAfter)/1000, 0)
 					if certNotAfter.Before(time.Now()) {
-						certificateIdsToDissociate = append(certificateIdsToDissociate, certificateId)
+						certificateIdsToDissociate = append(certificateIdsToDissociate, certIdWithRegion)
 						continue
 					}
 				}
@@ -467,7 +472,7 @@ func (d *Deployer) waitForListenerReady(ctx context.Context, cloudListenerId str
 
 		d.logger.Info("waiting for aliyun alb listener's status to not be 'Configuring' ...")
 		return false, nil
-	}, time.Second*5); err != nil {
+	}, 10*time.Second); err != nil {
 		return err
 	}
 
@@ -475,45 +480,54 @@ func (d *Deployer) waitForListenerReady(ctx context.Context, cloudListenerId str
 }
 
 func createSDKClients(accessKeyId, accessKeySecret, region string) (*wSDKClients, error) {
-	// 接入点一览 https://api.aliyun.com/product/Alb
-	var albEndpoint string
-	switch region {
-	case "", "cn-hangzhou-finance":
-		albEndpoint = "alb.cn-hangzhou.aliyuncs.com"
-	default:
-		albEndpoint = fmt.Sprintf("alb.%s.aliyuncs.com", region)
+	wsdk := &wSDKClients{}
+
+	{
+		// 接入点一览 https://api.aliyun.com/product/Alb
+		var endpoint string
+		switch region {
+		case "", "cn-hangzhou-finance":
+			endpoint = "alb.cn-hangzhou.aliyuncs.com"
+		default:
+			endpoint = fmt.Sprintf("alb.%s.aliyuncs.com", region)
+		}
+
+		config := &aliopen.Config{
+			AccessKeyId:     tea.String(accessKeyId),
+			AccessKeySecret: tea.String(accessKeySecret),
+			Endpoint:        tea.String(endpoint),
+		}
+
+		client, err := alialb.NewClient(config)
+		if err != nil {
+			return nil, err
+		}
+
+		wsdk.ALB = client
 	}
 
-	albConfig := &aliopen.Config{
-		AccessKeyId:     tea.String(accessKeyId),
-		AccessKeySecret: tea.String(accessKeySecret),
-		Endpoint:        tea.String(albEndpoint),
-	}
-	albClient, err := internal.NewAlbClient(albConfig)
-	if err != nil {
-		return nil, err
+	{
+		// 接入点一览 https://api.aliyun.com/product/cas
+		var endpoint string
+		if !strings.HasPrefix(region, "cn-") {
+			endpoint = "cas.ap-southeast-1.aliyuncs.com"
+		} else {
+			endpoint = "cas.aliyuncs.com"
+		}
+
+		config := &aliopen.Config{
+			Endpoint:        tea.String(endpoint),
+			AccessKeyId:     tea.String(accessKeyId),
+			AccessKeySecret: tea.String(accessKeySecret),
+		}
+
+		client, err := alicas.NewClient(config)
+		if err != nil {
+			return nil, err
+		}
+
+		wsdk.CAS = client
 	}
 
-	// 接入点一览 https://api.aliyun.com/product/cas
-	var casEndpoint string
-	if !strings.HasPrefix(region, "cn-") {
-		casEndpoint = "cas.ap-southeast-1.aliyuncs.com"
-	} else {
-		casEndpoint = "cas.aliyuncs.com"
-	}
-
-	casConfig := &aliopen.Config{
-		Endpoint:        tea.String(casEndpoint),
-		AccessKeyId:     tea.String(accessKeyId),
-		AccessKeySecret: tea.String(accessKeySecret),
-	}
-	casClient, err := internal.NewCasClient(casConfig)
-	if err != nil {
-		return nil, err
-	}
-
-	return &wSDKClients{
-		ALB: albClient,
-		CAS: casClient,
-	}, nil
+	return wsdk, nil
 }

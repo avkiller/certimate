@@ -4,18 +4,24 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
 	"time"
 
 	jdcore "github.com/jdcloud-api/jdcloud-sdk-go/core"
-	jdsslapi "github.com/jdcloud-api/jdcloud-sdk-go/services/ssl/apis"
-	jdsslclient "github.com/jdcloud-api/jdcloud-sdk-go/services/ssl/client"
+	jdsslapis "github.com/jdcloud-api/jdcloud-sdk-go/services/ssl/apis"
 
-	"github.com/certimate-go/certimate/pkg/core/certmgr"
+	jdssl "github.com/certimate-go/certimate/pkg/sdk3rd-trimmed/github.com/jdcloud-api/jdcloud-sdk-go/services/ssl/client"
+
+	"github.com/certimate-go/certimate/pkg/core"
 	xcert "github.com/certimate-go/certimate/pkg/utils/cert"
+)
+
+type (
+	Provider      = core.Certmgr
+	UploadResult  = core.CertmgrUploadResult
+	ReplaceResult = core.CertmgrReplaceResult
 )
 
 type CertmgrConfig struct {
@@ -28,14 +34,14 @@ type CertmgrConfig struct {
 type Certmgr struct {
 	config    *CertmgrConfig
 	logger    *slog.Logger
-	sdkClient *jdsslclient.SslClient
+	sdkClient *jdssl.SslClient
 }
 
-var _ certmgr.Provider = (*Certmgr)(nil)
+var _ Provider = (*Certmgr)(nil)
 
 func NewCertmgr(config *CertmgrConfig) (*Certmgr, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the certmgr provider is nil")
+		return nil, fmt.Errorf("the configuration of the certmgr provider is nil")
 	}
 
 	client, err := createSDKClient(config.AccessKeyId, config.AccessKeySecret)
@@ -58,7 +64,7 @@ func (c *Certmgr) SetLogger(logger *slog.Logger) {
 	}
 }
 
-func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*certmgr.UploadResult, error) {
+func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*UploadResult, error) {
 	// 解析证书内容
 	certX509, err := xcert.ParseCertificateFromPEM(certPEM)
 	if err != nil {
@@ -82,7 +88,7 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 		default:
 		}
 
-		describeCertsReq := jdsslapi.NewDescribeCertsRequestWithoutParam()
+		describeCertsReq := jdsslapis.NewDescribeCertsRequestWithoutParam()
 		describeCertsReq.SetDomainName(certX509.Subject.CommonName)
 		describeCertsReq.SetPageNumber(describeCertsPageNumber)
 		describeCertsReq.SetPageSize(describeCertsPageSize)
@@ -119,7 +125,7 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 
 			// 如果以上信息都一致，则视为已存在相同证书，直接返回
 			c.logger.Info("ssl certificate already exists")
-			return &certmgr.UploadResult{
+			return &UploadResult{
 				CertId:   certItem.CertId,
 				CertName: certItem.CertName,
 			}, nil
@@ -137,7 +143,7 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 
 	// 上传证书
 	// REF: https://docs.jdcloud.com/cn/ssl-certificate/api/uploadcert
-	uploadCertReq := jdsslapi.NewUploadCertRequestWithoutParam()
+	uploadCertReq := jdsslapis.NewUploadCertRequestWithoutParam()
 	uploadCertReq.SetCertName(certName)
 	uploadCertReq.SetCertFile(certPEM)
 	uploadCertReq.SetKeyFile(privkeyPEM)
@@ -147,19 +153,19 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 		return nil, fmt.Errorf("failed to execute sdk request 'ssl.UploadCertificate': %w", err)
 	}
 
-	return &certmgr.UploadResult{
+	return &UploadResult{
 		CertId:   uploadCertResp.Result.CertId,
 		CertName: certName,
 	}, nil
 }
 
-func (c *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, privkeyPEM string) (*certmgr.OperateResult, error) {
-	return nil, certmgr.ErrUnsupported
+func (c *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, privkeyPEM string) (*ReplaceResult, error) {
+	return nil, core.ErrUnsupported
 }
 
-func createSDKClient(accessKeyId, accessKeySecret string) (*jdsslclient.SslClient, error) {
+func createSDKClient(accessKeyId, accessKeySecret string) (*jdssl.SslClient, error) {
 	clientCredentials := jdcore.NewCredentials(accessKeyId, accessKeySecret)
-	client := jdsslclient.NewSslClient(clientCredentials)
+	client := jdssl.NewSslClient(clientCredentials)
 	client.DisableLogger()
 	return client, nil
 }

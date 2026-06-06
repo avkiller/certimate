@@ -5,14 +5,14 @@ import (
 	"net/http"
 
 	"github.com/certimate-go/certimate/internal/domain"
-	"github.com/certimate-go/certimate/pkg/core/deployer"
-	webhook "github.com/certimate-go/certimate/pkg/core/deployer/providers/webhook"
+	"github.com/certimate-go/certimate/pkg/core"
+	dplyimpl "github.com/certimate-go/certimate/pkg/core/deployer/providers/webhook"
 	xhttp "github.com/certimate-go/certimate/pkg/utils/http"
 	xmaps "github.com/certimate-go/certimate/pkg/utils/maps"
 )
 
 func init() {
-	Registries.MustRegister(domain.DeploymentProviderTypeWebhook, func(options *ProviderFactoryOptions) (deployer.Provider, error) {
+	Registries.MustRegister(domain.DeploymentProviderTypeWebhook, func(options *ProviderFactoryOptions) (core.Deployer, error) {
 		credentials := domain.AccessConfigForWebhook{}
 		if err := xmaps.Populate(options.ProviderAccessConfig, &credentials); err != nil {
 			return nil, fmt.Errorf("failed to populate provider access config: %w", err)
@@ -38,7 +38,7 @@ func init() {
 			}
 		}
 
-		provider, err := webhook.NewDeployer(&webhook.DeployerConfig{
+		provider, err := dplyimpl.NewDeployer(&dplyimpl.DeployerConfig{
 			WebhookUrl:               credentials.Url,
 			WebhookData:              xmaps.GetOrDefaultString(options.ProviderExtendedConfig, "webhookData", credentials.DataString),
 			Method:                   credentials.Method,

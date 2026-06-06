@@ -2,24 +2,29 @@ package huaweicloudelb
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"time"
 
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth/basic"
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth/global"
-	hcelb "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/elb/v3"
-	hcelbmodel "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/elb/v3/model"
-	hcelbregion "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/elb/v3/region"
-	hciam "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3"
-	hciammodel "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3/model"
-	hciamregion "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3/region"
+	hwelbmodel "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/elb/v3/model"
+	hwelbregion "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/elb/v3/region"
+	hwiam "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3"
+	hwiammodel "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3/model"
+	hwiamregion "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3/region"
 	"github.com/samber/lo"
 
-	"github.com/certimate-go/certimate/pkg/core/certmgr"
-	"github.com/certimate-go/certimate/pkg/core/certmgr/providers/huaweicloud-elb/internal"
+	hwelb "github.com/certimate-go/certimate/pkg/sdk3rd-trimmed/github.com/huaweicloud/huaweicloud-sdk-go-v3/services/elb/v3"
+
+	"github.com/certimate-go/certimate/pkg/core"
 	xcert "github.com/certimate-go/certimate/pkg/utils/cert"
+)
+
+type (
+	Provider      = core.Certmgr
+	UploadResult  = core.CertmgrUploadResult
+	ReplaceResult = core.CertmgrReplaceResult
 )
 
 type CertmgrConfig struct {
@@ -36,14 +41,14 @@ type CertmgrConfig struct {
 type Certmgr struct {
 	config    *CertmgrConfig
 	logger    *slog.Logger
-	sdkClient *internal.ElbClient
+	sdkClient *hwelb.ElbClient
 }
 
-var _ certmgr.Provider = (*Certmgr)(nil)
+var _ Provider = (*Certmgr)(nil)
 
 func NewCertmgr(config *CertmgrConfig) (*Certmgr, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the certmgr provider is nil")
+		return nil, fmt.Errorf("the configuration of the certmgr provider is nil")
 	}
 
 	client, err := createSDKClient(config.AccessKeyId, config.SecretAccessKey, config.Region)
@@ -66,7 +71,7 @@ func (c *Certmgr) SetLogger(logger *slog.Logger) {
 	}
 }
 
-func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*certmgr.UploadResult, error) {
+func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*UploadResult, error) {
 	// 查询已有证书，避免重复上传
 	// REF: https://support.huaweicloud.com/api-elb/ListCertificates.html
 	listCertificatesMarker := (*string)(nil)
@@ -77,7 +82,7 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 		default:
 		}
 
-		listCertificatesReq := &hcelbmodel.ListCertificatesRequest{
+		listCertificatesReq := &hwelbmodel.ListCertificatesRequest{
 			Marker: listCertificatesMarker,
 			Limit:  lo.ToPtr(int32(2000)),
 			Type:   lo.ToPtr([]string{"server"}),
@@ -96,7 +101,7 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 			// 如果已存在相同证书，直接返回
 			if xcert.EqualCertificatesFromPEM(certPEM, certItem.Certificate) {
 				c.logger.Info("ssl certificate already exists")
-				return &certmgr.UploadResult{
+				return &UploadResult{
 					CertId:   certItem.Id,
 					CertName: certItem.Name,
 				}, nil
@@ -122,9 +127,9 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 
 	// 创建新证书
 	// REF: https://support.huaweicloud.com/api-elb/CreateCertificate.html
-	createCertificateReq := &hcelbmodel.CreateCertificateRequest{
-		Body: &hcelbmodel.CreateCertificateRequestBody{
-			Certificate: &hcelbmodel.CreateCertificateOption{
+	createCertificateReq := &hwelbmodel.CreateCertificateRequest{
+		Body: &hwelbmodel.CreateCertificateRequestBody{
+			Certificate: &hwelbmodel.CreateCertificateOption{
 				EnterpriseProjectId: lo.EmptyableToPtr(c.config.EnterpriseProjectId),
 				ProjectId:           lo.ToPtr(projectId),
 				Name:                lo.ToPtr(certName),
@@ -139,19 +144,19 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 		return nil, fmt.Errorf("failed to execute sdk request 'elb.CreateCertificate': %w", err)
 	}
 
-	return &certmgr.UploadResult{
+	return &UploadResult{
 		CertId:   createCertificateResp.Certificate.Id,
 		CertName: createCertificateResp.Certificate.Name,
 	}, nil
 }
 
-func (c *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, privkeyPEM string) (*certmgr.OperateResult, error) {
+func (c *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, privkeyPEM string) (*ReplaceResult, error) {
 	// 更新证书
 	// REF: https://support.huaweicloud.com/api-elb/UpdateCertificate.html
-	updateCertificateReq := &hcelbmodel.UpdateCertificateRequest{
+	updateCertificateReq := &hwelbmodel.UpdateCertificateRequest{
 		CertificateId: certIdOrName,
-		Body: &hcelbmodel.UpdateCertificateRequestBody{
-			Certificate: &hcelbmodel.UpdateCertificateOption{
+		Body: &hwelbmodel.UpdateCertificateRequestBody{
+			Certificate: &hwelbmodel.UpdateCertificateOption{
 				Certificate: lo.ToPtr(certPEM),
 				PrivateKey:  lo.ToPtr(privkeyPEM),
 			},
@@ -163,10 +168,10 @@ func (c *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, pri
 		return nil, fmt.Errorf("failed to execute sdk request 'elb.UpdateCertificate': %w", err)
 	}
 
-	return &certmgr.OperateResult{}, nil
+	return &ReplaceResult{}, nil
 }
 
-func createSDKClient(accessKeyId, secretAccessKey, region string) (*internal.ElbClient, error) {
+func createSDKClient(accessKeyId, secretAccessKey, region string) (*hwelb.ElbClient, error) {
 	if region == "" {
 		region = "cn-north-4" // ELB 服务默认区域：华北北京四
 	}
@@ -179,12 +184,12 @@ func createSDKClient(accessKeyId, secretAccessKey, region string) (*internal.Elb
 		return nil, err
 	}
 
-	hcRegion, err := hcelbregion.SafeValueOf(region)
+	hcRegion, err := hwelbregion.SafeValueOf(region)
 	if err != nil {
 		return nil, err
 	}
 
-	hcClient, err := hcelb.ElbClientBuilder().
+	hcClient, err := hwelb.ElbClientBuilder().
 		WithRegion(hcRegion).
 		WithCredential(auth).
 		SafeBuild()
@@ -192,7 +197,7 @@ func createSDKClient(accessKeyId, secretAccessKey, region string) (*internal.Elb
 		return nil, err
 	}
 
-	client := internal.NewElbClient(hcClient)
+	client := hwelb.NewElbClient(hcClient)
 	return client, nil
 }
 
@@ -209,12 +214,12 @@ func getSDKProjectId(accessKeyId, secretAccessKey, region string) (string, error
 		return "", err
 	}
 
-	hcRegion, err := hciamregion.SafeValueOf(region)
+	hcRegion, err := hwiamregion.SafeValueOf(region)
 	if err != nil {
 		return "", err
 	}
 
-	hcClient, err := hciam.IamClientBuilder().
+	hcClient, err := hwiam.IamClientBuilder().
 		WithRegion(hcRegion).
 		WithCredential(auth).
 		SafeBuild()
@@ -222,16 +227,16 @@ func getSDKProjectId(accessKeyId, secretAccessKey, region string) (string, error
 		return "", err
 	}
 
-	client := hciam.NewIamClient(hcClient)
+	client := hwiam.NewIamClient(hcClient)
 
-	request := &hciammodel.KeystoneListProjectsRequest{
+	request := &hwiammodel.KeystoneListProjectsRequest{
 		Name: &region,
 	}
 	response, err := client.KeystoneListProjects(request)
 	if err != nil {
 		return "", err
 	} else if response.Projects == nil || len(*response.Projects) == 0 {
-		return "", errors.New("huaweicloud: no project found")
+		return "", fmt.Errorf("huaweicloud: no project found")
 	}
 
 	return (*response.Projects)[0].Id, nil

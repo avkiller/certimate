@@ -56,7 +56,7 @@ const BizDeployNodeConfigFieldsProviderTencentCloudEO = () => {
         label={t("workflow_node.deploy.form.shared_domain_match_pattern.label")}
         extra={
           fieldDomainMatchPattern === DOMAIN_MATCH_PATTERN_EXACT ? (
-            <span dangerouslySetInnerHTML={{ __html: t("workflow_node.deploy.form.shared_domain_match_pattern.help_wildcard") }}></span>
+            <span dangerouslySetInnerHTML={{ __html: t("workflow_node.deploy.form.shared_domain_match_pattern.option.exact.help.wildcard") }}></span>
           ) : (
             void 0
           )
@@ -65,7 +65,6 @@ const BizDeployNodeConfigFieldsProviderTencentCloudEO = () => {
       >
         <Radio.Group
           options={[DOMAIN_MATCH_PATTERN_EXACT, DOMAIN_MATCH_PATTERN_WILDCARD, DOMAIN_MATCH_PATTERN_CERTSAN].map((s) => ({
-            key: s,
             label: t(`workflow_node.deploy.form.shared_domain_match_pattern.option.${s}.label`),
             value: s,
           }))}
@@ -121,8 +120,8 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
   return z
     .object({
       endpoint: z.string().nullish(),
-      zoneId: z.string().nonempty(t("workflow_node.deploy.form.tencentcloud_eo_zone_id.placeholder")),
-      domainMatchPattern: z.string().nonempty(t("workflow_node.deploy.form.shared_domain_match_pattern.placeholder")).default(DOMAIN_MATCH_PATTERN_EXACT),
+      zoneId: z.string().nonempty(),
+      domainMatchPattern: z.string().nonempty().default(DOMAIN_MATCH_PATTERN_EXACT),
       domains: z.string().nullish(),
       enableMultipleSSL: z.boolean().nullish(),
     })
@@ -132,11 +131,15 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
           case DOMAIN_MATCH_PATTERN_EXACT:
           case DOMAIN_MATCH_PATTERN_WILDCARD:
             {
-              const valid = values.domains && values.domains.split(MULTIPLE_INPUT_SEPARATOR).every((e) => isDomain(e, { allowWildcard: true }));
-              if (!valid) {
+              const scDomains = z
+                .string()
+                .nonempty()
+                .refine((v) => v.split(MULTIPLE_INPUT_SEPARATOR).every((e) => isDomain(e, { allowWildcard: true })), t("common.errmsg.domain_invalid"));
+              const spDomains = scDomains.safeParse(values.domains);
+              if (!spDomains.success) {
                 ctx.addIssue({
                   code: "custom",
-                  message: t("common.errmsg.domain_invalid"),
+                  message: z.treeifyError(spDomains.error).errors.join(),
                   path: ["domains"],
                 });
               }

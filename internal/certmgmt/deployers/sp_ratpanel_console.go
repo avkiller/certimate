@@ -4,19 +4,19 @@ import (
 	"fmt"
 
 	"github.com/certimate-go/certimate/internal/domain"
-	"github.com/certimate-go/certimate/pkg/core/deployer"
-	ratpanelconsole "github.com/certimate-go/certimate/pkg/core/deployer/providers/ratpanel-console"
+	"github.com/certimate-go/certimate/pkg/core"
+	dplyimpl "github.com/certimate-go/certimate/pkg/core/deployer/providers/ratpanel-console"
 	xmaps "github.com/certimate-go/certimate/pkg/utils/maps"
 )
 
 func init() {
-	Registries.MustRegister(domain.DeploymentProviderTypeRatPanelConsole, func(options *ProviderFactoryOptions) (deployer.Provider, error) {
+	Registries.MustRegister(domain.DeploymentProviderTypeRatPanelConsole, func(options *ProviderFactoryOptions) (core.Deployer, error) {
 		credentials := domain.AccessConfigForRatPanel{}
 		if err := xmaps.Populate(options.ProviderAccessConfig, &credentials); err != nil {
 			return nil, fmt.Errorf("failed to populate provider access config: %w", err)
 		}
 
-		provider, err := ratpanelconsole.NewDeployer(&ratpanelconsole.DeployerConfig{
+		provider, err := dplyimpl.NewDeployer(&dplyimpl.DeployerConfig{
 			ServerUrl:                credentials.ServerUrl,
 			AccessTokenId:            credentials.AccessTokenId,
 			AccessToken:              credentials.AccessToken,

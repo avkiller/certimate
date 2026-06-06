@@ -2,24 +2,32 @@ package volcenginelive
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
 	"time"
 
+	"github.com/samber/lo"
 	velive "github.com/volcengine/volc-sdk-golang/service/live/v20230101"
 	ve "github.com/volcengine/volcengine-go-sdk/volcengine"
 
-	"github.com/certimate-go/certimate/pkg/core/certmgr"
+	"github.com/certimate-go/certimate/pkg/core"
 	xcert "github.com/certimate-go/certimate/pkg/utils/cert"
+)
+
+type (
+	Provider      = core.Certmgr
+	UploadResult  = core.CertmgrUploadResult
+	ReplaceResult = core.CertmgrReplaceResult
 )
 
 type CertmgrConfig struct {
 	// 火山引擎 AccessKeyId。
 	AccessKeyId string `json:"accessKeyId"`
-	// 火山引擎 AccessKeySecret。
-	AccessKeySecret string `json:"accessKeySecret"`
+	// 火山引擎 SecretAccessKey。
+	SecretAccessKey string `json:"secretAccessKey"`
+	// 火山引擎项目名称。
+	ProjectName string `json:"projectName,omitempty"`
 }
 
 type Certmgr struct {
@@ -28,16 +36,16 @@ type Certmgr struct {
 	sdkClient *velive.Live
 }
 
-var _ certmgr.Provider = (*Certmgr)(nil)
+var _ Provider = (*Certmgr)(nil)
 
 func NewCertmgr(config *CertmgrConfig) (*Certmgr, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the certmgr provider is nil")
+		return nil, fmt.Errorf("the configuration of the certmgr provider is nil")
 	}
 
 	client := velive.NewInstance()
 	client.SetAccessKey(config.AccessKeyId)
-	client.SetSecretKey(config.AccessKeySecret)
+	client.SetSecretKey(config.SecretAccessKey)
 
 	return &Certmgr{
 		config:    config,
@@ -54,19 +62,31 @@ func (c *Certmgr) SetLogger(logger *slog.Logger) {
 	}
 }
 
-func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*certmgr.UploadResult, error) {
+func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*UploadResult, error) {
 	// 查询证书列表，避免重复上传
-	// REF: https://www.volcengine.com/docs/6469/1186278#%E6%9F%A5%E8%AF%A2%E8%AF%81%E4%B9%A6%E5%88%97%E8%A1%A8
-	listCertReq := &velive.ListCertV2Body{}
-	listCertResp, err := c.sdkClient.ListCertV2(ctx, listCertReq)
-	c.logger.Debug("sdk request 'live.ListCertV2'", slog.Any("request", listCertReq), slog.Any("response", listCertResp))
-	if err != nil {
-		return nil, fmt.Errorf("failed to execute sdk request 'live.ListCertV2': %w", err)
-	}
-	if listCertResp.Result.CertList != nil {
+	// REF: https://www.volcengine.com/docs/6469/1126823
+	listCertPageNum := 1
+	listCertPageSize := 10
+	for {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
+
+		listCertReq := &velive.ListCertV2Body{}
+		listCertReq.ProjectName = lo.EmptyableToPtr(c.config.ProjectName)
+		listCertReq.PageNum = ve.Int32(int32(listCertPageNum))
+		listCertReq.PageSize = ve.Int32(int32(listCertPageSize))
+		listCertResp, err := c.sdkClient.ListCertV2(ctx, listCertReq)
+		c.logger.Debug("sdk request 'live.ListCertV2'", slog.Any("request", listCertReq), slog.Any("response", listCertResp))
+		if err != nil {
+			return nil, fmt.Errorf("failed to execute sdk request 'live.ListCertV2': %w", err)
+		}
+
 		for _, certItem := range listCertResp.Result.CertList {
 			// 查询证书详细信息
-			// REF: https://www.volcengine.com/docs/6469/1186278#%E6%9F%A5%E7%9C%8B%E8%AF%81%E4%B9%A6%E8%AF%A6%E6%83%85
+			// REF: https://www.volcengine.com/docs/6469/1126822
 			describeCertDetailSecretReq := &velive.DescribeCertDetailSecretV2Body{
 				ChainID: ve.String(certItem.ChainID),
 			}
@@ -80,21 +100,28 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 			oldCertPEM := strings.Join(describeCertDetailSecretResp.Result.SSL.Chain, "\n\n")
 			if xcert.EqualCertificatesFromPEM(certPEM, oldCertPEM) {
 				c.logger.Info("ssl certificate already exists")
-				return &certmgr.UploadResult{
+				return &UploadResult{
 					CertId:   certItem.ChainID,
 					CertName: certItem.CertName,
 				}, nil
 			}
 		}
+
+		if len(listCertResp.Result.CertList) < listCertPageSize {
+			break
+		}
+
+		listCertPageNum++
 	}
 
 	// 生成新证书名（需符合火山引擎命名规则）
 	certName := fmt.Sprintf("certimate-%d", time.Now().UnixMilli())
 
-	// 上传新证书
-	// REF: https://www.volcengine.com/docs/6469/1186278#%E6%B7%BB%E5%8A%A0%E8%AF%81%E4%B9%A6
+	// 添加证书
+	// REF: https://www.volcengine.com/docs/6469/1126817
 	createCertReq := &velive.CreateCertBody{
-		CertName: ve.String(certName),
+		ProjectName: lo.EmptyableToPtr(c.config.ProjectName),
+		CertName:    ve.String(certName),
 		Rsa: velive.CreateCertBodyRsa{
 			Prikey: privkeyPEM,
 			Pubkey: certPEM,
@@ -107,12 +134,29 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 		return nil, fmt.Errorf("failed to execute sdk request 'live.CreateCert': %w", err)
 	}
 
-	return &certmgr.UploadResult{
+	return &UploadResult{
 		CertId:   *createCertResp.Result.ChainID,
 		CertName: certName,
 	}, nil
 }
 
-func (c *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, privkeyPEM string) (*certmgr.OperateResult, error) {
-	return nil, certmgr.ErrUnsupported
+func (c *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, privkeyPEM string) (*ReplaceResult, error) {
+	// 更新证书
+	// REF: https://www.volcengine.com/docs/6469/1126817
+	createCertReq := &velive.CreateCertBody{
+		ProjectName: lo.EmptyableToPtr(c.config.ProjectName),
+		ChainID:     ve.String(certIdOrName),
+		Rsa: velive.CreateCertBodyRsa{
+			Prikey: privkeyPEM,
+			Pubkey: certPEM,
+		},
+		UseWay: "https",
+	}
+	createCertResp, err := c.sdkClient.CreateCert(ctx, createCertReq)
+	c.logger.Debug("sdk request 'live.CreateCert'", slog.Any("request", createCertReq), slog.Any("response", createCertResp))
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute sdk request 'live.CreateCert': %w", err)
+	}
+
+	return &ReplaceResult{}, nil
 }

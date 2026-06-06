@@ -1,0 +1,212 @@
+{
+  "$ns": "workflow",
+
+  "text": {
+    "nodata": "No workflows",
+    "nodata_description": "It looks like you don't have any workflows. Get started by adding one.",
+    "nodata_button": "Create workflow",
+    "unpublished_warning": "Please complete the orchestration and publish the changes first",
+    "running_prompt": "Running... Please check the history later"
+  },
+
+  "page": {
+    "heading": "Workflows",
+    "subheading": "Workflows are collections of nodes that automate a process. Workflows begin execution when a trigger condition occurs and execute sequentially to achieve complex tasks."
+  },
+
+  "action": {
+    "search.input": {
+      "placeholder": "Search by workflow name ..."
+    },
+    "create.button": "Create workflow",
+    "create.modal": {
+      "title": "Create workflow"
+    },
+    "modify.menu": "Edit",
+    "duplicate.menu": "Duplicate",
+    "delete.menu": "Delete",
+    "delete.modal": {
+      "title": "Delete \"{{name}}\"",
+      "content": "Are you sure want to delete this workflow? <br>This action cannot be undone."
+    },
+    "batch_delete.modal": {
+      "title": "Delete workflows",
+      "content": "Are you sure want to delete these {{count}} selected workflows? <br>This action cannot be undone."
+    },
+    "enable.button": "Activate",
+    "disable.button": "Deactivate",
+    "execute.button": "Execute",
+    "execute.menu": "Execute",
+    "execute.modal": {
+      "title": "Execute workflow",
+      "content": "You have unpublished changes. Do you really want to execute this workflow based on the last published version?"
+    }
+  },
+
+  "props": {
+    "name": "Name",
+    "description": "Description",
+    "trigger": {
+      "": "Trigger",
+      "scheduled": "Scheduled",
+      "manual": "Manual"
+    },
+    "last_run_at": "Last run at",
+    "state": {
+      "": "Active",
+      "filter": {
+        "all": "All",
+        "enabled": "Active",
+        "disabled": "Inactive"
+      }
+    },
+    "created_at": "Created at",
+    "updated_at": "Updated at"
+  },
+
+  "new": {
+    "heading": "Create Workflow",
+    "subheading": "Using a workflow to monitor, apply, deploy and notify.",
+    "button": {
+      "create": "Create from blank",
+      "import": "Import from file"
+    },
+    "templates": {
+      "title": "Choose a Template",
+      "subtitle": "Use these template workflows to quickly initialize your automated certificate management workflow.",
+      "template": {
+        "standard": {
+          "title": "Standard template",
+          "description": "A standard operating procedure that includes application, deployment, and notification steps."
+        },
+        "certtest": {
+          "title": "Monitoring template",
+          "description": "A monitoring operating procedure that includes monitoring, and notification steps."
+        }
+      },
+      "default_name": "Untitled workflow",
+      "default_description": ""
+    }
+  },
+
+  "detail": {
+    "baseinfo": {
+      "name": {
+        "label": "Workflow name",
+        "placeholder": "Please enter workflow name"
+      },
+      "description": {
+        "label": "Workflow description",
+        "placeholder": "Please enter workflow description"
+      },
+      "graph": {
+        "label": "Workflow graph (Read-only)"
+      }
+    },
+    "design": {
+      "tab": "Orchestration",
+      "editor": {
+        "placeholder": "Please configure",
+        "add_node": "Add node",
+        "rename_node": "Rename node",
+        "duplicate_node": "Duplicate node",
+        "remove_node": "Delete node",
+        "add_branch": "Add branch",
+        "rename_branch": "Rename branch",
+        "duplicate_branch": "Duplicate branch",
+        "remove_branch": "Delete branch"
+      },
+      "toolbar": {
+        "zoomin": "Zoom in",
+        "zoomout": "Zoom out",
+        "auto_fit": "Auto fit view",
+        "horizontal_layout": "Horizontal Layout",
+        "vertical_layout": "Vertical Layout",
+        "minimap": "Minimap",
+        "drag_mode": "Drag mode",
+        "pointer_mode": "Pointer mode"
+      },
+      "drawer": {
+        "node_id": {
+          "label": "Node ID: "
+        },
+        "disabled": {
+          "on": {
+            "tooltip": "Disable"
+          },
+          "off": {
+            "tooltip": "Enable"
+          }
+        }
+      },
+      "action": {
+        "publish": {
+          "button": "Publish",
+          "modal": {
+            "title": "Publish changes",
+            "content": "Are you sure to publish your changes?"
+          }
+        },
+        "rollback": {
+          "button": "Rollback",
+          "modal": {
+            "title": "Rollback changes",
+            "content": "Are you sure to rollback your changes to the last published version?"
+          }
+        },
+        "import": {
+          "button": "Import",
+          "modal": {
+            "title": "Import workflow",
+            "ok_button": "Import"
+          },
+          "form": {
+            "format": {
+              "label": "Format"
+            },
+            "content": {
+              "label": "Graph",
+              "errmsg": {
+                "invalid": "Invalid graph content",
+                "first_node_start": "The first node must be a start node",
+                "last_node_end": "The last node must be an end node",
+                "duplicate_start": "The start node must be unique",
+                "invalid_id": "Invalid node ID: #{{nodeId}}",
+                "invalid_config": "Invalid node config: #{{nodeId}}",
+                "conflict_id": "Conflict node ID: #{{nodeId}}",
+                "abnormal_condition_branch": "Abnormal parallel/conditional branch: #{{nodeId}}",
+                "abnormal_try_catch_branch": "Abnormal execution result branch: #{{nodeId}}"
+              }
+            }
+          }
+        },
+        "export": {
+          "button": "Export",
+          "modal": {
+            "title": "Export workflow"
+          },
+          "form": {
+            "format": {
+              "label": "Format"
+            },
+            "content": {
+              "label": "Graph"
+            }
+          }
+        }
+      },
+      "uncompleted_design": {
+        "alert": "The orchestration is not ready. Please check if there are any nodes not configured."
+      },
+      "unpublished_draft": {
+        "alert": "The orchestration is not released yet."
+      },
+      "unsaved_changes": {
+        "confirm": "You have unsaved changes. Do you really want to close the panel and drop those changes?"
+      }
+    },
+    "runs": {
+      "tab": "History runs"
+    }
+  }
+}

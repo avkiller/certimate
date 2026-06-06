@@ -3,21 +3,20 @@ package certifiers
 import (
 	"fmt"
 
-	"github.com/go-acme/lego/v4/challenge"
-
 	"github.com/certimate-go/certimate/internal/domain"
-	azuredns "github.com/certimate-go/certimate/pkg/core/certifier/challengers/dns01/azure-dns"
+	"github.com/certimate-go/certimate/pkg/core"
+	chlgimpl "github.com/certimate-go/certimate/pkg/core/certifier/challengers/dns01/azure-dns"
 	xmaps "github.com/certimate-go/certimate/pkg/utils/maps"
 )
 
 func init() {
-	ACMEDns01Registries.MustRegister(domain.ACMEDns01ProviderTypeAzureDNS, func(options *ProviderFactoryOptions) (challenge.Provider, error) {
+	ACMEDns01Registries.MustRegister(domain.ACMEDns01ProviderTypeAzureDNS, func(options *ProviderFactoryOptions) (core.ACMEChallenger, error) {
 		credentials := domain.AccessConfigForAzure{}
 		if err := xmaps.Populate(options.ProviderAccessConfig, &credentials); err != nil {
 			return nil, fmt.Errorf("failed to populate provider access config: %w", err)
 		}
 
-		provider, err := azuredns.NewChallenger(&azuredns.ChallengerConfig{
+		provider, err := chlgimpl.NewChallenger(&chlgimpl.ChallengerConfig{
 			TenantId:              credentials.TenantId,
 			ClientId:              credentials.ClientId,
 			ClientSecret:          credentials.ClientSecret,

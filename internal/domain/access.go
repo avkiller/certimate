@@ -120,6 +120,11 @@ type AccessConfigForBaotaWAF struct {
 	AllowInsecureConnections bool   `json:"allowInsecureConnections,omitempty"`
 }
 
+type AccessConfigForBeget struct {
+	Username    string `json:"username"`
+	ApiPassword string `json:"apiPassword"`
+}
+
 type AccessConfigForBookMyName struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
@@ -130,8 +135,9 @@ type AccessConfigForBunny struct {
 }
 
 type AccessConfigForBytePlus struct {
-	AccessKey string `json:"accessKey"`
-	SecretKey string `json:"secretKey"`
+	AccessKeyId     string `json:"accessKeyId"`
+	SecretAccessKey string `json:"secretAccessKey"`
+	ProjectName     string `json:"projectName,omitempty"`
 }
 
 type AccessConfigForCacheFly struct {
@@ -146,8 +152,8 @@ type AccessConfigForCdnfly struct {
 }
 
 type AccessConfigForCloudflare struct {
-	DnsApiToken  string `json:"dnsApiToken"`
-	ZoneApiToken string `json:"zoneApiToken,omitempty"`
+	ApiToken        string `json:"apiToken"`
+	ApiTokenForZone string `json:"apiTokenForZone,omitempty"`
 }
 
 type AccessConfigForClouDNS struct {
@@ -158,6 +164,15 @@ type AccessConfigForClouDNS struct {
 type AccessConfigForCMCCCloud struct {
 	AccessKeyId     string `json:"accessKeyId"`
 	AccessKeySecret string `json:"accessKeySecret"`
+}
+
+type AccessConfigForConoHaVPS struct {
+	ApiVersion  string `json:"apiVersion"`
+	ApiUserId   string `json:"apiUserId,omitempty"`
+	ApiUserName string `json:"apiUserName"`
+	ApiPassword string `json:"apiPassword"`
+	TenantId    string `json:"tenantId"`
+	TenantName  string `json:"tenantName,omitempty"`
 }
 
 type AccessConfigForConstellix struct {
@@ -223,6 +238,11 @@ type AccessConfigForDokploy struct {
 
 type AccessConfigForDuckDNS struct {
 	Token string `json:"token"`
+}
+
+type AccessConfigForDynadot struct {
+	ApiKey    string `json:"apiKey"`
+	ApiSecret string `json:"apiSecret"`
 }
 
 type AccessConfigForDynu struct {
@@ -297,6 +317,11 @@ type AccessConfigForGoEdge struct {
 	AccessKeyId              string `json:"accessKeyId"`
 	AccessKey                string `json:"accessKey"`
 	AllowInsecureConnections bool   `json:"allowInsecureConnections,omitempty"`
+}
+
+type AccessConfigForGoogleCloud struct {
+	ProjectId         string `json:"projectId"`
+	ServiceAccountKey string `json:"serviceAccountKey"`
 }
 
 type AccessConfigForGoogleTrustServices struct {
@@ -471,12 +496,26 @@ type AccessConfigForRatPanel struct {
 	AllowInsecureConnections bool   `json:"allowInsecureConnections,omitempty"`
 }
 
+type AccessConfigForRegru struct {
+	Username        string `json:"username"`
+	Password        string `json:"password"`
+	MtlsCertificate string `json:"mtlsCertificate,omitempty"`
+	MtlsPrivateKey  string `json:"mtlsPrivateKey,omitempty"`
+}
+
 type AccessConfigForRFC2136 struct {
 	Host          string `json:"host"`
 	Port          int32  `json:"port"`
 	TsigAlgorithm string `json:"tsigAlgorithm,omitempty"`
 	TsigKey       string `json:"tsigKey,omitempty"`
 	TsigSecret    string `json:"tsigSecret,omitempty"`
+}
+
+type AccessConfigForRuCenter struct {
+	Username         string `json:"username"`
+	Password         string `json:"password"`
+	ApplicationId    string `json:"applicationId"`
+	ApplicationToken string `json:"applicationToken"`
 }
 
 type AccessConfigForS3 struct {
@@ -560,6 +599,7 @@ type AccessConfigForTodayNIC struct {
 type AccessConfigForTencentCloud struct {
 	SecretId  string `json:"secretId"`
 	SecretKey string `json:"secretKey"`
+	ProjectId int64  `json:"projectId,omitempty"`
 }
 
 type AccessConfigForUCloud struct {
@@ -586,6 +626,7 @@ type AccessConfigForVercel struct {
 type AccessConfigForVolcEngine struct {
 	AccessKeyId     string `json:"accessKeyId"`
 	SecretAccessKey string `json:"secretAccessKey"`
+	ProjectName     string `json:"projectName,omitempty"`
 }
 
 type AccessConfigForVultr struct {
@@ -619,6 +660,12 @@ type AccessConfigForWestcn struct {
 type AccessConfigForXinnet struct {
 	AgentId     string `json:"agentId"`
 	ApiPassword string `json:"apiPassword"`
+}
+
+type AccessConfigForZenlayer struct {
+	AccessKeyId       string `json:"accessKeyId"`
+	AccessKeyPassword string `json:"accessKeyPassword"`
+	ResourceGroupId   string `json:"resourceGroupId,omitempty"`
 }
 
 type AccessConfigForZeroSSL struct {

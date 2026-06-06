@@ -48,7 +48,7 @@ const PresetListScriptTemplates = () => {
     if (!loadedAtOnce) return;
 
     if (templates.length >= MAX_TEMPLATE_COUNT) {
-      message.warning(t("preset.warning.excceeded"));
+      message.warning(t("preset.text.excceeded_warning"));
       return;
     }
 
@@ -136,7 +136,7 @@ const PresetListScriptTemplates = () => {
         </div>
 
         {templates.map((template, index) => (
-          <div className="h-40">
+          <div key={index} className="h-40">
             <Card
               key={template.name}
               className="size-full"
@@ -266,14 +266,14 @@ const InternalEditDrawer = ({
 
   const formSchema = z
     .object({
-      name: z.string().nonempty(t("preset.form.name.placeholder")),
-      command: z.string().nonempty(t("preset.form.script_command.placeholder")),
+      name: z.string().nonempty(),
+      command: z.string().nonempty(),
     })
     .superRefine((values, ctx) => {
       if (values.name) {
         const name = values.name.trim();
-        const duplicatedCount = templates.filter((t) => t.name.trim() === name).length;
-        if (duplicatedCount > (mode === "create" ? 0 : 1)) {
+        const count = templates.filter((t) => t.name.trim() === name).length;
+        if (count > (mode === "create" ? 0 : 1)) {
           ctx.addIssue({
             code: "custom",
             message: t("preset.form.name.errmsg.duplicated"),

@@ -34,8 +34,8 @@ const BizDeployNodeConfigFieldsProviderBaotaPanel = () => {
       >
         <Select
           options={["php", "java", "nodejs", "go", "python", "proxy", "html", "general", "any"].map((s) => ({
-            value: s,
             label: t(`workflow_node.deploy.form.baotapanel_site_type.option.${s}.label`),
+            value: s,
           }))}
           placeholder={t("workflow_node.deploy.form.baotapanel_site_type.placeholder")}
         />
@@ -72,17 +72,13 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
   const { t } = i18n;
 
   return z.object({
-    siteType: z.string().nonempty(t("workflow_node.deploy.form.baotapanel_site_type.placeholder")),
+    siteType: z.string().nonempty(),
     siteNames: z
       .string()
-      .nonempty(t("workflow_node.deploy.form.baotapanel_site_names.placeholder"))
-      .refine(
-        (v) => {
-          if (!v) return false;
-          return v.split(MULTIPLE_INPUT_SEPARATOR).every((s) => !!s.trim());
-        },
-        { error: t("workflow_node.deploy.form.baotapanel_site_names.placeholder") }
-      ),
+      .nonempty()
+      .refine((v) => {
+        return v.split(MULTIPLE_INPUT_SEPARATOR).every((s) => !!s.trim());
+      }, t("workflow_node.deploy.form.baotapanel_site_names.errmsg.invalid")),
   });
 };
 

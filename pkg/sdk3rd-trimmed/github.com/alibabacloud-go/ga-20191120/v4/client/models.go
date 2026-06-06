@@ -1,0 +1,31 @@
+package client
+
+import (
+	"github.com/alibabacloud-go/ga-20191120/v4/client"
+)
+
+type AssociateAdditionalCertificatesWithListenerRequest = client.AssociateAdditionalCertificatesWithListenerRequest
+
+type AssociateAdditionalCertificatesWithListenerRequestCertificates = client.AssociateAdditionalCertificatesWithListenerRequestCertificates
+
+type AssociateAdditionalCertificatesWithListenerResponse = client.AssociateAdditionalCertificatesWithListenerResponse
+
+type ListListenersRequest = client.ListListenersRequest
+
+type ListListenersResponse = client.ListListenersResponse
+
+type ListListenerCertificatesRequest = client.ListListenerCertificatesRequest
+
+type ListListenerCertificatesResponse = client.ListListenerCertificatesResponse
+
+type ListListenerCertificatesResponseBodyCertificates = client.ListListenerCertificatesResponseBodyCertificates
+
+type UpdateAdditionalCertificateWithListenerRequest = client.UpdateAdditionalCertificateWithListenerRequest
+
+type UpdateAdditionalCertificateWithListenerResponse = client.UpdateAdditionalCertificateWithListenerResponse
+
+type UpdateListenerRequest = client.UpdateListenerRequest
+
+type UpdateListenerRequestCertificates = client.UpdateListenerRequestCertificates
+
+type UpdateListenerResponse = client.UpdateListenerResponse

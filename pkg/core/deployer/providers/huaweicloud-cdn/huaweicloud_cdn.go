@@ -8,16 +8,20 @@ import (
 	"strings"
 
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth/global"
-	hccdn "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/cdn/v2"
-	hccdnmodel "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/cdn/v2/model"
-	hccdnregion "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/cdn/v2/region"
+	hwcdnmodel "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/cdn/v2/model"
+	hwcdnregion "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/cdn/v2/region"
 	"github.com/samber/lo"
 
-	"github.com/certimate-go/certimate/pkg/core/certmgr"
-	mcertmgr "github.com/certimate-go/certimate/pkg/core/certmgr/providers/huaweicloud-scm"
-	"github.com/certimate-go/certimate/pkg/core/deployer"
-	"github.com/certimate-go/certimate/pkg/core/deployer/providers/huaweicloud-cdn/internal"
+	hwcdn "github.com/certimate-go/certimate/pkg/sdk3rd-trimmed/github.com/huaweicloud/huaweicloud-sdk-go-v3/services/cdn/v2"
+
+	"github.com/certimate-go/certimate/pkg/core"
+	cmgrimpl "github.com/certimate-go/certimate/pkg/core/certmgr/providers/huaweicloud-scm"
 	xcerthostname "github.com/certimate-go/certimate/pkg/utils/cert/hostname"
+)
+
+type (
+	Provider     = core.Deployer
+	DeployResult = core.DeployerDeployResult
 )
 
 type DeployerConfig struct {
@@ -39,15 +43,15 @@ type DeployerConfig struct {
 type Deployer struct {
 	config     *DeployerConfig
 	logger     *slog.Logger
-	sdkClient  *internal.CdnClient
-	sdkCertmgr certmgr.Provider
+	sdkClient  *hwcdn.CdnClient
+	sdkCertmgr core.Certmgr
 }
 
-var _ deployer.Provider = (*Deployer)(nil)
+var _ Provider = (*Deployer)(nil)
 
 func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the deployer provider is nil")
+		return nil, fmt.Errorf("the configuration of the deployer provider is nil")
 	}
 
 	client, err := createSDKClient(
@@ -59,7 +63,7 @@ func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 		return nil, fmt.Errorf("could not create client: %w", err)
 	}
 
-	pcertmgr, err := mcertmgr.NewCertmgr(&mcertmgr.CertmgrConfig{
+	pcertmgr, err := cmgrimpl.NewCertmgr(&cmgrimpl.CertmgrConfig{
 		AccessKeyId:         config.AccessKeyId,
 		SecretAccessKey:     config.SecretAccessKey,
 		EnterpriseProjectId: config.EnterpriseProjectId,
@@ -86,7 +90,7 @@ func (d *Deployer) SetLogger(logger *slog.Logger) {
 	d.sdkCertmgr.SetLogger(logger)
 }
 
-func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*deployer.DeployResult, error) {
+func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*DeployResult, error) {
 	// 上传证书
 	upres, err := d.sdkCertmgr.Upload(ctx, certPEM, privkeyPEM)
 	if err != nil {
@@ -101,7 +105,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 	case "", DOMAIN_MATCH_PATTERN_EXACT:
 		{
 			if d.config.Domain == "" {
-				return nil, errors.New("config `domain` is required")
+				return nil, fmt.Errorf("config `domain` is required")
 			}
 
 			domains = []string{d.config.Domain}
@@ -110,7 +114,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 	case DOMAIN_MATCH_PATTERN_WILDCARD:
 		{
 			if d.config.Domain == "" {
-				return nil, errors.New("config `domain` is required")
+				return nil, fmt.Errorf("config `domain` is required")
 			}
 
 			if strings.HasPrefix(d.config.Domain, "*.") {
@@ -123,7 +127,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 					return xcerthostname.IsMatch(d.config.Domain, domain)
 				})
 				if len(domains) == 0 {
-					return nil, errors.New("could not find any domains matched by wildcard")
+					return nil, fmt.Errorf("could not find any domains matched by wildcard")
 				}
 			} else {
 				domains = []string{d.config.Domain}
@@ -141,7 +145,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 				return xcerthostname.IsMatchByCertificatePEM(certPEM, domain)
 			})
 			if len(domains) == 0 {
-				return nil, errors.New("could not find any domains matched by certificate")
+				return nil, fmt.Errorf("could not find any domains matched by certificate")
 			}
 		}
 
@@ -174,7 +178,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 		}
 	}
 
-	return &deployer.DeployResult{}, nil
+	return &DeployResult{}, nil
 }
 
 func (d *Deployer) getAllDomains(ctx context.Context) ([]string, error) {
@@ -191,7 +195,7 @@ func (d *Deployer) getAllDomains(ctx context.Context) ([]string, error) {
 		default:
 		}
 
-		listDomainsReq := &hccdnmodel.ListDomainsRequest{
+		listDomainsReq := &hwcdnmodel.ListDomainsRequest{
 			EnterpriseProjectId: lo.EmptyableToPtr(d.config.EnterpriseProjectId),
 			PageNumber:          lo.ToPtr(int32(listDomainsPageNumber)),
 			PageSize:            lo.ToPtr(int32(listDomainsPageSize)),
@@ -229,10 +233,10 @@ func (d *Deployer) updateDomainsCertificate(ctx context.Context, domains []strin
 	// 更新加速域名配置
 	// REF: https://support.huaweicloud.com/api-cdn/UpdateDomainMultiCertificates.html
 	// REF: https://support.huaweicloud.com/usermanual-cdn/cdn_01_0306.html
-	updateDomainMultiCertificatesReq := &hccdnmodel.UpdateDomainMultiCertificatesRequest{
+	updateDomainMultiCertificatesReq := &hwcdnmodel.UpdateDomainMultiCertificatesRequest{
 		EnterpriseProjectId: lo.EmptyableToPtr(d.config.EnterpriseProjectId),
-		Body: &hccdnmodel.UpdateDomainMultiCertificatesRequestBody{
-			Https: &hccdnmodel.UpdateDomainMultiCertificatesRequestBodyContent{
+		Body: &hwcdnmodel.UpdateDomainMultiCertificatesRequestBody{
+			Https: &hwcdnmodel.UpdateDomainMultiCertificatesRequestBodyContent{
 				DomainName:       strings.Join(domains, ","),
 				HttpsSwitch:      1,
 				CertificateType:  lo.ToPtr(int32(2)),
@@ -250,7 +254,7 @@ func (d *Deployer) updateDomainsCertificate(ctx context.Context, domains []strin
 	return nil
 }
 
-func createSDKClient(accessKeyId, secretAccessKey, region string) (*internal.CdnClient, error) {
+func createSDKClient(accessKeyId, secretAccessKey, region string) (*hwcdn.CdnClient, error) {
 	if region == "" {
 		region = "cn-north-1" // CDN 服务默认区域：华北北京一
 	}
@@ -263,12 +267,12 @@ func createSDKClient(accessKeyId, secretAccessKey, region string) (*internal.Cdn
 		return nil, err
 	}
 
-	hcRegion, err := hccdnregion.SafeValueOf(region)
+	hcRegion, err := hwcdnregion.SafeValueOf(region)
 	if err != nil {
 		return nil, err
 	}
 
-	hcClient, err := hccdn.CdnClientBuilder().
+	hcClient, err := hwcdn.CdnClientBuilder().
 		WithRegion(hcRegion).
 		WithCredential(auth).
 		SafeBuild()
@@ -276,6 +280,6 @@ func createSDKClient(accessKeyId, secretAccessKey, region string) (*internal.Cdn
 		return nil, err
 	}
 
-	client := internal.NewCdnClient(hcClient)
+	client := hwcdn.NewCdnClient(hcClient)
 	return client, nil
 }

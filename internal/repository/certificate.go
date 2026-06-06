@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/certimate-go/certimate/internal/app"
 	"github.com/certimate-go/certimate/internal/domain"
@@ -15,30 +16,6 @@ type CertificateRepository struct{}
 
 func NewCertificateRepository() *CertificateRepository {
 	return &CertificateRepository{}
-}
-
-func (r *CertificateRepository) ListExpiringSoon(ctx context.Context) ([]*domain.Certificate, error) {
-	records, err := app.GetApp().FindAllRecords(
-		domain.CollectionNameCertificate,
-		dbx.NewExp("validityNotAfter>DATETIME('now')"),
-		dbx.NewExp("validityNotAfter<DATETIME('now', '+20 days')"),
-		dbx.NewExp("deleted=null"),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	certificates := make([]*domain.Certificate, 0)
-	for _, record := range records {
-		certificate, err := r.castRecordToModel(record)
-		if err != nil {
-			return nil, err
-		}
-
-		certificates = append(certificates, certificate)
-	}
-
-	return certificates, nil
 }
 
 func (r *CertificateRepository) GetById(ctx context.Context, id string) (*domain.Certificate, error) {
@@ -116,14 +93,14 @@ func (r *CertificateRepository) Save(ctx context.Context, certificate *domain.Ce
 		}
 	}
 
-	record.Set("source", string(certificate.Source))
+	record.Set("source", certificate.Source.String())
 	record.Set("subjectAltNames", certificate.SubjectAltNames)
 	record.Set("serialNumber", certificate.SerialNumber)
 	record.Set("certificate", certificate.Certificate)
 	record.Set("privateKey", certificate.PrivateKey)
 	record.Set("issuerOrg", certificate.IssuerOrg)
 	record.Set("issuerCertificate", certificate.IssuerCertificate)
-	record.Set("keyAlgorithm", string(certificate.KeyAlgorithm))
+	record.Set("keyAlgorithm", certificate.KeyAlgorithm.String())
 	record.Set("validityNotBefore", certificate.ValidityNotBefore)
 	record.Set("validityNotAfter", certificate.ValidityNotAfter)
 	record.Set("validityInterval", certificate.ValidityInterval)
@@ -144,7 +121,7 @@ func (r *CertificateRepository) Save(ctx context.Context, certificate *domain.Ce
 	return certificate, nil
 }
 
-func (r *CertificateRepository) DeleteWhere(ctx context.Context, exprs ...dbx.Expression) (int, error) {
+func (r *CertificateRepository) DeleteWithExprs(ctx context.Context, exprs ...dbx.Expression) (int, error) {
 	records, err := app.GetApp().FindAllRecords(domain.CollectionNameCertificate, exprs...)
 	if err != nil {
 		return 0, nil
@@ -169,7 +146,7 @@ func (r *CertificateRepository) DeleteWhere(ctx context.Context, exprs ...dbx.Ex
 
 func (r *CertificateRepository) castRecordToModel(record *core.Record) (*domain.Certificate, error) {
 	if record == nil {
-		return nil, errors.New("the record is nil")
+		return nil, fmt.Errorf("the record is nil")
 	}
 
 	certificate := &domain.Certificate{

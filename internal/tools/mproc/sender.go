@@ -5,14 +5,13 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"os"
-	"strings"
 
 	"github.com/go-cmd/cmd"
 
+	"github.com/certimate-go/certimate/internal/app"
 	xcrypto "github.com/certimate-go/certimate/pkg/utils/crypto"
 )
 
@@ -79,7 +78,7 @@ func (s *sender[TIn, TOut]) SendWithContext(ctx context.Context, params *TIn) (*
 	} else {
 		tempErr.Close()
 	}
-	defer os.Remove(tempOut.Name())
+	defer os.Remove(tempErr.Name())
 
 	// 初始化子进程
 	done := make(chan struct{})
@@ -87,10 +86,12 @@ func (s *sender[TIn, TOut]) SendWithContext(ctx context.Context, params *TIn) (*
 		s.getEntrypoint(),
 		"intercmd",
 		s.command,
-		"--in", tempIn.Name(),
-		"--out", tempOut.Name(),
-		"--err", tempErr.Name(),
-		"--enckey", hex.EncodeToString(aesKey),
+		"--dir", app.GetApp().DataDir(), // inject `--dir` of Pocketbase
+		"--encryptionEnv", app.GetApp().EncryptionEnv(), // inject `--encryptionEnv` of Pocketbase
+		"--mprocIn", tempIn.Name(),
+		"--mprocOut", tempOut.Name(),
+		"--mprocErr", tempErr.Name(),
+		"--mprocSecret", hex.EncodeToString(aesKey),
 	)
 	go func() {
 		defer close(done)
@@ -104,19 +105,33 @@ func (s *sender[TIn, TOut]) SendWithContext(ctx context.Context, params *TIn) (*
 					}
 
 					if s.logger != nil {
-						print := s.logger.Info
+						logFn := s.logger.Info
 
-						// split log level prefix for those vendor packages:
-						// - github.com/go-acme/lego: INFO, WARN
-						if strings.HasPrefix(line, "[INFO] ") {
-							line = strings.TrimPrefix(line, "[INFO] ")
-							print = s.logger.Info
-						} else if strings.HasPrefix(line, "[WARN] ") {
-							line = strings.TrimPrefix(line, "[WARN] ")
-							print = s.logger.Warn
+						logRec, err := stdLogUnmarshal([]byte(line))
+						logAttrs := make([]any, 0)
+						if err == nil {
+							switch logRec.Level {
+							case slog.LevelDebug:
+								logFn = s.logger.Debug
+								line = logRec.Message
+							case slog.LevelWarn:
+								logFn = s.logger.Warn
+								line = logRec.Message
+							case slog.LevelError:
+								logFn = s.logger.Error
+								line = logRec.Message
+							default:
+								logFn = s.logger.Info
+								line = logRec.Message
+							}
+
+							logRec.Attrs(func(a slog.Attr) bool {
+								logAttrs = append(logAttrs, a)
+								return true
+							})
 						}
 
-						print(line)
+						logFn(line, logAttrs...)
 					}
 				}
 
@@ -128,16 +143,8 @@ func (s *sender[TIn, TOut]) SendWithContext(ctx context.Context, params *TIn) (*
 					}
 
 					if s.logger != nil {
-						print := s.logger.Error
-
-						// split log level prefix for those vendor packages:
-						// - github.com/nrdcg/desec: DEBUG
-						if strings.Contains(line, "[DEBUG] ") {
-							line = strings.SplitN(line, "[DEBUG] ", 2)[1]
-							print = s.logger.Debug
-						}
-
-						print(line)
+						logFn := s.logger.Error
+						logFn(line)
 					}
 				}
 			}
@@ -158,7 +165,7 @@ func (s *sender[TIn, TOut]) SendWithContext(ctx context.Context, params *TIn) (*
 	} else {
 		errData, _ := os.ReadFile(tempErr.Name())
 		if len(errData) > 0 {
-			return nil, errors.New(string(errData))
+			return nil, fmt.Errorf(string(errData))
 		}
 	}
 

@@ -8,8 +8,8 @@ import { isDomain } from "@/utils/validator";
 
 import { useFormNestedFieldsContext } from "./_context";
 
-const RESOURCE_TYPE_LOADBALANCER = "loadbalancer" as const;
-const RESOURCE_TYPE_LISTENER = "listener" as const;
+const DEPLOY_TARGET_LOADBALANCER = "loadbalancer" as const;
+const DEPLOY_TARGET_LISTENER = "listener" as const;
 
 const BizDeployNodeConfigFieldsProviderAliyunALB = () => {
   const { i18n, t } = useTranslation();
@@ -22,7 +22,7 @@ const BizDeployNodeConfigFieldsProviderAliyunALB = () => {
   const formInst = Form.useFormInstance();
   const initialValues = getInitialValues();
 
-  const fieldResourceType = Form.useWatch([parentNamePath, "resourceType"], formInst);
+  const fieldResourceType = Form.useWatch([parentNamePath, "deployTarget"], formInst);
 
   return (
     <>
@@ -37,21 +37,21 @@ const BizDeployNodeConfigFieldsProviderAliyunALB = () => {
       </Form.Item>
 
       <Form.Item
-        name={[parentNamePath, "resourceType"]}
-        initialValue={initialValues.resourceType}
-        label={t("workflow_node.deploy.form.shared_resource_type.label")}
+        name={[parentNamePath, "deployTarget"]}
+        initialValue={initialValues.deployTarget}
+        label={t("workflow_node.deploy.form.shared_deploy_target.label")}
         rules={[formRule]}
       >
         <Select
-          options={[RESOURCE_TYPE_LOADBALANCER, RESOURCE_TYPE_LISTENER].map((s) => ({
+          options={[DEPLOY_TARGET_LOADBALANCER, DEPLOY_TARGET_LISTENER].map((s) => ({
             value: s,
-            label: t(`workflow_node.deploy.form.aliyun_alb_resource_type.option.${s}.label`),
+            label: t(`workflow_node.deploy.form.aliyun_alb_deploy_target.option.${s}.label`),
           }))}
-          placeholder={t("workflow_node.deploy.form.shared_resource_type.placeholder")}
+          placeholder={t("workflow_node.deploy.form.shared_deploy_target.placeholder")}
         />
       </Form.Item>
 
-      <Show when={fieldResourceType === RESOURCE_TYPE_LOADBALANCER}>
+      <Show when={fieldResourceType === DEPLOY_TARGET_LOADBALANCER}>
         <Form.Item
           name={[parentNamePath, "loadbalancerId"]}
           initialValue={initialValues.loadbalancerId}
@@ -63,7 +63,7 @@ const BizDeployNodeConfigFieldsProviderAliyunALB = () => {
         </Form.Item>
       </Show>
 
-      <Show when={fieldResourceType === RESOURCE_TYPE_LISTENER}>
+      <Show when={fieldResourceType === DEPLOY_TARGET_LISTENER}>
         <Form.Item
           name={[parentNamePath, "listenerId"]}
           initialValue={initialValues.listenerId}
@@ -75,7 +75,7 @@ const BizDeployNodeConfigFieldsProviderAliyunALB = () => {
         </Form.Item>
       </Show>
 
-      <Show when={fieldResourceType === RESOURCE_TYPE_LOADBALANCER || fieldResourceType === RESOURCE_TYPE_LISTENER}>
+      <Show when={fieldResourceType === DEPLOY_TARGET_LOADBALANCER || fieldResourceType === DEPLOY_TARGET_LISTENER}>
         <Form.Item
           name={[parentNamePath, "domain"]}
           initialValue={initialValues.domain}
@@ -93,7 +93,7 @@ const BizDeployNodeConfigFieldsProviderAliyunALB = () => {
 const getInitialValues = (): Nullish<z.infer<ReturnType<typeof getSchema>>> => {
   return {
     region: "",
-    resourceType: RESOURCE_TYPE_LISTENER,
+    deployTarget: DEPLOY_TARGET_LISTENER,
   };
 };
 
@@ -102,8 +102,8 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
 
   return z
     .object({
-      region: z.string().nonempty(t("workflow_node.deploy.form.aliyun_alb_region.placeholder")),
-      resourceType: z.literal([RESOURCE_TYPE_LOADBALANCER, RESOURCE_TYPE_LISTENER], t("workflow_node.deploy.form.shared_resource_type.placeholder")),
+      region: z.string().nonempty(),
+      deployTarget: z.enum([DEPLOY_TARGET_LOADBALANCER, DEPLOY_TARGET_LISTENER]),
       loadbalancerId: z.string().nullish(),
       listenerId: z.string().nullish(),
       domain: z
@@ -115,27 +115,29 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
         }, t("common.errmsg.domain_invalid")),
     })
     .superRefine((values, ctx) => {
-      switch (values.resourceType) {
-        case RESOURCE_TYPE_LOADBALANCER:
+      switch (values.deployTarget) {
+        case DEPLOY_TARGET_LOADBALANCER:
           {
             const scLoadbalancerId = z.string().nonempty();
-            if (!scLoadbalancerId.safeParse(values.loadbalancerId).success) {
+            const spLoadbalancerId = scLoadbalancerId.safeParse(values.loadbalancerId);
+            if (!spLoadbalancerId.success) {
               ctx.addIssue({
                 code: "custom",
-                message: t("workflow_node.deploy.form.aliyun_alb_loadbalancer_id.placeholder"),
+                message: z.treeifyError(spLoadbalancerId.error).errors.join(),
                 path: ["loadbalancerId"],
               });
             }
           }
           break;
 
-        case RESOURCE_TYPE_LISTENER:
+        case DEPLOY_TARGET_LISTENER:
           {
             const scListenerId = z.string().nonempty();
-            if (!scListenerId.safeParse(values.listenerId).success) {
+            const spListenerId = scListenerId.safeParse(values.listenerId);
+            if (!spListenerId.success) {
               ctx.addIssue({
                 code: "custom",
-                message: t("workflow_node.deploy.form.aliyun_alb_listener_id.placeholder"),
+                message: z.treeifyError(spListenerId.error).errors.join(),
                 path: ["listenerId"],
               });
             }

@@ -2,24 +2,29 @@ package huaweicloudwaf
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"time"
 
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth/basic"
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth/global"
-	hciam "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3"
-	hciammodel "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3/model"
-	hciamregion "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3/region"
-	hcwaf "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/waf/v1"
-	hcwafmodel "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/waf/v1/model"
-	hcwafregion "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/waf/v1/region"
+	hwiam "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3"
+	hwiammodel "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3/model"
+	hwiamregion "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3/region"
+	hwwafmodel "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/waf/v1/model"
+	hwwafregion "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/waf/v1/region"
 	"github.com/samber/lo"
 
-	"github.com/certimate-go/certimate/pkg/core/certmgr"
-	"github.com/certimate-go/certimate/pkg/core/certmgr/providers/huaweicloud-waf/internal"
+	hwwaf "github.com/certimate-go/certimate/pkg/sdk3rd-trimmed/github.com/huaweicloud/huaweicloud-sdk-go-v3/services/waf/v1"
+
+	"github.com/certimate-go/certimate/pkg/core"
 	xcert "github.com/certimate-go/certimate/pkg/utils/cert"
+)
+
+type (
+	Provider      = core.Certmgr
+	UploadResult  = core.CertmgrUploadResult
+	ReplaceResult = core.CertmgrReplaceResult
 )
 
 type CertmgrConfig struct {
@@ -36,14 +41,14 @@ type CertmgrConfig struct {
 type Certmgr struct {
 	config    *CertmgrConfig
 	logger    *slog.Logger
-	sdkClient *internal.WafClient
+	sdkClient *hwwaf.WafClient
 }
 
-var _ certmgr.Provider = (*Certmgr)(nil)
+var _ Provider = (*Certmgr)(nil)
 
 func NewCertmgr(config *CertmgrConfig) (*Certmgr, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the certmgr provider is nil")
+		return nil, fmt.Errorf("the configuration of the certmgr provider is nil")
 	}
 
 	client, err := createSDKClient(config.AccessKeyId, config.SecretAccessKey, config.Region)
@@ -66,7 +71,7 @@ func (c *Certmgr) SetLogger(logger *slog.Logger) {
 	}
 }
 
-func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*certmgr.UploadResult, error) {
+func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*UploadResult, error) {
 	// 查询已有证书，避免重复上传
 	// REF: https://support.huaweicloud.com/api-waf/ListCertificates.html
 	// REF: https://support.huaweicloud.com/api-waf/ShowCertificate.html
@@ -79,7 +84,7 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 		default:
 		}
 
-		listCertificatesReq := &hcwafmodel.ListCertificatesRequest{
+		listCertificatesReq := &hwwafmodel.ListCertificatesRequest{
 			EnterpriseProjectId: lo.EmptyableToPtr(c.config.EnterpriseProjectId),
 			Page:                lo.ToPtr(int32(listCertificatesPage)),
 			Pagesize:            lo.ToPtr(int32(listCertificatesPageSize)),
@@ -95,7 +100,7 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 		}
 
 		for _, certItem := range *listCertificatesResp.Items {
-			showCertificateReq := &hcwafmodel.ShowCertificateRequest{
+			showCertificateReq := &hwwafmodel.ShowCertificateRequest{
 				EnterpriseProjectId: lo.EmptyableToPtr(c.config.EnterpriseProjectId),
 				CertificateId:       certItem.Id,
 			}
@@ -108,7 +113,7 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 			// 如果已存在相同证书，直接返回
 			if xcert.EqualCertificatesFromPEM(certPEM, lo.FromPtr(showCertificateResp.Content)) {
 				c.logger.Info("ssl certificate already exists")
-				return &certmgr.UploadResult{
+				return &UploadResult{
 					CertId:   certItem.Id,
 					CertName: certItem.Name,
 				}, nil
@@ -127,9 +132,9 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 
 	// 创建证书
 	// REF: https://support.huaweicloud.com/api-waf/CreateCertificate.html
-	createCertificateReq := &hcwafmodel.CreateCertificateRequest{
+	createCertificateReq := &hwwafmodel.CreateCertificateRequest{
 		EnterpriseProjectId: lo.EmptyableToPtr(c.config.EnterpriseProjectId),
-		Body: &hcwafmodel.CreateCertificateRequestBody{
+		Body: &hwwafmodel.CreateCertificateRequestBody{
 			Name:    certName,
 			Content: certPEM,
 			Key:     privkeyPEM,
@@ -141,17 +146,17 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 		return nil, fmt.Errorf("failed to execute sdk request 'waf.CreateCertificate': %w", err)
 	}
 
-	return &certmgr.UploadResult{
+	return &UploadResult{
 		CertId:   *createCertificateResp.Id,
 		CertName: certName,
 	}, nil
 }
 
-func (c *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, privkeyPEM string) (*certmgr.OperateResult, error) {
-	return nil, certmgr.ErrUnsupported
+func (c *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, privkeyPEM string) (*ReplaceResult, error) {
+	return nil, core.ErrUnsupported
 }
 
-func createSDKClient(accessKeyId, secretAccessKey, region string) (*internal.WafClient, error) {
+func createSDKClient(accessKeyId, secretAccessKey, region string) (*hwwaf.WafClient, error) {
 	projectId, err := getSDKProjectId(accessKeyId, secretAccessKey, region)
 	if err != nil {
 		return nil, err
@@ -166,12 +171,12 @@ func createSDKClient(accessKeyId, secretAccessKey, region string) (*internal.Waf
 		return nil, err
 	}
 
-	hcRegion, err := hcwafregion.SafeValueOf(region)
+	hcRegion, err := hwwafregion.SafeValueOf(region)
 	if err != nil {
 		return nil, err
 	}
 
-	hcClient, err := hcwaf.WafClientBuilder().
+	hcClient, err := hwwaf.WafClientBuilder().
 		WithRegion(hcRegion).
 		WithCredential(auth).
 		SafeBuild()
@@ -179,7 +184,7 @@ func createSDKClient(accessKeyId, secretAccessKey, region string) (*internal.Waf
 		return nil, err
 	}
 
-	client := internal.NewWafClient(hcClient)
+	client := hwwaf.NewWafClient(hcClient)
 	return client, nil
 }
 
@@ -192,12 +197,12 @@ func getSDKProjectId(accessKeyId, secretAccessKey, region string) (string, error
 		return "", err
 	}
 
-	hcRegion, err := hciamregion.SafeValueOf(region)
+	hcRegion, err := hwiamregion.SafeValueOf(region)
 	if err != nil {
 		return "", err
 	}
 
-	hcClient, err := hciam.IamClientBuilder().
+	hcClient, err := hwiam.IamClientBuilder().
 		WithRegion(hcRegion).
 		WithCredential(auth).
 		SafeBuild()
@@ -205,16 +210,16 @@ func getSDKProjectId(accessKeyId, secretAccessKey, region string) (string, error
 		return "", err
 	}
 
-	client := hciam.NewIamClient(hcClient)
+	client := hwiam.NewIamClient(hcClient)
 
-	request := &hciammodel.KeystoneListProjectsRequest{
+	request := &hwiammodel.KeystoneListProjectsRequest{
 		Name: &region,
 	}
 	response, err := client.KeystoneListProjects(request)
 	if err != nil {
 		return "", err
 	} else if response.Projects == nil || len(*response.Projects) == 0 {
-		return "", errors.New("huaweicloud: no project found")
+		return "", fmt.Errorf("huaweicloud: no project found")
 	}
 
 	return (*response.Projects)[0].Id, nil

@@ -2,25 +2,28 @@ package huaweicloudwaf
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
 
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth/basic"
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth/global"
-	hciam "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3"
-	hciamModel "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3/model"
-	hciamregion "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3/region"
-	hcwaf "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/waf/v1"
-	hcwafmodel "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/waf/v1/model"
-	hcwafregion "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/waf/v1/region"
+	hwiam "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3"
+	hwiamModel "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3/model"
+	hwiamregion "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3/region"
+	hwwafmodel "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/waf/v1/model"
+	hwwafregion "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/waf/v1/region"
 	"github.com/samber/lo"
 
-	"github.com/certimate-go/certimate/pkg/core/certmgr"
-	mcertmgr "github.com/certimate-go/certimate/pkg/core/certmgr/providers/huaweicloud-waf"
-	"github.com/certimate-go/certimate/pkg/core/deployer"
-	"github.com/certimate-go/certimate/pkg/core/deployer/providers/huaweicloud-waf/internal"
+	hwwaf "github.com/certimate-go/certimate/pkg/sdk3rd-trimmed/github.com/huaweicloud/huaweicloud-sdk-go-v3/services/waf/v1"
+
+	"github.com/certimate-go/certimate/pkg/core"
+	cmgrimpl "github.com/certimate-go/certimate/pkg/core/certmgr/providers/huaweicloud-waf"
+)
+
+type (
+	Provider     = core.Deployer
+	DeployResult = core.DeployerDeployResult
 )
 
 type DeployerConfig struct {
@@ -32,28 +35,28 @@ type DeployerConfig struct {
 	EnterpriseProjectId string `json:"enterpriseProjectId,omitempty"`
 	// 华为云区域。
 	Region string `json:"region"`
-	// 部署资源类型。
-	ResourceType string `json:"resourceType"`
-	// 证书 ID。
-	// 部署资源类型为 [RESOURCE_TYPE_CERTIFICATE] 时必填。
-	CertificateId string `json:"certificateId,omitempty"`
+	// 部署目标。
+	DeployTarget string `json:"deployTarget"`
 	// 防护域名（支持泛域名）。
-	// 部署资源类型为 [RESOURCE_TYPE_CLOUDSERVER]、[RESOURCE_TYPE_PREMIUMHOST] 时必填。
+	// 部署目标为 [DEPLOY_TARGET_CLOUDSERVER]、[DEPLOY_TARGET_PREMIUMHOST] 时必填。
 	Domain string `json:"domain,omitempty"`
+	// 证书 ID。
+	// 部署目标为 [DEPLOY_TARGET_CERTIFICATE] 时必填。
+	CertificateId string `json:"certificateId,omitempty"`
 }
 
 type Deployer struct {
 	config     *DeployerConfig
 	logger     *slog.Logger
-	sdkClient  *internal.WafClient
-	sdkCertmgr certmgr.Provider
+	sdkClient  *hwwaf.WafClient
+	sdkCertmgr core.Certmgr
 }
 
-var _ deployer.Provider = (*Deployer)(nil)
+var _ Provider = (*Deployer)(nil)
 
 func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the deployer provider is nil")
+		return nil, fmt.Errorf("the configuration of the deployer provider is nil")
 	}
 
 	client, err := createSDKClient(config.AccessKeyId, config.SecretAccessKey, config.Region)
@@ -61,7 +64,7 @@ func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 		return nil, fmt.Errorf("could not create client: %w", err)
 	}
 
-	pcertmgr, err := mcertmgr.NewCertmgr(&mcertmgr.CertmgrConfig{
+	pcertmgr, err := cmgrimpl.NewCertmgr(&cmgrimpl.CertmgrConfig{
 		AccessKeyId:         config.AccessKeyId,
 		SecretAccessKey:     config.SecretAccessKey,
 		EnterpriseProjectId: config.EnterpriseProjectId,
@@ -89,7 +92,7 @@ func (d *Deployer) SetLogger(logger *slog.Logger) {
 	d.sdkCertmgr.SetLogger(logger)
 }
 
-func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*deployer.DeployResult, error) {
+func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*DeployResult, error) {
 	// 上传证书
 	upres, err := d.sdkCertmgr.Upload(ctx, certPEM, privkeyPEM)
 	if err != nil {
@@ -98,38 +101,38 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 		d.logger.Info("ssl certificate uploaded", slog.Any("result", upres))
 	}
 
-	// 根据部署资源类型决定部署方式
-	switch d.config.ResourceType {
-	case RESOURCE_TYPE_CLOUDSERVER:
+	// 根据部署目标决定业务流程
+	switch d.config.DeployTarget {
+	case DEPLOY_TARGET_CLOUDSERVER:
 		if err := d.deployToCloudServer(ctx, certPEM, privkeyPEM); err != nil {
 			return nil, err
 		}
 
-	case RESOURCE_TYPE_PREMIUMHOST:
+	case DEPLOY_TARGET_PREMIUMHOST:
 		if err := d.deployToPremiumHost(ctx, certPEM, privkeyPEM); err != nil {
 			return nil, err
 		}
 
-	case RESOURCE_TYPE_CERTIFICATE:
+	case DEPLOY_TARGET_CERTIFICATE:
 		if err := d.deployToCertificate(ctx, certPEM, privkeyPEM); err != nil {
 			return nil, err
 		}
 
 	default:
-		return nil, fmt.Errorf("unsupported resource type '%s'", d.config.ResourceType)
+		return nil, fmt.Errorf("unsupported deploy target '%s'", d.config.DeployTarget)
 	}
 
-	return &deployer.DeployResult{}, nil
+	return &DeployResult{}, nil
 }
 
 func (d *Deployer) deployToCertificate(ctx context.Context, certPEM, privkeyPEM string) error {
 	if d.config.CertificateId == "" {
-		return errors.New("config `certificateId` is required")
+		return fmt.Errorf("config `certificateId` is required")
 	}
 
 	// 查询证书
 	// REF: https://support.huaweicloud.com/api-waf/ShowCertificate.html
-	showCertificateReq := &hcwafmodel.ShowCertificateRequest{
+	showCertificateReq := &hwwafmodel.ShowCertificateRequest{
 		EnterpriseProjectId: lo.EmptyableToPtr(d.config.EnterpriseProjectId),
 		CertificateId:       d.config.CertificateId,
 	}
@@ -141,10 +144,10 @@ func (d *Deployer) deployToCertificate(ctx context.Context, certPEM, privkeyPEM 
 
 	// 更新证书
 	// REF: https://support.huaweicloud.com/api-waf/UpdateCertificate.html
-	updateCertificateReq := &hcwafmodel.UpdateCertificateRequest{
+	updateCertificateReq := &hwwafmodel.UpdateCertificateRequest{
 		EnterpriseProjectId: lo.EmptyableToPtr(d.config.EnterpriseProjectId),
 		CertificateId:       d.config.CertificateId,
-		Body: &hcwafmodel.UpdateCertificateRequestBody{
+		Body: &hwwafmodel.UpdateCertificateRequestBody{
 			Name:    *showCertificateResp.Name,
 			Content: lo.ToPtr(certPEM),
 			Key:     lo.ToPtr(privkeyPEM),
@@ -161,7 +164,7 @@ func (d *Deployer) deployToCertificate(ctx context.Context, certPEM, privkeyPEM 
 
 func (d *Deployer) deployToCloudServer(ctx context.Context, certPEM, privkeyPEM string) error {
 	if d.config.Domain == "" {
-		return errors.New("config `domain` is required")
+		return fmt.Errorf("config `domain` is required")
 	}
 
 	// 上传证书
@@ -184,7 +187,7 @@ func (d *Deployer) deployToCloudServer(ctx context.Context, certPEM, privkeyPEM 
 		default:
 		}
 
-		listHostReq := &hcwafmodel.ListHostRequest{
+		listHostReq := &hwwafmodel.ListHostRequest{
 			EnterpriseProjectId: lo.EmptyableToPtr(d.config.EnterpriseProjectId),
 			Hostname:            lo.ToPtr(strings.TrimPrefix(d.config.Domain, "*")),
 			Page:                lo.ToPtr(int32(listHostPage)),
@@ -219,10 +222,10 @@ func (d *Deployer) deployToCloudServer(ctx context.Context, certPEM, privkeyPEM 
 
 	// 更新云模式防护域名的配置
 	// REF: https://support.huaweicloud.com/api-waf/UpdateHost.html
-	updateHostReq := &hcwafmodel.UpdateHostRequest{
+	updateHostReq := &hwwafmodel.UpdateHostRequest{
 		EnterpriseProjectId: lo.EmptyableToPtr(d.config.EnterpriseProjectId),
 		InstanceId:          hostId,
-		Body: &hcwafmodel.UpdateHostRequestBody{
+		Body: &hwwafmodel.UpdateHostRequestBody{
 			Certificateid:   lo.ToPtr(upres.CertId),
 			Certificatename: lo.ToPtr(upres.CertName),
 		},
@@ -238,7 +241,7 @@ func (d *Deployer) deployToCloudServer(ctx context.Context, certPEM, privkeyPEM 
 
 func (d *Deployer) deployToPremiumHost(ctx context.Context, certPEM, privkeyPEM string) error {
 	if d.config.Domain == "" {
-		return errors.New("config `domain` is required")
+		return fmt.Errorf("config `domain` is required")
 	}
 
 	// 上传证书
@@ -261,7 +264,7 @@ func (d *Deployer) deployToPremiumHost(ctx context.Context, certPEM, privkeyPEM 
 		default:
 		}
 
-		listPremiumHostReq := &hcwafmodel.ListPremiumHostRequest{
+		listPremiumHostReq := &hwwafmodel.ListPremiumHostRequest{
 			EnterpriseProjectId: lo.EmptyableToPtr(d.config.EnterpriseProjectId),
 			Hostname:            lo.ToPtr(strings.TrimPrefix(d.config.Domain, "*")),
 			Page:                lo.ToPtr(fmt.Sprintf("%d", listPremiumHostPage)),
@@ -296,10 +299,10 @@ func (d *Deployer) deployToPremiumHost(ctx context.Context, certPEM, privkeyPEM 
 
 	// 修改独享模式域名配置
 	// REF: https://support.huaweicloud.com/api-waf/UpdatePremiumHost.html
-	updatePremiumHostReq := &hcwafmodel.UpdatePremiumHostRequest{
+	updatePremiumHostReq := &hwwafmodel.UpdatePremiumHostRequest{
 		EnterpriseProjectId: lo.EmptyableToPtr(d.config.EnterpriseProjectId),
 		HostId:              hostId,
-		Body: &hcwafmodel.UpdatePremiumHostRequestBody{
+		Body: &hwwafmodel.UpdatePremiumHostRequestBody{
 			Certificateid:   lo.ToPtr(upres.CertId),
 			Certificatename: lo.ToPtr(upres.CertName),
 		},
@@ -313,7 +316,7 @@ func (d *Deployer) deployToPremiumHost(ctx context.Context, certPEM, privkeyPEM 
 	return nil
 }
 
-func createSDKClient(accessKeyId, secretAccessKey, region string) (*internal.WafClient, error) {
+func createSDKClient(accessKeyId, secretAccessKey, region string) (*hwwaf.WafClient, error) {
 	projectId, err := getSDKProjectId(accessKeyId, secretAccessKey, region)
 	if err != nil {
 		return nil, err
@@ -328,12 +331,12 @@ func createSDKClient(accessKeyId, secretAccessKey, region string) (*internal.Waf
 		return nil, err
 	}
 
-	hcRegion, err := hcwafregion.SafeValueOf(region)
+	hcRegion, err := hwwafregion.SafeValueOf(region)
 	if err != nil {
 		return nil, err
 	}
 
-	hcClient, err := hcwaf.WafClientBuilder().
+	hcClient, err := hwwaf.WafClientBuilder().
 		WithRegion(hcRegion).
 		WithCredential(auth).
 		SafeBuild()
@@ -341,7 +344,7 @@ func createSDKClient(accessKeyId, secretAccessKey, region string) (*internal.Waf
 		return nil, err
 	}
 
-	client := internal.NewWafClient(hcClient)
+	client := hwwaf.NewWafClient(hcClient)
 	return client, nil
 }
 
@@ -354,12 +357,12 @@ func getSDKProjectId(accessKeyId, secretAccessKey, region string) (string, error
 		return "", err
 	}
 
-	hcRegion, err := hciamregion.SafeValueOf(region)
+	hcRegion, err := hwiamregion.SafeValueOf(region)
 	if err != nil {
 		return "", err
 	}
 
-	hcClient, err := hciam.IamClientBuilder().
+	hcClient, err := hwiam.IamClientBuilder().
 		WithRegion(hcRegion).
 		WithCredential(auth).
 		SafeBuild()
@@ -367,16 +370,16 @@ func getSDKProjectId(accessKeyId, secretAccessKey, region string) (string, error
 		return "", err
 	}
 
-	client := hciam.NewIamClient(hcClient)
+	client := hwiam.NewIamClient(hcClient)
 
-	request := &hciamModel.KeystoneListProjectsRequest{
+	request := &hwiamModel.KeystoneListProjectsRequest{
 		Name: &region,
 	}
 	response, err := client.KeystoneListProjects(request)
 	if err != nil {
 		return "", err
 	} else if response.Projects == nil || len(*response.Projects) == 0 {
-		return "", errors.New("huaweicloud: no project found")
+		return "", fmt.Errorf("huaweicloud: no project found")
 	}
 
 	return (*response.Projects)[0].Id, nil

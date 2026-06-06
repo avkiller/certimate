@@ -1,14 +1,14 @@
 package internal
 
 import (
-	"errors"
+	"context"
 	"fmt"
 	"sync"
 	"time"
 
-	"github.com/go-acme/lego/v4/challenge"
-	"github.com/go-acme/lego/v4/challenge/dns01"
-	"github.com/go-acme/lego/v4/platform/config/env"
+	"github.com/go-acme/lego/v5/challenge"
+	"github.com/go-acme/lego/v5/challenge/dns01"
+	"github.com/go-acme/lego/v5/platform/env"
 	"github.com/samber/lo"
 
 	ctyundns "github.com/certimate-go/certimate/pkg/sdk3rd/ctyun/dns"
@@ -32,9 +32,9 @@ type Config struct {
 	AccessKeyId     string
 	SecretAccessKey string
 
+	TTL                int
 	PropagationTimeout time.Duration
 	PollingInterval    time.Duration
-	TTL                int
 	HTTPTimeout        time.Duration
 }
 
@@ -69,7 +69,7 @@ func NewDNSProvider() (*DNSProvider, error) {
 
 func NewDNSProviderConfig(config *Config) (*DNSProvider, error) {
 	if config == nil {
-		return nil, errors.New("ctyun: the configuration of the DNS provider is nil")
+		return nil, fmt.Errorf("ctyun: the configuration of the DNS provider is nil")
 	}
 
 	client, err := ctyundns.NewClient(config.AccessKeyId, config.SecretAccessKey)
@@ -87,10 +87,10 @@ func NewDNSProviderConfig(config *Config) (*DNSProvider, error) {
 	}, nil
 }
 
-func (d *DNSProvider) Present(domain, token, keyAuth string) error {
-	info := dns01.GetChallengeInfo(domain, keyAuth)
+func (d *DNSProvider) Present(ctx context.Context, domain, token, keyAuth string) error {
+	info := dns01.GetChallengeInfo(ctx, domain, keyAuth)
 
-	authZone, err := dns01.FindZoneByFqdn(info.EffectiveFQDN)
+	authZone, err := dns01.DefaultClient().FindZoneByFqdn(ctx, info.EffectiveFQDN)
 	if err != nil {
 		return fmt.Errorf("ctyun: could not find zone for domain %q: %w", domain, err)
 	}
@@ -110,7 +110,7 @@ func (d *DNSProvider) Present(domain, token, keyAuth string) error {
 		State:    lo.ToPtr(int32(1)),
 		TTL:      lo.ToPtr(int32(d.config.TTL)),
 	}
-	response, err := d.client.AddRecord(request)
+	response, err := d.client.AddRecordWithContext(ctx, request)
 	if err != nil {
 		return fmt.Errorf("ctyun: error when create record: %w", err)
 	}
@@ -122,8 +122,8 @@ func (d *DNSProvider) Present(domain, token, keyAuth string) error {
 	return nil
 }
 
-func (d *DNSProvider) CleanUp(domain, token, keyAuth string) error {
-	info := dns01.GetChallengeInfo(domain, keyAuth)
+func (d *DNSProvider) CleanUp(ctx context.Context, domain, token, keyAuth string) error {
+	info := dns01.GetChallengeInfo(ctx, domain, keyAuth)
 
 	d.recordIDsMu.Lock()
 	recordID, ok := d.recordIDs[token]
@@ -136,7 +136,7 @@ func (d *DNSProvider) CleanUp(domain, token, keyAuth string) error {
 	request := &ctyundns.DeleteRecordRequest{
 		RecordId: lo.ToPtr(recordID),
 	}
-	if _, err := d.client.DeleteRecord(request); err != nil {
+	if _, err := d.client.DeleteRecordWithContext(ctx, request); err != nil {
 		return fmt.Errorf("ctyun: error when delete record: %w", err)
 	}
 

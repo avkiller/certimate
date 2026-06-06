@@ -44,7 +44,7 @@ const AccessConfigFormFieldsProviderAliyun = () => {
         rules={[formRule]}
         tooltip={<span dangerouslySetInnerHTML={{ __html: t("access.form.aliyun_resource_group_id.tooltip") }}></span>}
       >
-        <Input allowClear autoComplete="new-password" placeholder={t("access.form.aliyun_resource_group_id.placeholder")} />
+        <Input allowClear placeholder={t("access.form.aliyun_resource_group_id.placeholder")} />
       </Form.Item>
     </>
   );
@@ -58,11 +58,11 @@ const getInitialValues = (): Nullish<z.infer<ReturnType<typeof getSchema>>> => {
 };
 
 const getSchema = ({ i18n = getI18n() }: { i18n: ReturnType<typeof getI18n> }) => {
-  const { t } = i18n;
+  const { t: _ } = i18n;
 
   return z.object({
-    accessKeyId: z.string().nonempty(t("access.form.aliyun_access_key_id.placeholder")),
-    accessKeySecret: z.string().nonempty(t("access.form.aliyun_access_key_secret.placeholder")),
+    accessKeyId: z.string().nonempty(),
+    accessKeySecret: z.string().nonempty(),
     resourceGroupId: z.string().nullish(),
   });
 };

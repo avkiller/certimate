@@ -1,6 +1,6 @@
 import { getI18n, useTranslation } from "react-i18next";
 import { IconBulb, IconChevronDown, IconDice6 } from "@tabler/icons-react";
-import { Button, Divider, Form, Input, Popover, Select, Space, Tooltip } from "antd";
+import { Button, Divider, Form, type FormInstance, Input, Popover, Select, Space, Tooltip } from "antd";
 import { createSchemaFieldRule } from "antd-zod";
 import { z } from "zod";
 
@@ -129,6 +129,92 @@ Set-ItemProperty -Path $rdpCertPath -Name "SSLCertificateSHA1Hash" -Value "$thum
   }
 };
 
+export const useSharedFormFieldsAndHandlers = (
+  form: FormInstance,
+  {
+    format = "fileFormat",
+    certPath = "filePathForCrt",
+    pfxPassword = "pfxPassword",
+    jksAlias = "jksAlias",
+    jksKeypass = "jksKeypass",
+    jksStorepass = "jksStorepass",
+  }: {
+    format?: string;
+    certPath?: string;
+    pfxPassword?: string;
+    jksAlias?: string;
+    jksKeypass?: string;
+    jksStorepass?: string;
+  }
+) => {
+  const { parentNamePath } = useFormNestedFieldsContext();
+
+  const fieldFormat = Form.useWatch([parentNamePath, format], form);
+  const fieldCertPath = Form.useWatch([parentNamePath, certPath], form);
+
+  const handleChangeFormat = (value: string) => {
+    if (fieldFormat === value) return;
+
+    switch (value) {
+      case FORMAT_PEM:
+        {
+          if (/(.pfx|.jks)$/.test(fieldCertPath)) {
+            form.setFieldValue([parentNamePath, certPath], fieldCertPath.replace(/(.pfx|.jks)$/, ".crt"));
+          }
+        }
+        break;
+
+      case FORMAT_PFX:
+        {
+          if (/(.pem|.crt|.jks)$/.test(fieldCertPath)) {
+            form.setFieldValue([parentNamePath, certPath], fieldCertPath.replace(/(.pem|.crt|.jks)$/, ".pfx"));
+          }
+        }
+        break;
+
+      case FORMAT_JKS:
+        {
+          if (/(.pem|.crt|.pfx)$/.test(fieldCertPath)) {
+            form.setFieldValue([parentNamePath, certPath], fieldCertPath.replace(/(.pem|.crt|.pfx)$/, ".jks"));
+          }
+        }
+        break;
+    }
+  };
+
+  const handleRandomPfxPassword = () => {
+    const password = randomString();
+    form.setFieldValue([parentNamePath, pfxPassword], password);
+  };
+
+  const handleRandomJksAlias = () => {
+    const suffixlen = 6;
+    const alias = "certimate_" + Math.random().toFixed(suffixlen).slice(-suffixlen);
+    form.setFieldValue([parentNamePath, jksAlias], alias);
+  };
+
+  const handleRandomJksKeypass = () => {
+    const password = randomString();
+    form.setFieldValue([parentNamePath, jksKeypass], password);
+  };
+
+  const handleRandomJksStorepass = () => {
+    const password = randomString();
+    form.setFieldValue([parentNamePath, jksStorepass], password);
+  };
+
+  return {
+    fieldFormat,
+    fieldCertPath,
+
+    handleChangeFormat,
+    handleRandomPfxPassword,
+    handleRandomJksAlias,
+    handleRandomJksKeypass,
+    handleRandomJksStorepass,
+  };
+};
+
 const BizDeployNodeConfigFieldsProviderLocal = () => {
   const { i18n, t } = useTranslation();
 
@@ -140,53 +226,14 @@ const BizDeployNodeConfigFieldsProviderLocal = () => {
   const formInst = Form.useFormInstance();
   const initialValues = getInitialValues();
 
-  const fieldFormat = Form.useWatch([parentNamePath, "format"], formInst);
-  const fieldCertPath = Form.useWatch([parentNamePath, "certPath"], formInst);
-
-  const handleFormatSelect = (value: string) => {
-    if (fieldFormat === value) return;
-
-    switch (value) {
-      case FORMAT_PEM:
-        {
-          if (/(.pfx|.jks)$/.test(fieldCertPath)) {
-            formInst.setFieldValue([parentNamePath, "certPath"], fieldCertPath.replace(/(.pfx|.jks)$/, ".crt"));
-          }
-        }
-        break;
-
-      case FORMAT_PFX:
-        {
-          if (/(.crt|.jks)$/.test(fieldCertPath)) {
-            formInst.setFieldValue([parentNamePath, "certPath"], fieldCertPath.replace(/(.crt|.jks)$/, ".pfx"));
-          }
-        }
-        break;
-
-      case FORMAT_JKS:
-        {
-          if (/(.crt|.pfx)$/.test(fieldCertPath)) {
-            formInst.setFieldValue([parentNamePath, "certPath"], fieldCertPath.replace(/(.crt|.pfx)$/, ".jks"));
-          }
-        }
-        break;
-    }
-  };
-
-  const handleRandomPfxPasswordClick = () => {
-    const password = randomString();
-    formInst.setFieldValue([parentNamePath, "pfxPassword"], password);
-  };
-
-  const handleRandomJksKeypassClick = () => {
-    const password = randomString();
-    formInst.setFieldValue([parentNamePath, "jksKeypass"], password);
-  };
-
-  const handleRandomJksStorepassClick = () => {
-    const password = randomString();
-    formInst.setFieldValue([parentNamePath, "jksStorepass"], password);
-  };
+  const {
+    fieldFormat: fieldFileFormat,
+    handleChangeFormat: handleFileFormatSelect,
+    handleRandomPfxPassword: handleRandomPfxPasswordClick,
+    handleRandomJksAlias: handleRandomJksAliasClick,
+    handleRandomJksKeypass: handleRandomJksKeypassClick,
+    handleRandomJksStorepass: handleRandomJksStorepassClick,
+  } = useSharedFormFieldsAndHandlers(formInst, {});
 
   const handlePresetPreScriptClick = (key: string) => {
     switch (key) {
@@ -194,8 +241,8 @@ const BizDeployNodeConfigFieldsProviderLocal = () => {
       case "ps_backup_files":
         {
           const presetScriptParams = {
-            certPath: formInst.getFieldValue([parentNamePath, "certPath"]),
-            keyPath: formInst.getFieldValue([parentNamePath, "keyPath"]),
+            certPath: formInst.getFieldValue([parentNamePath, "filePathForCrt"]),
+            keyPath: formInst.getFieldValue([parentNamePath, "filePathForKey"]),
           };
           formInst.setFieldValue([parentNamePath, "shellEnv"], SHELLENV_SH);
           formInst.setFieldValue([parentNamePath, "preCommand"], initPresetScript(key, presetScriptParams));
@@ -218,7 +265,7 @@ const BizDeployNodeConfigFieldsProviderLocal = () => {
       case "ps_binding_rdp":
         {
           const presetScriptParams = {
-            certPath: formInst.getFieldValue([parentNamePath, "certPath"]),
+            certPath: formInst.getFieldValue([parentNamePath, "filePathForCrt"]),
             pfxPassword: formInst.getFieldValue([parentNamePath, "pfxPassword"]),
           };
           formInst.setFieldValue([parentNamePath, "shellEnv"], SHELLENV_POWERSHELL);
@@ -235,74 +282,70 @@ const BizDeployNodeConfigFieldsProviderLocal = () => {
       </Form.Item>
 
       <Form.Item
-        name={[parentNamePath, "format"]}
-        initialValue={initialValues.format}
-        label={t("workflow_node.deploy.form.local_format.label")}
+        name={[parentNamePath, "fileFormat"]}
+        initialValue={initialValues.fileFormat}
+        label={t("workflow_node.deploy.form.shared_file_format.label")}
         rules={[formRule]}
       >
         <Select
           options={[FORMAT_PEM, FORMAT_PFX, FORMAT_JKS].map((s) => ({
-            key: s,
-            label: t(`workflow_node.deploy.form.local_format.option.${s.toLowerCase()}.label`),
+            label: t(`workflow_node.deploy.form.shared_file_format.option.${s.toLowerCase()}.label`),
             value: s,
           }))}
-          placeholder={t("workflow_node.deploy.form.local_format.placeholder")}
-          onSelect={handleFormatSelect}
+          placeholder={t("workflow_node.deploy.form.shared_file_format.placeholder")}
+          onSelect={handleFileFormatSelect}
         />
       </Form.Item>
 
-      <Show when={fieldFormat === FORMAT_PEM}>
+      <Show when={fieldFileFormat === FORMAT_PEM}>
         <Form.Item
-          name={[parentNamePath, "keyPath"]}
-          initialValue={initialValues.keyPath}
-          label={t("workflow_node.deploy.form.local_key_path.label")}
-          extra={t("workflow_node.deploy.form.local_key_path.help")}
+          name={[parentNamePath, "filePathForKey"]}
+          initialValue={initialValues.filePathForKey}
+          label={t("workflow_node.deploy.form.shared_file_path_for_key.label")}
+          extra={t("workflow_node.deploy.form.shared_file_path_for_key.help")}
           rules={[formRule]}
         >
-          <Input placeholder={t("workflow_node.deploy.form.local_key_path.placeholder")} />
+          <Input placeholder={t("workflow_node.deploy.form.shared_file_path_for_key.placeholder")} />
         </Form.Item>
       </Show>
 
       <Form.Item
-        name={[parentNamePath, "certPath"]}
-        initialValue={initialValues.certPath}
-        label={t(`workflow_node.deploy.form.local_${fieldFormat === FORMAT_PEM ? "fullchaincert" : "cert"}_path.label`)}
-        extra={t("workflow_node.deploy.form.local_cert_path.help")}
+        name={[parentNamePath, "filePathForCrt"]}
+        initialValue={initialValues.filePathForCrt}
+        label={t(`workflow_node.deploy.form.shared_file_path_for_crt.label`)}
+        extra={t("workflow_node.deploy.form.shared_file_path_for_crt.help")}
         rules={[formRule]}
       >
-        <Input placeholder={t(`workflow_node.deploy.form.local_${fieldFormat === FORMAT_PEM ? "fullchaincert" : "cert"}_path.placeholder`)} />
+        <Input placeholder={t(`workflow_node.deploy.form.shared_file_path_for_crt.placeholder`)} />
       </Form.Item>
 
-      <Show when={fieldFormat === FORMAT_PEM}>
+      <Show when={fieldFileFormat === FORMAT_PEM}>
         <Form.Item
-          name={[parentNamePath, "certPathForServerOnly"]}
-          initialValue={initialValues.certPathForServerOnly}
-          label={t("workflow_node.deploy.form.local_servercert_path.label")}
-          extra={t("workflow_node.deploy.form.local_servercert_path.help")}
+          name={[parentNamePath, "filePathForCrtOnlyServer"]}
+          initialValue={initialValues.filePathForCrtOnlyServer}
+          label={t("workflow_node.deploy.form.shared_file_path_for_servercrt.label")}
+          extra={t("workflow_node.deploy.form.shared_file_path_for_servercrt.help")}
           rules={[formRule]}
         >
-          <Input allowClear placeholder={t("workflow_node.deploy.form.local_servercert_path.placeholder")} />
+          <Input allowClear placeholder={t("workflow_node.deploy.form.shared_file_path_for_servercrt.placeholder")} />
         </Form.Item>
 
         <Form.Item
-          name={[parentNamePath, "certPathForIntermediaOnly"]}
-          initialValue={initialValues.certPathForIntermediaOnly}
-          label={t("workflow_node.deploy.form.local_intermediacert_path.label")}
-          extra={t("workflow_node.deploy.form.local_intermediacert_path.help")}
+          name={[parentNamePath, "filePathForCrtOnlyIntermedia"]}
+          initialValue={initialValues.filePathForCrtOnlyIntermedia}
+          label={t("workflow_node.deploy.form.shared_file_path_for_intermediacrt.label")}
+          extra={t("workflow_node.deploy.form.shared_file_path_for_intermediacrt.help")}
           rules={[formRule]}
         >
-          <Input allowClear placeholder={t("workflow_node.deploy.form.local_intermediacert_path.placeholder")} />
+          <Input allowClear placeholder={t("workflow_node.deploy.form.shared_file_path_for_intermediacrt.placeholder")} />
         </Form.Item>
       </Show>
 
-      <Show when={fieldFormat === FORMAT_PFX}>
-        <Form.Item
-          label={t("workflow_node.deploy.form.local_pfx_password.label")}
-          tooltip={<span dangerouslySetInnerHTML={{ __html: t("workflow_node.deploy.form.local_pfx_password.tooltip") }}></span>}
-        >
+      <Show when={fieldFileFormat === FORMAT_PFX}>
+        <Form.Item label={t("workflow_node.deploy.form.shared_pfx_password.label")}>
           <Space.Compact className="w-full">
             <Form.Item name={[parentNamePath, "pfxPassword"]} initialValue={initialValues.pfxPassword} rules={[formRule]} noStyle>
-              <Input placeholder={t("workflow_node.deploy.form.local_pfx_password.placeholder")} />
+              <Input placeholder={t("workflow_node.deploy.form.shared_pfx_password.placeholder")} />
             </Form.Item>
             <Tooltip title={t("common.text.random_roll")}>
               <Button className="px-2" onClick={handleRandomPfxPasswordClick}>
@@ -311,26 +354,47 @@ const BizDeployNodeConfigFieldsProviderLocal = () => {
             </Tooltip>
           </Space.Compact>
         </Form.Item>
+
+        <Form.Item
+          name={[parentNamePath, "pfxEncoder"]}
+          initialValue={initialValues.pfxEncoder}
+          label={t("workflow_node.deploy.form.shared_pfx_encoder.label")}
+          rules={[formRule]}
+        >
+          <Select
+            options={["LegacyRC2", "LegacyDES", "Modern2023", "Modern2026"].map((s) => ({
+              label: t(`workflow_node.deploy.form.shared_pfx_encoder.option.${s.toLowerCase()}.label`),
+              value: s,
+            }))}
+            placeholder={t("workflow_node.deploy.form.shared_pfx_encoder.placeholder")}
+          />
+        </Form.Item>
       </Show>
 
-      <Show when={fieldFormat === FORMAT_JKS}>
+      <Show when={fieldFileFormat === FORMAT_JKS}>
         <Form.Item
-          name={[parentNamePath, "jksAlias"]}
-          initialValue={initialValues.jksAlias}
-          label={t("workflow_node.deploy.form.local_jks_alias.label")}
-          rules={[formRule]}
-          tooltip={<span dangerouslySetInnerHTML={{ __html: t("workflow_node.deploy.form.local_jks_alias.tooltip") }}></span>}
+          label={t("workflow_node.deploy.form.shared_jks_alias.label")}
+          tooltip={<span dangerouslySetInnerHTML={{ __html: t("workflow_node.deploy.form.shared_jks_alias.tooltip") }}></span>}
         >
-          <Input placeholder={t("workflow_node.deploy.form.local_jks_alias.placeholder")} />
+          <Space.Compact className="w-full">
+            <Form.Item name={[parentNamePath, "jksAlias"]} initialValue={initialValues.jksAlias} rules={[formRule]} noStyle>
+              <Input placeholder={t("workflow_node.deploy.form.shared_jks_alias.placeholder")} />
+            </Form.Item>
+            <Tooltip title={t("common.text.random_roll")}>
+              <Button className="px-2" onClick={handleRandomJksAliasClick}>
+                <IconDice6 size="1.25em" />
+              </Button>
+            </Tooltip>
+          </Space.Compact>
         </Form.Item>
 
         <Form.Item
-          label={t("workflow_node.deploy.form.local_jks_keypass.label")}
-          tooltip={<span dangerouslySetInnerHTML={{ __html: t("workflow_node.deploy.form.local_jks_keypass.tooltip") }}></span>}
+          label={t("workflow_node.deploy.form.shared_jks_keypass.label")}
+          tooltip={<span dangerouslySetInnerHTML={{ __html: t("workflow_node.deploy.form.shared_jks_keypass.tooltip") }}></span>}
         >
           <Space.Compact className="w-full">
             <Form.Item name={[parentNamePath, "jksKeypass"]} initialValue={initialValues.jksKeypass} rules={[formRule]} noStyle>
-              <Input placeholder={t("workflow_node.deploy.form.local_jks_keypass.placeholder")} />
+              <Input placeholder={t("workflow_node.deploy.form.shared_jks_keypass.placeholder")} />
             </Form.Item>
             <Tooltip title={t("common.text.random_roll")}>
               <Button className="px-2" onClick={handleRandomJksKeypassClick}>
@@ -341,12 +405,12 @@ const BizDeployNodeConfigFieldsProviderLocal = () => {
         </Form.Item>
 
         <Form.Item
-          label={t("workflow_node.deploy.form.local_jks_storepass.label")}
-          tooltip={<span dangerouslySetInnerHTML={{ __html: t("workflow_node.deploy.form.local_jks_storepass.tooltip") }}></span>}
+          label={t("workflow_node.deploy.form.shared_jks_storepass.label")}
+          tooltip={<span dangerouslySetInnerHTML={{ __html: t("workflow_node.deploy.form.shared_jks_storepass.tooltip") }}></span>}
         >
           <Space.Compact className="w-full">
             <Form.Item name={[parentNamePath, "jksStorepass"]} initialValue={initialValues.jksStorepass} rules={[formRule]} noStyle>
-              <Input placeholder={t("workflow_node.deploy.form.local_jks_storepass.placeholder")} />
+              <Input placeholder={t("workflow_node.deploy.form.shared_jks_storepass.placeholder")} />
             </Form.Item>
             <Tooltip title={t("common.text.random_roll")}>
               <Button className="px-2" onClick={handleRandomJksStorepassClick}>
@@ -365,7 +429,6 @@ const BizDeployNodeConfigFieldsProviderLocal = () => {
       >
         <Select
           options={[SHELLENV_SH, SHELLENV_CMD, SHELLENV_POWERSHELL].map((s) => ({
-            key: s,
             label: t(`workflow_node.deploy.form.local_shell_env.option.${s.toLowerCase()}.label`),
             value: s,
           }))}
@@ -451,69 +514,42 @@ const BizDeployNodeConfigFieldsProviderLocal = () => {
 
 const getInitialValues = (): Nullish<z.infer<ReturnType<typeof getSchema>>> => {
   return {
-    format: FORMAT_PEM,
-    keyPath: "/etc/ssl/certimate/cert.key",
-    certPath: "/etc/ssl/certimate/cert.crt",
+    fileFormat: FORMAT_PEM,
+    filePathForKey: "/etc/ssl/certimate/cert.key",
+    filePathForCrt: "/etc/ssl/certimate/cert.crt",
     shellEnv: SHELLENV_SH,
   };
 };
 
 const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) => {
-  const { t } = i18n;
+  const { t: _ } = i18n;
 
   return z
     .object({
-      format: z.literal([FORMAT_PEM, FORMAT_PFX, FORMAT_JKS], t("workflow_node.deploy.form.local_format.placeholder")),
-      keyPath: z
-        .string()
-        .max(256, t("common.errmsg.string_max", { max: 256 }))
-        .nullish(),
-      certPath: z
-        .string()
-        .min(1, t("workflow_node.deploy.form.local_cert_path.placeholder"))
-        .max(256, t("common.errmsg.string_max", { max: 256 })),
-      certPathForServerOnly: z
-        .string()
-        .max(256, t("common.errmsg.string_max", { max: 256 }))
-        .nullish(),
-      certPathForIntermediaOnly: z
-        .string()
-        .max(256, t("common.errmsg.string_max", { max: 256 }))
-        .nullish(),
+      fileFormat: z.enum([FORMAT_PEM, FORMAT_PFX, FORMAT_JKS]),
+      filePathForKey: z.string().max(256).nullish(),
+      filePathForCrt: z.string().max(256).nullish(),
+      filePathForCrtOnlyServer: z.string().max(256).nullish(),
+      filePathForCrtOnlyIntermedia: z.string().max(256).nullish(),
       pfxPassword: z.string().nullish(),
+      pfxEncoder: z.string().nullish(),
       jksAlias: z.string().nullish(),
       jksKeypass: z.string().nullish(),
       jksStorepass: z.string().nullish(),
-      shellEnv: z.literal([SHELLENV_SH, SHELLENV_CMD, SHELLENV_POWERSHELL], t("workflow_node.deploy.form.local_shell_env.placeholder")),
-      preCommand: z
-        .string()
-        .max(20480, t("common.errmsg.string_max", { max: 20480 }))
-        .nullish(),
-      postCommand: z
-        .string()
-        .max(20480, t("common.errmsg.string_max", { max: 20480 }))
-        .nullish(),
+      shellEnv: z.enum([SHELLENV_SH, SHELLENV_CMD, SHELLENV_POWERSHELL]),
+      preCommand: z.string().max(20480).nullish(),
+      postCommand: z.string().max(20480).nullish(),
     })
     .superRefine((values, ctx) => {
-      switch (values.format) {
-        case FORMAT_PEM:
-          {
-            if (!values.keyPath?.trim()) {
-              ctx.addIssue({
-                code: "custom",
-                message: t("workflow_node.deploy.form.local_key_path.placeholder"),
-                path: ["keyPath"],
-              });
-            }
-          }
-          break;
-
+      switch (values.fileFormat) {
         case FORMAT_PFX:
           {
-            if (!values.pfxPassword?.trim()) {
+            const scPfxPassword = z.string().nonempty();
+            const spPfxPassword = scPfxPassword.safeParse(values.pfxPassword);
+            if (!spPfxPassword.success) {
               ctx.addIssue({
                 code: "custom",
-                message: t("workflow_node.deploy.form.local_pfx_password.placeholder"),
+                message: z.treeifyError(spPfxPassword.error).errors.join(),
                 path: ["pfxPassword"],
               });
             }
@@ -522,26 +558,32 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
 
         case FORMAT_JKS:
           {
-            if (!values.jksAlias?.trim()) {
+            const scJksAlias = z.string().nonempty();
+            const spJksAlias = scJksAlias.safeParse(values.jksAlias);
+            if (!spJksAlias.success) {
               ctx.addIssue({
                 code: "custom",
-                message: t("workflow_node.deploy.form.local_jks_alias.placeholder"),
+                message: z.treeifyError(spJksAlias.error).errors.join(),
                 path: ["jksAlias"],
               });
             }
 
-            if (!values.jksKeypass?.trim()) {
+            const scJksKeypass = z.string().nonempty();
+            const spJksKeypass = scJksKeypass.safeParse(values.jksKeypass);
+            if (!spJksKeypass.success) {
               ctx.addIssue({
                 code: "custom",
-                message: t("workflow_node.deploy.form.local_jks_keypass.placeholder"),
+                message: z.treeifyError(spJksKeypass.error).errors.join(),
                 path: ["jksKeypass"],
               });
             }
 
-            if (!values.jksStorepass?.trim()) {
+            const scJksStorepass = z.string().nonempty();
+            const spJksStorepass = scJksStorepass.safeParse(values.jksStorepass);
+            if (!spJksStorepass.success) {
               ctx.addIssue({
                 code: "custom",
-                message: t("workflow_node.deploy.form.local_jks_storepass.placeholder"),
+                message: z.treeifyError(spJksStorepass.error).errors.join(),
                 path: ["jksStorepass"],
               });
             }

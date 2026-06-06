@@ -1,0 +1,41 @@
+﻿package client
+
+import (
+	"github.com/alibabacloud-go/alb-20200616/v2/client"
+)
+
+type AssociateAdditionalCertificatesWithListenerRequest = client.AssociateAdditionalCertificatesWithListenerRequest
+
+type AssociateAdditionalCertificatesWithListenerRequestCertificates = client.AssociateAdditionalCertificatesWithListenerRequestCertificates
+
+type AssociateAdditionalCertificatesWithListenerResponse = client.AssociateAdditionalCertificatesWithListenerResponse
+
+type DissociateAdditionalCertificatesFromListenerRequest = client.DissociateAdditionalCertificatesFromListenerRequest
+
+type DissociateAdditionalCertificatesFromListenerRequestCertificates = client.DissociateAdditionalCertificatesFromListenerRequestCertificates
+
+type DissociateAdditionalCertificatesFromListenerResponse = client.DissociateAdditionalCertificatesFromListenerResponse
+
+type GetListenerAttributeRequest = client.GetListenerAttributeRequest
+
+type GetListenerAttributeResponse = client.GetListenerAttributeResponse
+
+type GetLoadBalancerAttributeRequest = client.GetLoadBalancerAttributeRequest
+
+type GetLoadBalancerAttributeResponse = client.GetLoadBalancerAttributeResponse
+
+type ListListenerCertificatesRequest = client.ListListenerCertificatesRequest
+
+type ListListenerCertificatesResponse = client.ListListenerCertificatesResponse
+
+type ListListenerCertificatesResponseBodyCertificates = client.ListListenerCertificatesResponseBodyCertificates
+
+type ListListenersRequest = client.ListListenersRequest
+
+type ListListenersResponse = client.ListListenersResponse
+
+type UpdateListenerAttributeRequest = client.UpdateListenerAttributeRequest
+
+type UpdateListenerAttributeRequestCertificates = client.UpdateListenerAttributeRequestCertificates
+
+type UpdateListenerAttributeResponse = client.UpdateListenerAttributeResponse

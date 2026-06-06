@@ -2,23 +2,27 @@ package huaweicloudapig
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"time"
 
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth/basic"
 	"github.com/huaweicloud/huaweicloud-sdk-go-v3/core/auth/global"
-	hcapig "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/apig/v2"
-	hcapigmodel "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/apig/v2/model"
-	hcapigregion "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/apig/v2/region"
-	hciam "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3"
-	hciamModel "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3/model"
-	hciamregion "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3/region"
+	hwapigmodel "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/apig/v2/model"
+	hwapigregion "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/apig/v2/region"
+	hwiam "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3"
+	hwiamModel "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3/model"
+	hwiamregion "github.com/huaweicloud/huaweicloud-sdk-go-v3/services/iam/v3/region"
 	"github.com/samber/lo"
 
-	"github.com/certimate-go/certimate/pkg/core/deployer"
-	"github.com/certimate-go/certimate/pkg/core/deployer/providers/huaweicloud-apig/internal"
+	hwapig "github.com/certimate-go/certimate/pkg/sdk3rd-trimmed/github.com/huaweicloud/huaweicloud-sdk-go-v3/services/apig/v2"
+
+	"github.com/certimate-go/certimate/pkg/core"
+)
+
+type (
+	Provider     = core.Deployer
+	DeployResult = core.DeployerDeployResult
 )
 
 type DeployerConfig struct {
@@ -30,24 +34,24 @@ type DeployerConfig struct {
 	EnterpriseProjectId string `json:"enterpriseProjectId,omitempty"`
 	// 华为云区域。
 	Region string `json:"region"`
-	// 部署资源类型。
-	ResourceType string `json:"resourceType"`
+	// 部署目标。
+	DeployTarget string `json:"deployTarget"`
 	// 证书 ID。
-	// 部署资源类型为 [RESOURCE_TYPE_CERTIFICATE] 时必填。
+	// 部署目标为 [DEPLOY_TARGET_CERTIFICATE] 时必填。
 	CertificateId string `json:"certificateId,omitempty"`
 }
 
 type Deployer struct {
 	config    *DeployerConfig
 	logger    *slog.Logger
-	sdkClient *internal.ApigClient
+	sdkClient *hwapig.ApigClient
 }
 
-var _ deployer.Provider = (*Deployer)(nil)
+var _ Provider = (*Deployer)(nil)
 
 func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the deployer provider is nil")
+		return nil, fmt.Errorf("the configuration of the deployer provider is nil")
 	}
 
 	client, err := createSDKClient(
@@ -74,29 +78,29 @@ func (d *Deployer) SetLogger(logger *slog.Logger) {
 	}
 }
 
-func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*deployer.DeployResult, error) {
-	// 根据部署资源类型决定部署方式
-	switch d.config.ResourceType {
-	case RESOURCE_TYPE_CERTIFICATE:
+func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*DeployResult, error) {
+	// 根据部署目标决定业务流程
+	switch d.config.DeployTarget {
+	case DEPLOY_TARGET_CERTIFICATE:
 		if err := d.deployToCertificate(ctx, certPEM, privkeyPEM); err != nil {
 			return nil, err
 		}
 
 	default:
-		return nil, fmt.Errorf("unsupported resource type '%s'", d.config.ResourceType)
+		return nil, fmt.Errorf("unsupported deploy target '%s'", d.config.DeployTarget)
 	}
 
-	return &deployer.DeployResult{}, nil
+	return &DeployResult{}, nil
 }
 
 func (d *Deployer) deployToCertificate(ctx context.Context, certPEM, privkeyPEM string) error {
 	if d.config.CertificateId == "" {
-		return errors.New("config `certificateId` is required")
+		return fmt.Errorf("config `certificateId` is required")
 	}
 
 	// 查询证书详情
 	// REF: https://support.huaweicloud.com/api-apig/ShowDetailsOfCertificateV2.html
-	showDetailsOfCertificateV2Req := &hcapigmodel.ShowDetailsOfCertificateV2Request{
+	showDetailsOfCertificateV2Req := &hwapigmodel.ShowDetailsOfCertificateV2Request{
 		CertificateId: d.config.CertificateId,
 	}
 	showDetailsOfCertificateV2Resp, err := d.sdkClient.ShowDetailsOfCertificateV2(showDetailsOfCertificateV2Req)
@@ -107,15 +111,15 @@ func (d *Deployer) deployToCertificate(ctx context.Context, certPEM, privkeyPEM 
 
 	// 修改 SSL 证书
 	// REF: https://support.huaweicloud.com/api-apig/UpdateCertificateV2.html
-	updateCertificateV2Req := &hcapigmodel.UpdateCertificateV2Request{
+	updateCertificateV2Req := &hwapigmodel.UpdateCertificateV2Request{
 		CertificateId: d.config.CertificateId,
-		Body: &hcapigmodel.CertificateForm{
+		Body: &hwapigmodel.CertificateForm{
 			Name:        fmt.Sprintf("certimate_%d", time.Now().UnixMilli()),
 			CertContent: certPEM,
 			PrivateKey:  privkeyPEM,
 			Type: lo.
-				If(showDetailsOfCertificateV2Resp.Type.Value() == hcapigmodel.GetCertificateFormTypeEnum().INSTANCE.Value(), lo.ToPtr(hcapigmodel.GetCertificateFormTypeEnum().INSTANCE)).
-				Else(lo.ToPtr(hcapigmodel.GetCertificateFormTypeEnum().GLOBAL)),
+				If(showDetailsOfCertificateV2Resp.Type.Value() == hwapigmodel.GetCertificateFormTypeEnum().INSTANCE.Value(), lo.ToPtr(hwapigmodel.GetCertificateFormTypeEnum().INSTANCE)).
+				Else(lo.ToPtr(hwapigmodel.GetCertificateFormTypeEnum().GLOBAL)),
 			InstanceId: showDetailsOfCertificateV2Resp.InstanceId,
 		},
 	}
@@ -128,7 +132,7 @@ func (d *Deployer) deployToCertificate(ctx context.Context, certPEM, privkeyPEM 
 	return nil
 }
 
-func createSDKClient(accessKeyId, secretAccessKey, region string) (*internal.ApigClient, error) {
+func createSDKClient(accessKeyId, secretAccessKey, region string) (*hwapig.ApigClient, error) {
 	projectId, err := getSDKProjectId(accessKeyId, secretAccessKey, region)
 	if err != nil {
 		return nil, err
@@ -143,12 +147,12 @@ func createSDKClient(accessKeyId, secretAccessKey, region string) (*internal.Api
 		return nil, err
 	}
 
-	hcRegion, err := hcapigregion.SafeValueOf(region)
+	hcRegion, err := hwapigregion.SafeValueOf(region)
 	if err != nil {
 		return nil, err
 	}
 
-	hcClient, err := hcapig.ApigClientBuilder().
+	hcClient, err := hwapig.ApigClientBuilder().
 		WithRegion(hcRegion).
 		WithCredential(auth).
 		SafeBuild()
@@ -156,7 +160,7 @@ func createSDKClient(accessKeyId, secretAccessKey, region string) (*internal.Api
 		return nil, err
 	}
 
-	client := internal.NewApigClient(hcClient)
+	client := hwapig.NewApigClient(hcClient)
 	return client, nil
 }
 
@@ -169,12 +173,12 @@ func getSDKProjectId(accessKeyId, secretAccessKey, region string) (string, error
 		return "", err
 	}
 
-	hcRegion, err := hciamregion.SafeValueOf(region)
+	hcRegion, err := hwiamregion.SafeValueOf(region)
 	if err != nil {
 		return "", err
 	}
 
-	hcClient, err := hciam.IamClientBuilder().
+	hcClient, err := hwiam.IamClientBuilder().
 		WithRegion(hcRegion).
 		WithCredential(auth).
 		SafeBuild()
@@ -182,16 +186,16 @@ func getSDKProjectId(accessKeyId, secretAccessKey, region string) (string, error
 		return "", err
 	}
 
-	client := hciam.NewIamClient(hcClient)
+	client := hwiam.NewIamClient(hcClient)
 
-	request := &hciamModel.KeystoneListProjectsRequest{
+	request := &hwiamModel.KeystoneListProjectsRequest{
 		Name: &region,
 	}
 	response, err := client.KeystoneListProjects(request)
 	if err != nil {
 		return "", err
 	} else if response.Projects == nil || len(*response.Projects) == 0 {
-		return "", errors.New("huaweicloud: no project found")
+		return "", fmt.Errorf("huaweicloud: no project found")
 	}
 
 	return (*response.Projects)[0].Id, nil

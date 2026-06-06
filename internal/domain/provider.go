@@ -2,6 +2,10 @@ package domain
 
 type AccessProviderType string
 
+func (t AccessProviderType) String() string {
+	return string(t)
+}
+
 /*
 授权提供商类型常量值。
 
@@ -27,6 +31,7 @@ const (
 	AccessProviderTypeBaotaPanel          = AccessProviderType("baotapanel")
 	AccessProviderTypeBaotaPanelGo        = AccessProviderType("baotapanelgo")
 	AccessProviderTypeBaotaWAF            = AccessProviderType("baotawaf")
+	AccessProviderTypeBeget               = AccessProviderType("beget")
 	AccessProviderTypeBookMyName          = AccessProviderType("bookmyname")
 	AccessProviderTypeBunny               = AccessProviderType("bunny")
 	AccessProviderTypeBytePlus            = AccessProviderType("byteplus")
@@ -35,6 +40,7 @@ const (
 	AccessProviderTypeCloudflare          = AccessProviderType("cloudflare")
 	AccessProviderTypeClouDNS             = AccessProviderType("cloudns")
 	AccessProviderTypeCMCCCloud           = AccessProviderType("cmcccloud")
+	AccessProviderTypeConoHaVPS           = AccessProviderType("conohavps")
 	AccessProviderTypeConstellix          = AccessProviderType("constellix")
 	AccessProviderTypeCPanel              = AccessProviderType("cpanel")
 	AccessProviderTypeCTCCCloud           = AccessProviderType("ctcccloud")
@@ -50,6 +56,7 @@ const (
 	AccessProviderTypeDogeCloud           = AccessProviderType("dogecloud")
 	AccessProviderTypeDokploy             = AccessProviderType("dokploy")
 	AccessProviderTypeDuckDNS             = AccessProviderType("duckdns")
+	AccessProviderTypeDynadot             = AccessProviderType("dynadot")
 	AccessProviderTypeDynu                = AccessProviderType("dynu")
 	AccessProviderTypeDynv6               = AccessProviderType("dynv6")
 	AccessProviderTypeEmail               = AccessProviderType("email")
@@ -63,6 +70,7 @@ const (
 	AccessProviderTypeGname               = AccessProviderType("gname")
 	AccessProviderTypeGoDaddy             = AccessProviderType("godaddy")
 	AccessProviderTypeGoEdge              = AccessProviderType("goedge")
+	AccessProviderTypeGoogleCloud         = AccessProviderType("googlecloud")
 	AccessProviderTypeGoogleTrustServices = AccessProviderType("googletrustservices")
 	AccessProviderTypeHetzner             = AccessProviderType("hetzner")
 	AccessProviderTypeHostingde           = AccessProviderType("hostingde")
@@ -98,7 +106,9 @@ const (
 	AccessProviderTypeQingCloud           = AccessProviderType("qingcloud")
 	AccessProviderTypeRainYun             = AccessProviderType("rainyun")
 	AccessProviderTypeRatPanel            = AccessProviderType("ratpanel")
+	AccessProviderTypeRegru               = AccessProviderType("regru")
 	AccessProviderTypeRFC2136             = AccessProviderType("rfc2136")
+	AccessProviderTypeRuCenter            = AccessProviderType("rucenter")
 	AccessProviderTypeS3                  = AccessProviderType("s3")
 	AccessProviderTypeSafeLine            = AccessProviderType("safeline")
 	AccessProviderTypeSamWAF              = AccessProviderType("samwaf")
@@ -123,10 +133,15 @@ const (
 	AccessProviderTypeWeComBot            = AccessProviderType("wecombot")
 	AccessProviderTypeWestcn              = AccessProviderType("westcn")
 	AccessProviderTypeXinnet              = AccessProviderType("xinnet")
+	AccessProviderTypeZenlayer            = AccessProviderType("zenlayer")
 	AccessProviderTypeZeroSSL             = AccessProviderType("zerossl")
 )
 
 type CAProviderType string
+
+func (t CAProviderType) String() string {
+	return string(t)
+}
 
 /*
 证书颁发机构提供商常量值。
@@ -149,7 +164,17 @@ const (
 	CAProviderTypeZeroSSL             = CAProviderType(AccessProviderTypeZeroSSL)
 )
 
-type ACMEDns01ProviderType string
+type ACMEChallengeProviderType string
+
+func (t ACMEChallengeProviderType) String() string {
+	return string(t)
+}
+
+type ACMEDns01ProviderType ACMEChallengeProviderType
+
+func (t ACMEDns01ProviderType) String() string {
+	return t.String()
+}
 
 /*
 ACME DNS-01 提供商常量值。
@@ -170,17 +195,22 @@ const (
 	ACMEDns01ProviderTypeAliyunESA         = ACMEDns01ProviderType(AccessProviderTypeAliyun + "-esa")
 	ACMEDns01ProviderTypeArvanCloud        = ACMEDns01ProviderType(AccessProviderTypeArvanCloud)
 	ACMEDns01ProviderTypeAWS               = ACMEDns01ProviderType(AccessProviderTypeAWS) // 兼容旧值，等同于 [ACMEDns01ProviderTypeAWSRoute53]
+	ACMEDns01ProviderTypeAWSLightsail      = ACMEDns01ProviderType(AccessProviderTypeAWS + "-lightsail")
 	ACMEDns01ProviderTypeAWSRoute53        = ACMEDns01ProviderType(AccessProviderTypeAWS + "-route53")
-	ACMEDns01ProviderTypeAzure             = ACMEDns01ProviderType(AccessProviderTypeAzure) // 兼容旧值，等同于 [ACMEDns01ProviderTypeAzure]
+	ACMEDns01ProviderTypeAzure             = ACMEDns01ProviderType(AccessProviderTypeAzure) // 兼容旧值，等同于 [ACMEDns01ProviderTypeAzureDNS]
 	ACMEDns01ProviderTypeAzureDNS          = ACMEDns01ProviderType(AccessProviderTypeAzure + "-dns")
 	ACMEDns01ProviderTypeBaiduCloud        = ACMEDns01ProviderType(AccessProviderTypeBaiduCloud) // 兼容旧值，等同于 [ACMEDns01ProviderTypeBaiduCloudDNS]
 	ACMEDns01ProviderTypeBaiduCloudDNS     = ACMEDns01ProviderType(AccessProviderTypeBaiduCloud + "-dns")
+	ACMEDns01ProviderTypeBeget             = ACMEDns01ProviderType(AccessProviderTypeBeget)
 	ACMEDns01ProviderTypeBookMyName        = ACMEDns01ProviderType(AccessProviderTypeBookMyName)
 	ACMEDns01ProviderTypeBunny             = ACMEDns01ProviderType(AccessProviderTypeBunny)
+	ACMEDns01ProviderTypeBytePlus          = ACMEDns01ProviderType(AccessProviderTypeBytePlus) // 兼容旧值，等同于 [ACMEDns01ProviderTypeBytePlusDNS]
+	ACMEDns01ProviderTypeBytePlusDNS       = ACMEDns01ProviderType(AccessProviderTypeBytePlus + "-dns")
 	ACMEDns01ProviderTypeCloudflare        = ACMEDns01ProviderType(AccessProviderTypeCloudflare)
 	ACMEDns01ProviderTypeClouDNS           = ACMEDns01ProviderType(AccessProviderTypeClouDNS)
 	ACMEDns01ProviderTypeCMCCCloud         = ACMEDns01ProviderType(AccessProviderTypeCMCCCloud) // 兼容旧值，等同于 [ACMEDns01ProviderTypeCMCCCloudDNS]
 	ACMEDns01ProviderTypeCMCCCloudDNS      = ACMEDns01ProviderType(AccessProviderTypeCMCCCloud + "-dns")
+	ACMEDns01ProviderTypeConoHaVPS         = ACMEDns01ProviderType(AccessProviderTypeConoHaVPS)
 	ACMEDns01ProviderTypeConstellix        = ACMEDns01ProviderType(AccessProviderTypeConstellix)
 	ACMEDns01ProviderTypeCPanel            = ACMEDns01ProviderType(AccessProviderTypeCPanel)
 	ACMEDns01ProviderTypeCTCCCloud         = ACMEDns01ProviderType(AccessProviderTypeCTCCCloud) // 兼容旧值，等同于 [ACMEDns01ProviderTypeCTCCCloudSmartDNS]
@@ -191,12 +221,15 @@ const (
 	ACMEDns01ProviderTypeDNSLA             = ACMEDns01ProviderType(AccessProviderTypeDNSLA)
 	ACMEDns01ProviderTypeDNSMadeEasy       = ACMEDns01ProviderType(AccessProviderTypeDNSMadeEasy)
 	ACMEDns01ProviderTypeDuckDNS           = ACMEDns01ProviderType(AccessProviderTypeDuckDNS)
+	ACMEDns01ProviderTypeDynadot           = ACMEDns01ProviderType(AccessProviderTypeDynadot)
 	ACMEDns01ProviderTypeDynu              = ACMEDns01ProviderType(AccessProviderTypeDynu)
 	ACMEDns01ProviderTypeDynv6             = ACMEDns01ProviderType(AccessProviderTypeDynv6)
 	ACMEDns01ProviderTypeGandinet          = ACMEDns01ProviderType(AccessProviderTypeGandinet)
 	ACMEDns01ProviderTypeGcore             = ACMEDns01ProviderType(AccessProviderTypeGcore)
 	ACMEDns01ProviderTypeGname             = ACMEDns01ProviderType(AccessProviderTypeGname)
 	ACMEDns01ProviderTypeGoDaddy           = ACMEDns01ProviderType(AccessProviderTypeGoDaddy)
+	ACMEDns01ProviderTypeGoogleCloud       = ACMEDns01ProviderType(AccessProviderTypeGoogleCloud) // 兼容旧值，等同于 [ACMEDns01ProviderTypeGoogleCloudDNS]
+	ACMEDns01ProviderTypeGoogleCloudDNS    = ACMEDns01ProviderType(AccessProviderTypeGoogleCloud + "-dns")
 	ACMEDns01ProviderTypeHetzner           = ACMEDns01ProviderType(AccessProviderTypeHetzner)
 	ACMEDns01ProviderTypeHostingde         = ACMEDns01ProviderType(AccessProviderTypeHostingde)
 	ACMEDns01ProviderTypeHostinger         = ACMEDns01ProviderType(AccessProviderTypeHostinger)
@@ -219,7 +252,9 @@ const (
 	ACMEDns01ProviderTypeQingCloud         = ACMEDns01ProviderType(AccessProviderTypeQingCloud) // 兼容旧值，等同于 [ACMEDns01ProviderTypeQingCloudDNS]
 	ACMEDns01ProviderTypeQingCloudDNS      = ACMEDns01ProviderType(AccessProviderTypeQingCloud + "-dns")
 	ACMEDns01ProviderTypeRainYun           = ACMEDns01ProviderType(AccessProviderTypeRainYun)
+	ACMEDns01ProviderTypeRegru             = ACMEDns01ProviderType(AccessProviderTypeRegru)
 	ACMEDns01ProviderTypeRFC2136           = ACMEDns01ProviderType(AccessProviderTypeRFC2136)
+	ACMEDns01ProviderTypeRuCenter          = ACMEDns01ProviderType(AccessProviderTypeRuCenter)
 	ACMEDns01ProviderTypeSpaceship         = ACMEDns01ProviderType(AccessProviderTypeSpaceship)
 	ACMEDns01ProviderTypeTechnitiumDNS     = ACMEDns01ProviderType(AccessProviderTypeTechnitiumDNS)
 	ACMEDns01ProviderTypeTencentCloud      = ACMEDns01ProviderType(AccessProviderTypeTencentCloud) // 兼容旧值，等同于 [ACMEDns01ProviderTypeTencentCloudDNS]
@@ -236,7 +271,11 @@ const (
 	ACMEDns01ProviderTypeXinnet            = ACMEDns01ProviderType(AccessProviderTypeXinnet)
 )
 
-type ACMEHttp01ProviderType string
+type ACMEHttp01ProviderType ACMEChallengeProviderType
+
+func (t ACMEHttp01ProviderType) String() string {
+	return t.String()
+}
 
 /*
 ACME HTTP-01 提供商常量值。
@@ -253,6 +292,10 @@ const (
 )
 
 type DeploymentProviderType string
+
+func (t DeploymentProviderType) String() string {
+	return string(t)
+}
 
 /*
 部署证书主机提供商常量值。
@@ -283,8 +326,13 @@ const (
 	DeploymentProviderTypeAliyunWAF             = DeploymentProviderType(AccessProviderTypeAliyun + "-waf")
 	DeploymentProviderTypeAPISIX                = DeploymentProviderType(AccessProviderTypeAPISIX)
 	DeploymentProviderTypeAWSACM                = DeploymentProviderType(AccessProviderTypeAWS + "-acm")
+	DeploymentProviderTypeAWSALB                = DeploymentProviderType(AccessProviderTypeAWS + "-alb")
+	DeploymentProviderTypeAWSAmplify            = DeploymentProviderType(AccessProviderTypeAWS + "-amplify")
+	DeploymentProviderTypeAWSAPIGateway         = DeploymentProviderType(AccessProviderTypeAWS + "-apigateway")
+	DeploymentProviderTypeAWSCLB                = DeploymentProviderType(AccessProviderTypeAWS + "-clb")
 	DeploymentProviderTypeAWSCloudFront         = DeploymentProviderType(AccessProviderTypeAWS + "-cloudfront")
 	DeploymentProviderTypeAWSIAM                = DeploymentProviderType(AccessProviderTypeAWS + "-iam")
+	DeploymentProviderTypeAWSNLB                = DeploymentProviderType(AccessProviderTypeAWS + "-nlb")
 	DeploymentProviderTypeAzureKeyVault         = DeploymentProviderType(AccessProviderTypeAzure + "-keyvault")
 	DeploymentProviderTypeBaiduCloudAppBLB      = DeploymentProviderType(AccessProviderTypeBaiduCloud + "-appblb")
 	DeploymentProviderTypeBaiduCloudBLB         = DeploymentProviderType(AccessProviderTypeBaiduCloud + "-blb")
@@ -298,9 +346,16 @@ const (
 	DeploymentProviderTypeBaotaWAF              = DeploymentProviderType(AccessProviderTypeBaotaWAF)
 	DeploymentProviderTypeBaotaWAFConsole       = DeploymentProviderType(AccessProviderTypeBaotaWAF + "-console")
 	DeploymentProviderTypeBunnyCDN              = DeploymentProviderType(AccessProviderTypeBunny + "-cdn")
+	DeploymentProviderTypeBytePlusALB           = DeploymentProviderType(AccessProviderTypeBytePlus + "-alb")
+	DeploymentProviderTypeBytePlusAPIG          = DeploymentProviderType(AccessProviderTypeBytePlus + "-apig")
 	DeploymentProviderTypeBytePlusCDN           = DeploymentProviderType(AccessProviderTypeBytePlus + "-cdn")
+	DeploymentProviderTypeBytePlusCertCenter    = DeploymentProviderType(AccessProviderTypeBytePlus + "-certcenter")
+	DeploymentProviderTypeBytePlusCLB           = DeploymentProviderType(AccessProviderTypeBytePlus + "-clb")
+	DeploymentProviderTypeBytePlusMediaLive     = DeploymentProviderType(AccessProviderTypeBytePlus + "-medialive")
+	DeploymentProviderTypeBytePlusTOS           = DeploymentProviderType(AccessProviderTypeBytePlus + "-tos")
 	DeploymentProviderTypeCacheFly              = DeploymentProviderType(AccessProviderTypeCacheFly)
 	DeploymentProviderTypeCdnfly                = DeploymentProviderType(AccessProviderTypeCdnfly)
+	DeploymentProviderTypeCloudflareSSL         = DeploymentProviderType(AccessProviderTypeCloudflare + "-ssl")
 	DeploymentProviderTypeCPanel                = DeploymentProviderType(AccessProviderTypeCPanel)
 	DeploymentProviderTypeCTCCCloudAO           = DeploymentProviderType(AccessProviderTypeCTCCCloud + "-ao")
 	DeploymentProviderTypeCTCCCloudCDN          = DeploymentProviderType(AccessProviderTypeCTCCCloud + "-cdn")
@@ -390,9 +445,15 @@ const (
 	DeploymentProviderTypeWangsuCDNPro          = DeploymentProviderType(AccessProviderTypeWangsu + "-cdnpro")
 	DeploymentProviderTypeWangsuCertificate     = DeploymentProviderType(AccessProviderTypeWangsu + "-certificate")
 	DeploymentProviderTypeWebhook               = DeploymentProviderType(AccessProviderTypeWebhook)
+	DeploymentProviderTypeZenlayerCDN           = DeploymentProviderType(AccessProviderTypeZenlayer + "-cdn")
+	DeploymentProviderTypeZenlayerGA            = DeploymentProviderType(AccessProviderTypeZenlayer + "-ga")
 )
 
 type NotificationProviderType string
+
+func (t NotificationProviderType) String() string {
+	return string(t)
+}
 
 /*
 消息通知提供商常量值。

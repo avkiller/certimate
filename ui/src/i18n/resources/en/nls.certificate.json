@@ -1,0 +1,124 @@
+{
+  "$ns": "certificate",
+
+  "text": {
+    "nodata": "No Certificates",
+    "nodata_description": "It looks like you don't have any certificates. Get started by running a workflow.",
+    "nodata_button": "Go to workflows"
+  },
+
+  "page": {
+    "heading": "Certificates",
+    "subheading": "SSL certificates contain the website's public key and the website's identity, along with related information. They are generated from the execution output of workflows."
+  },
+
+  "action": {
+    "search.input": {
+      "placeholder": "Search by certificate name or serial number ..."
+    },
+    "view.menu": "View details",
+    "revoke.menu": "Revoke",
+    "revoke.modal": {
+      "title": "Revoke \"{{name}}\"",
+      "content": "Are you sure want to revoke this certificate? <br>This action cannot be undone."
+    },
+    "delete.menu": "Delete",
+    "delete.modal": {
+      "title": "Delete \"{{name}}\"",
+      "content": "Are you sure want to delete this certificate? <br>This action cannot be undone."
+    },
+    "batch_delete.modal": {
+      "title": "Delete certificates",
+      "content": "Are you sure want to delete these {{count}} selected certificates? <br>This action cannot be undone."
+    },
+    "download.modal": {
+      "title": "Download certificate",
+      "form": {
+        "format": {
+          "label": "Format",
+          "option": {
+            "pem": {
+              "label": "PEM (*.pem, *.crt, *.key)",
+              "description": "Suitable for most scenarios. Supported by servers like Apache, Nginx."
+            },
+            "pfx": {
+              "label": "PFX (*.pfx, *.p12)",
+              "description": "Supported by servers like IIS."
+            },
+            "jks": {
+              "label": "JKS (*.jks)",
+              "description": "Supported by servers like Tomcat."
+            }
+          }
+        },
+        "pfx_password": {
+          "label": "PFX Password (Optional)",
+          "placeholder": "Please enter PFX password"
+        },
+        "pfx_encoder": {
+          "label": "PFX Encoder (Optional)",
+          "placeholder": "Please select PFX encoder",
+          "option": {
+            "legacyrc2": {
+              "label": "LegacyRC2 (RC2, compatible with older systems, but less secure)"
+            },
+            "legacydes": {
+              "label": "LegacyDES (3DES + SHA-1, default)"
+            },
+            "modern2023": {
+              "label": "Modern2023 (AES-256-CBC + SHA-256 MAC, compatible with OpenSSL v1.1.1+)"
+            },
+            "modern2026": {
+              "label": "Modern2026 (AES-256-CBC + PBMAC1 MAC, compatible with OpenSSL v3.4.0+)"
+            }
+          }
+        },
+        "jks_alias": {
+          "label": "JKS Alias (Optional)",
+          "placeholder": "Please enter JKS alias"
+        },
+        "jks_keypass": {
+          "label": "JKS Key password (Optional)",
+          "placeholder": "Please enter JKS key password"
+        },
+        "jks_storepass": {
+          "label": "JKS Store password (Optional)",
+          "placeholder": "Please enter JKS store password"
+        }
+      },
+      "action": {
+        "advanced.button": "Advanced"
+      }
+    }
+  },
+
+  "props": {
+    "subject_alt_names": "Name",
+    "validity": {
+      "": "Expiry",
+      "left_days": "{{left}} / {{total}} days left",
+      "less_than_a_day": "≤1 / {{total}} days left",
+      "expired": "Expired",
+      "expiration": "Expire on {{date}}",
+      "filter": {
+        "all": "All",
+        "expiring_soon": "Expiring soon",
+        "expired": "Expired"
+      }
+    },
+    "brand": "Brand",
+    "source": {
+      "": "Source",
+      "request": "Request",
+      "upload": "Upload"
+    },
+    "revoked": "Revoked",
+    "certificate": "Certificate chain",
+    "private_key": "Private key",
+    "serial_number": "Serial number",
+    "key_algorithm": "Key algorithm",
+    "issuer": "Issuer",
+    "created_at": "Created at",
+    "updated_at": "Updated at"
+  }
+}

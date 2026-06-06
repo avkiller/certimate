@@ -2,14 +2,18 @@ package email
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 
 	"github.com/microcosm-cc/bluemonday"
 
 	"github.com/certimate-go/certimate/internal/tools/smtp"
-	"github.com/certimate-go/certimate/pkg/core/notifier"
+	"github.com/certimate-go/certimate/pkg/core"
+)
+
+type (
+	Provider     = core.Notifier
+	NotifyResult = core.NotifierNotifyResult
 )
 
 type NotifierConfig struct {
@@ -21,9 +25,9 @@ type NotifierConfig struct {
 	// 是否启用 TLS。
 	SmtpTls bool `json:"smtpTls"`
 	// 用户名。
-	Username string `json:"username"`
+	Username string `json:"username,omitempty"`
 	// 密码。
-	Password string `json:"password"`
+	Password string `json:"password,omitempty"`
 	// 发件人邮箱。
 	SenderAddress string `json:"senderAddress"`
 	// 发件人显示名称。
@@ -43,11 +47,11 @@ type Notifier struct {
 	logger *slog.Logger
 }
 
-var _ notifier.Provider = (*Notifier)(nil)
+var _ Provider = (*Notifier)(nil)
 
 func NewNotifier(config *NotifierConfig) (*Notifier, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the notifier provider is nil")
+		return nil, fmt.Errorf("the configuration of the notifier provider is nil")
 	}
 
 	return &Notifier{
@@ -64,7 +68,7 @@ func (n *Notifier) SetLogger(logger *slog.Logger) {
 	}
 }
 
-func (n *Notifier) Notify(ctx context.Context, subject string, message string) (*notifier.NotifyResult, error) {
+func (n *Notifier) Notify(ctx context.Context, subject string, message string) (*NotifyResult, error) {
 	clientCfg := smtp.NewDefaultConfig()
 	clientCfg.Host = n.config.SmtpHost
 	clientCfg.Port = int(n.config.SmtpPort)
@@ -102,5 +106,5 @@ func (n *Notifier) Notify(ctx context.Context, subject string, message string) (
 		return nil, fmt.Errorf("failed to send mail: %w", err)
 	}
 
-	return &notifier.NotifyResult{}, nil
+	return &NotifyResult{}, nil
 }

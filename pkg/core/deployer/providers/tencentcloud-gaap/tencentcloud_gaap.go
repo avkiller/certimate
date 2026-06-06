@@ -2,7 +2,6 @@ package tencentcloudgaap
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -10,12 +9,16 @@ import (
 	"github.com/samber/lo"
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common"
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/profile"
-	tcgaap "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/gaap/v20180529"
 
-	"github.com/certimate-go/certimate/pkg/core/certmgr"
-	mcertmgr "github.com/certimate-go/certimate/pkg/core/certmgr/providers/tencentcloud-ssl"
-	"github.com/certimate-go/certimate/pkg/core/deployer"
-	"github.com/certimate-go/certimate/pkg/core/deployer/providers/tencentcloud-gaap/internal"
+	tcgaap "github.com/certimate-go/certimate/pkg/sdk3rd-trimmed/github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/gaap/v20180529"
+
+	"github.com/certimate-go/certimate/pkg/core"
+	cmgrimpl "github.com/certimate-go/certimate/pkg/core/certmgr/providers/tencentcloud-ssl"
+)
+
+type (
+	Provider     = core.Deployer
+	DeployResult = core.DeployerDeployResult
 )
 
 type DeployerConfig struct {
@@ -23,30 +26,32 @@ type DeployerConfig struct {
 	SecretId string `json:"secretId"`
 	// 腾讯云 SecretKey。
 	SecretKey string `json:"secretKey"`
+	// 腾讯云项目 ID。
+	ProjectId int64 `json:"projectId,omitempty"`
 	// 腾讯云接口端点。
 	Endpoint string `json:"endpoint,omitempty"`
-	// 部署资源类型。
-	ResourceType string `json:"resourceType"`
+	// 部署目标。
+	DeployTarget string `json:"deployTarget"`
 	// 通道 ID。
 	// 选填。
 	ProxyId string `json:"proxyId,omitempty"`
 	// 负载均衡监听 ID。
-	// 部署资源类型为 [RESOURCE_TYPE_LISTENER] 时必填。
+	// 部署目标为 [DEPLOY_TARGET_LISTENER] 时必填。
 	ListenerId string `json:"listenerId,omitempty"`
 }
 
 type Deployer struct {
 	config     *DeployerConfig
 	logger     *slog.Logger
-	sdkClient  *internal.GaapClient
-	sdkCertmgr certmgr.Provider
+	sdkClient  *tcgaap.Client
+	sdkCertmgr core.Certmgr
 }
 
-var _ deployer.Provider = (*Deployer)(nil)
+var _ Provider = (*Deployer)(nil)
 
 func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the deployer provider is nil")
+		return nil, fmt.Errorf("the configuration of the deployer provider is nil")
 	}
 
 	client, err := createSDKClients(config.SecretId, config.SecretKey, config.Endpoint)
@@ -54,9 +59,10 @@ func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 		return nil, fmt.Errorf("could not create client: %w", err)
 	}
 
-	pcertmgr, err := mcertmgr.NewCertmgr(&mcertmgr.CertmgrConfig{
+	pcertmgr, err := cmgrimpl.NewCertmgr(&cmgrimpl.CertmgrConfig{
 		SecretId:  config.SecretId,
 		SecretKey: config.SecretKey,
+		ProjectId: config.ProjectId,
 		Endpoint: lo.
 			If(strings.HasSuffix(config.Endpoint, "intl.tencentcloudapi.com"), "ssl.intl.tencentcloudapi.com"). // 国际站使用独立的接口端点
 			Else(""),
@@ -83,7 +89,7 @@ func (d *Deployer) SetLogger(logger *slog.Logger) {
 	d.sdkCertmgr.SetLogger(logger)
 }
 
-func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*deployer.DeployResult, error) {
+func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*DeployResult, error) {
 	// 上传证书
 	upres, err := d.sdkCertmgr.Upload(ctx, certPEM, privkeyPEM)
 	if err != nil {
@@ -92,23 +98,23 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 		d.logger.Info("ssl certificate uploaded", slog.Any("result", upres))
 	}
 
-	// 根据部署资源类型决定部署方式
-	switch d.config.ResourceType {
-	case RESOURCE_TYPE_LISTENER:
+	// 根据部署目标决定业务流程
+	switch d.config.DeployTarget {
+	case DEPLOY_TARGET_LISTENER:
 		if err := d.deployToListener(ctx, upres.CertId); err != nil {
 			return nil, err
 		}
 
 	default:
-		return nil, fmt.Errorf("unsupported resource type '%s'", d.config.ResourceType)
+		return nil, fmt.Errorf("unsupported deploy target '%s'", d.config.DeployTarget)
 	}
 
-	return &deployer.DeployResult{}, nil
+	return &DeployResult{}, nil
 }
 
 func (d *Deployer) deployToListener(ctx context.Context, cloudCertId string) error {
 	if d.config.ListenerId == "" {
-		return errors.New("config `listenerId` is required")
+		return fmt.Errorf("config `listenerId` is required")
 	}
 
 	// 更新监听器证书
@@ -126,7 +132,7 @@ func (d *Deployer) updateHttpsListenerCertificate(ctx context.Context, cloudList
 	describeHTTPSListenersReq.ListenerId = common.StringPtr(cloudListenerId)
 	describeHTTPSListenersReq.Offset = common.Uint64Ptr(0)
 	describeHTTPSListenersReq.Limit = common.Uint64Ptr(1)
-	describeHTTPSListenersResp, err := d.sdkClient.DescribeHTTPSListeners(describeHTTPSListenersReq)
+	describeHTTPSListenersResp, err := d.sdkClient.DescribeHTTPSListenersWithContext(ctx, describeHTTPSListenersReq)
 	d.logger.Debug("sdk request 'gaap.DescribeHTTPSListeners'", slog.Any("request", describeHTTPSListenersReq), slog.Any("response", describeHTTPSListenersResp))
 	if err != nil {
 		return fmt.Errorf("failed to execute sdk request 'gaap.DescribeHTTPSListeners': %w", err)
@@ -140,7 +146,7 @@ func (d *Deployer) updateHttpsListenerCertificate(ctx context.Context, cloudList
 	modifyHTTPSListenerAttributeReq.ProxyId = lo.EmptyableToPtr(d.config.ProxyId)
 	modifyHTTPSListenerAttributeReq.ListenerId = common.StringPtr(cloudListenerId)
 	modifyHTTPSListenerAttributeReq.CertificateId = common.StringPtr(cloudCertId)
-	modifyHTTPSListenerAttributeResp, err := d.sdkClient.ModifyHTTPSListenerAttribute(modifyHTTPSListenerAttributeReq)
+	modifyHTTPSListenerAttributeResp, err := d.sdkClient.ModifyHTTPSListenerAttributeWithContext(ctx, modifyHTTPSListenerAttributeReq)
 	d.logger.Debug("sdk request 'gaap.ModifyHTTPSListenerAttribute'", slog.Any("request", modifyHTTPSListenerAttributeReq), slog.Any("response", modifyHTTPSListenerAttributeResp))
 	if err != nil {
 		return fmt.Errorf("failed to execute sdk request 'gaap.ModifyHTTPSListenerAttribute': %w", err)
@@ -149,7 +155,7 @@ func (d *Deployer) updateHttpsListenerCertificate(ctx context.Context, cloudList
 	return nil
 }
 
-func createSDKClients(secretId, secretKey, endpoint string) (*internal.GaapClient, error) {
+func createSDKClients(secretId, secretKey, endpoint string) (*tcgaap.Client, error) {
 	credential := common.NewCredential(secretId, secretKey)
 
 	cpf := profile.NewClientProfile()
@@ -157,7 +163,7 @@ func createSDKClients(secretId, secretKey, endpoint string) (*internal.GaapClien
 		cpf.HttpProfile.Endpoint = endpoint
 	}
 
-	client, err := internal.NewGaapClient(credential, "", cpf)
+	client, err := tcgaap.NewClient(credential, "", cpf)
 	if err != nil {
 		return nil, err
 	}

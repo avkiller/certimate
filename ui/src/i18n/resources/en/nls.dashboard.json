@@ -1,0 +1,31 @@
+{
+  "$ns": "dashboard",
+
+  "page": {
+    "heading": "Dashboard"
+  },
+
+  "statistics": {
+    "all_certificates": "All certificates",
+    "expiring_soon_certificates": "Expiring soon certificates",
+    "expired_certificates": "Expired certificates",
+    "all_workflows": "All workflows",
+    "enabled_workflows": "Active workflows"
+  },
+
+  "shortcut": {
+    "": "Shortcuts",
+    "create_workflow": "Create new workflow",
+    "change_account": "Change username or password",
+    "configure_ca": "Configure certificate authorities",
+    "upgrade": "New version available!"
+  },
+
+  "recent_workflow_runs": {
+    "": "Recent workflow runs",
+    "nodata": {
+      "description": "It looks like you don't have any runs. Get started by running a workflow.",
+      "button": "Go to workflows"
+    }
+  }
+}

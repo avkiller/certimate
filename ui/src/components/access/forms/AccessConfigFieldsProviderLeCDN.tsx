@@ -31,7 +31,12 @@ const AccessConfigFormFieldsProviderLeCDN = () => {
       </Form.Item>
 
       <Form.Item name={[parentNamePath, "apiRole"]} initialValue={initialValues.apiRole} label={t("access.form.lecdn_api_role.label")} rules={[formRule]}>
-        <Radio.Group options={["user", "master"].map((s) => ({ label: t(`access.form.lecdn_api_role.option.${s}.label`), value: s }))} />
+        <Radio.Group
+          options={["client", "master"].map((s) => ({
+            label: t(`access.form.lecdn_api_role.option.${s}.label`),
+            value: s,
+          }))}
+        />
       </Form.Item>
 
       <Form.Item name={[parentNamePath, "username"]} initialValue={initialValues.username} label={t("access.form.lecdn_username.label")} rules={[formRule]}>
@@ -65,14 +70,14 @@ const getInitialValues = (): Nullish<z.infer<ReturnType<typeof getSchema>>> => {
 };
 
 const getSchema = ({ i18n = getI18n() }: { i18n: ReturnType<typeof getI18n> }) => {
-  const { t } = i18n;
+  const { t: _ } = i18n;
 
   return z.object({
-    serverUrl: z.url(t("common.errmsg.url_invalid")),
-    apiVersion: z.literal(["v3"], t("access.form.lecdn_api_version.placeholder")),
-    apiRole: z.literal(["client", "master"], t("access.form.lecdn_api_role.placeholder")),
-    username: z.string().nonempty(t("access.form.lecdn_username.placeholder")),
-    password: z.string().nonempty(t("access.form.lecdn_password.placeholder")),
+    serverUrl: z.url({ protocol: z.core.regexes.httpProtocol }),
+    apiVersion: z.enum(["v3"]),
+    apiRole: z.enum(["client", "master"]),
+    username: z.string().nonempty(),
+    password: z.string().nonempty(),
     allowInsecureConnections: z.boolean().nullish(),
   });
 };

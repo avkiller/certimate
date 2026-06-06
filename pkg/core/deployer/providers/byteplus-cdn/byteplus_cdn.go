@@ -8,19 +8,25 @@ import (
 	"strings"
 
 	bpcdn "github.com/byteplus-sdk/byteplus-sdk-golang/service/cdn"
-	bp "github.com/volcengine/volcengine-go-sdk/volcengine"
+	"github.com/samber/lo"
 
-	"github.com/certimate-go/certimate/pkg/core/certmgr"
-	mcertmgr "github.com/certimate-go/certimate/pkg/core/certmgr/providers/byteplus-cdn"
-	"github.com/certimate-go/certimate/pkg/core/deployer"
+	"github.com/certimate-go/certimate/pkg/core"
+	cmgrimpl "github.com/certimate-go/certimate/pkg/core/certmgr/providers/byteplus-cdn"
 	xcerthostname "github.com/certimate-go/certimate/pkg/utils/cert/hostname"
 )
 
+type (
+	Provider     = core.Deployer
+	DeployResult = core.DeployerDeployResult
+)
+
 type DeployerConfig struct {
-	// BytePlus AccessKey。
-	AccessKey string `json:"accessKey"`
-	// BytePlus SecretKey。
-	SecretKey string `json:"secretKey"`
+	// BytePlus AccessKeyId。
+	AccessKeyId string `json:"accessKeyId"`
+	// BytePlus SecretAccessKey。
+	SecretAccessKey string `json:"secretAccessKey"`
+	// BytePlus 项目名称。
+	ProjectName string `json:"projectName,omitempty"`
 	// 域名匹配模式。
 	// 零值时默认值 [DOMAIN_MATCH_PATTERN_EXACT]。
 	DomainMatchPattern string `json:"domainMatchPattern,omitempty"`
@@ -32,23 +38,23 @@ type Deployer struct {
 	config     *DeployerConfig
 	logger     *slog.Logger
 	sdkClient  *bpcdn.CDN
-	sdkCertmgr certmgr.Provider
+	sdkCertmgr core.Certmgr
 }
 
-var _ deployer.Provider = (*Deployer)(nil)
+var _ Provider = (*Deployer)(nil)
 
 func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the deployer provider is nil")
+		return nil, fmt.Errorf("the configuration of the deployer provider is nil")
 	}
 
 	client := bpcdn.NewInstance()
-	client.Client.SetAccessKey(config.AccessKey)
-	client.Client.SetSecretKey(config.SecretKey)
+	client.Client.SetAccessKey(config.AccessKeyId)
+	client.Client.SetSecretKey(config.SecretAccessKey)
 
-	pcertmgr, err := mcertmgr.NewCertmgr(&mcertmgr.CertmgrConfig{
-		AccessKey: config.AccessKey,
-		SecretKey: config.SecretKey,
+	pcertmgr, err := cmgrimpl.NewCertmgr(&cmgrimpl.CertmgrConfig{
+		AccessKeyId:     config.AccessKeyId,
+		SecretAccessKey: config.SecretAccessKey,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("could not create certmgr: %w", err)
@@ -72,7 +78,7 @@ func (d *Deployer) SetLogger(logger *slog.Logger) {
 	d.sdkCertmgr.SetLogger(logger)
 }
 
-func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*deployer.DeployResult, error) {
+func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*DeployResult, error) {
 	// 上传证书
 	upres, err := d.sdkCertmgr.Upload(ctx, certPEM, privkeyPEM)
 	if err != nil {
@@ -87,7 +93,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 	case "", DOMAIN_MATCH_PATTERN_EXACT:
 		{
 			if d.config.Domain == "" {
-				return nil, errors.New("config `domain` is required")
+				return nil, fmt.Errorf("config `domain` is required")
 			}
 
 			domains = []string{d.config.Domain}
@@ -96,7 +102,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 	case DOMAIN_MATCH_PATTERN_WILDCARD:
 		{
 			if d.config.Domain == "" {
-				return nil, errors.New("config `domain` is required")
+				return nil, fmt.Errorf("config `domain` is required")
 			}
 
 			if strings.HasPrefix(d.config.Domain, "*.") {
@@ -148,7 +154,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 		}
 	}
 
-	return &deployer.DeployResult{}, nil
+	return &DeployResult{}, nil
 }
 
 func (d *Deployer) getMatchedDomainsByWildcard(ctx context.Context, wildcardDomain string) ([]string, error) {
@@ -166,10 +172,11 @@ func (d *Deployer) getMatchedDomainsByWildcard(ctx context.Context, wildcardDoma
 		}
 
 		listCdnDomainsReq := &bpcdn.ListCdnDomainsRequest{
-			Domain:   bp.String(strings.TrimPrefix(wildcardDomain, "*.")),
-			Status:   bp.String("online"),
-			PageNum:  bp.Int64(int64(listCdnDomainsPageNum)),
-			PageSize: bp.Int64(int64(listCdnDomainsPageSize)),
+			Project:  lo.EmptyableToPtr(d.config.ProjectName),
+			Domain:   bpcdn.GetStrPtr(strings.TrimPrefix(wildcardDomain, "*.")),
+			Status:   bpcdn.GetStrPtr("online"),
+			PageNum:  bpcdn.GetInt64Ptr(int64(listCdnDomainsPageNum)),
+			PageSize: bpcdn.GetInt64Ptr(int64(listCdnDomainsPageSize)),
 		}
 		listCdnDomainsResp, err := d.sdkClient.ListCdnDomains(listCdnDomainsReq)
 		d.logger.Debug("sdk request 'cdn.ListCdnDomains'", slog.Any("request", listCdnDomainsReq), slog.Any("response", listCdnDomainsResp))
@@ -221,7 +228,7 @@ func (d *Deployer) getMatchedDomainsByCertId(ctx context.Context, cloudCertId st
 
 	if len(domains) == 0 {
 		if len(describeCertConfigResp.Result.SpecifiedCertConfig) == 0 {
-			return nil, errors.New("could not find any domains matched by certificate")
+			return nil, fmt.Errorf("could not find any domains matched by certificate")
 		}
 	}
 

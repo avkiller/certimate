@@ -51,8 +51,8 @@ const BizDeployNodeConfigFieldsProviderVolcEngineVOD = () => {
       >
         <Select
           options={[DOMAIN_TYPE_PLAY, DOMAIN_TYPE_IMAGE].map((s) => ({
-            value: s,
             label: t(`workflow_node.deploy.form.volcengine_vod_domain_type.option.${s}.label`),
+            value: s,
           }))}
           placeholder={t("workflow_node.deploy.form.volcengine_vod_domain_type.placeholder")}
         />
@@ -66,7 +66,6 @@ const BizDeployNodeConfigFieldsProviderVolcEngineVOD = () => {
       >
         <Radio.Group
           options={[DOMAIN_MATCH_PATTERN_EXACT, DOMAIN_MATCH_PATTERN_WILDCARD, DOMAIN_MATCH_PATTERN_CERTSAN].map((s) => ({
-            key: s,
             label: t(`workflow_node.deploy.form.shared_domain_match_pattern.option.${s}.label`),
             value: s,
           }))}
@@ -101,9 +100,9 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
 
   return z
     .object({
-      spaceName: z.string().nonempty(t("workflow_node.deploy.form.volcengine_vod_space_name.placeholder")).nullish(),
-      domainMatchPattern: z.string().nonempty(t("workflow_node.deploy.form.shared_domain_match_pattern.placeholder")).default(DOMAIN_MATCH_PATTERN_EXACT),
-      domainType: z.literal([DOMAIN_TYPE_PLAY, DOMAIN_TYPE_IMAGE], t("workflow_node.deploy.form.volcengine_vod_domain_type.placeholder")),
+      spaceName: z.string().nonempty().nullish(),
+      domainMatchPattern: z.string().nonempty().default(DOMAIN_MATCH_PATTERN_EXACT),
+      domainType: z.enum([DOMAIN_TYPE_PLAY, DOMAIN_TYPE_IMAGE]),
       domain: z.string().nullish(),
     })
     .superRefine((values, ctx) => {
@@ -112,10 +111,12 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
           case DOMAIN_MATCH_PATTERN_EXACT:
           case DOMAIN_MATCH_PATTERN_WILDCARD:
             {
-              if (!isDomain(values.domain!, { allowWildcard: true })) {
+              const scDomain = z.string().refine((v) => isDomain(v, { allowWildcard: true }), t("common.errmsg.domain_invalid"));
+              const spDomain = scDomain.safeParse(values.domain);
+              if (!spDomain.success) {
                 ctx.addIssue({
                   code: "custom",
-                  message: t("common.errmsg.domain_invalid"),
+                  message: z.treeifyError(spDomain.error).errors.join(),
                   path: ["domain"],
                 });
               }

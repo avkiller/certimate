@@ -11,12 +11,16 @@ import (
 
 	"github.com/samber/lo"
 
-	"github.com/certimate-go/certimate/pkg/core/certmgr"
-	mcertmgr "github.com/certimate-go/certimate/pkg/core/certmgr/providers/nginxproxymanager"
-	"github.com/certimate-go/certimate/pkg/core/deployer"
+	"github.com/certimate-go/certimate/pkg/core"
+	cmgrimpl "github.com/certimate-go/certimate/pkg/core/certmgr/providers/nginxproxymanager"
 	npmsdk "github.com/certimate-go/certimate/pkg/sdk3rd/nginxproxymanager"
 	xcert "github.com/certimate-go/certimate/pkg/utils/cert"
 	xwait "github.com/certimate-go/certimate/pkg/utils/wait"
+)
+
+type (
+	Provider     = core.Deployer
+	DeployResult = core.DeployerDeployResult
 )
 
 type DeployerConfig struct {
@@ -34,19 +38,19 @@ type DeployerConfig struct {
 	ApiToken string `json:"apiToken,omitempty"`
 	// 是否允许不安全的连接。
 	AllowInsecureConnections bool `json:"allowInsecureConnections,omitempty"`
-	// 部署资源类型。
-	ResourceType string `json:"resourceType"`
+	// 部署目标。
+	DeployTarget string `json:"deployTarget"`
 	// 域名匹配模式。
 	// 零值时默认值 [HOST_MATCH_PATTERN_SPECIFIED]。
 	HostMatchPattern string `json:"hostMatchPattern,omitempty"`
 	// 主机类型。
-	// 部署资源类型为 [RESOURCE_TYPE_HOST] 时必填。
+	// 部署目标为 [DEPLOY_TARGET_HOST] 时必填。
 	HostType string `json:"hostType,omitempty"`
 	// 主机 ID。
-	// 部署资源类型为 [RESOURCE_TYPE_HOST]、且匹配模式非 [HOST_MATCH_PATTERN_CERTSAN] 时必填。
+	// 部署目标为 [DEPLOY_TARGET_HOST]、且匹配模式非 [HOST_MATCH_PATTERN_CERTSAN] 时必填。
 	HostId int64 `json:"hostId,omitempty"`
 	// 证书 ID。
-	// 部署资源类型为 [RESOURCE_TYPE_CERTIFICATE] 时必填。
+	// 部署目标为 [DEPLOY_TARGET_CERTIFICATE] 时必填。
 	CertificateId int64 `json:"certificateId,omitempty"`
 }
 
@@ -54,14 +58,14 @@ type Deployer struct {
 	config     *DeployerConfig
 	logger     *slog.Logger
 	sdkClient  *npmsdk.Client
-	sdkCertmgr certmgr.Provider
+	sdkCertmgr core.Certmgr
 }
 
-var _ deployer.Provider = (*Deployer)(nil)
+var _ Provider = (*Deployer)(nil)
 
 func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the deployer provider is nil")
+		return nil, fmt.Errorf("the configuration of the deployer provider is nil")
 	}
 
 	client, err := createSDKClient(config.ServerUrl, config.AuthMethod, config.Username, config.Password, config.ApiToken, config.AllowInsecureConnections)
@@ -69,7 +73,7 @@ func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 		return nil, fmt.Errorf("could not create client: %w", err)
 	}
 
-	pcertmgr, err := mcertmgr.NewCertmgr(&mcertmgr.CertmgrConfig{
+	pcertmgr, err := cmgrimpl.NewCertmgr(&cmgrimpl.CertmgrConfig{
 		ServerUrl:                config.ServerUrl,
 		AuthMethod:               config.AuthMethod,
 		Username:                 config.Username,
@@ -99,24 +103,24 @@ func (d *Deployer) SetLogger(logger *slog.Logger) {
 	d.sdkCertmgr.SetLogger(logger)
 }
 
-func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*deployer.DeployResult, error) {
-	// 根据部署资源类型决定部署方式
-	switch d.config.ResourceType {
-	case RESOURCE_TYPE_HOST:
+func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*DeployResult, error) {
+	// 根据部署目标决定业务流程
+	switch d.config.DeployTarget {
+	case DEPLOY_TARGET_HOST:
 		if err := d.deployToHost(ctx, certPEM, privkeyPEM); err != nil {
 			return nil, err
 		}
 
-	case RESOURCE_TYPE_CERTIFICATE:
+	case DEPLOY_TARGET_CERTIFICATE:
 		if err := d.deployToCertificate(ctx, certPEM, privkeyPEM); err != nil {
 			return nil, err
 		}
 
 	default:
-		return nil, fmt.Errorf("unsupported resource type '%s'", d.config.ResourceType)
+		return nil, fmt.Errorf("unsupported deploy target '%s'", d.config.DeployTarget)
 	}
 
-	return &deployer.DeployResult{}, nil
+	return &DeployResult{}, nil
 }
 
 func (d *Deployer) deployToHost(ctx context.Context, certPEM, privkeyPEM string) error {
@@ -140,7 +144,7 @@ func (d *Deployer) deployToHost(ctx context.Context, certPEM, privkeyPEM string)
 	case "", HOST_MATCH_PATTERN_SPECIFIED:
 		{
 			if d.config.HostId == 0 {
-				return errors.New("config `hostId` is required")
+				return fmt.Errorf("config `hostId` is required")
 			}
 
 			hostIds = []int64{d.config.HostId}
@@ -165,7 +169,7 @@ func (d *Deployer) deployToHost(ctx context.Context, certPEM, privkeyPEM string)
 				},
 			)
 			if len(hostIds) == 0 {
-				return errors.New("could not find any hosts matched by certificate")
+				return fmt.Errorf("could not find any hosts matched by certificate")
 			}
 
 			// 跳过已部署过的主机
@@ -200,9 +204,8 @@ func (d *Deployer) deployToHost(ctx context.Context, certPEM, privkeyPEM string)
 			default:
 				if err := d.updateHostCertificate(ctx, d.config.HostType, hostId, certId); err != nil {
 					errs = append(errs, err)
-				}
-				if i < len(hostIds)-1 {
-					xwait.DelayWithContext(ctx, time.Second*5)
+				} else if i < len(hostIds)-1 {
+					xwait.DelayWithContext(ctx, 5*time.Second)
 				}
 			}
 		}
@@ -217,15 +220,15 @@ func (d *Deployer) deployToHost(ctx context.Context, certPEM, privkeyPEM string)
 
 func (d *Deployer) deployToCertificate(ctx context.Context, certPEM, privkeyPEM string) error {
 	if d.config.CertificateId == 0 {
-		return errors.New("config `certificateId` is required")
+		return fmt.Errorf("config `certificateId` is required")
 	}
 
 	// 替换证书
-	opres, err := d.sdkCertmgr.Replace(ctx, strconv.FormatInt(d.config.CertificateId, 10), certPEM, privkeyPEM)
+	rplres, err := d.sdkCertmgr.Replace(ctx, strconv.FormatInt(d.config.CertificateId, 10), certPEM, privkeyPEM)
 	if err != nil {
 		return fmt.Errorf("failed to replace certificate file: %w", err)
 	} else {
-		d.logger.Info("ssl certificate replaced", slog.Any("result", opres))
+		d.logger.Info("ssl certificate replaced", slog.Any("result", rplres))
 	}
 
 	// 获取默认站点

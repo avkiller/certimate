@@ -82,9 +82,9 @@ func (s *WorkflowService) StartRun(ctx context.Context, req *dtos.WorkflowStartR
 	}
 
 	if req.RunTrigger == domain.WorkflowTriggerTypeManual && (workflow.LastRunStatus == domain.WorkflowRunStatusTypePending || workflow.LastRunStatus == domain.WorkflowRunStatusTypeProcessing) {
-		return nil, errors.New("workflow is already pending or processing")
+		return nil, fmt.Errorf("workflow is already pending or processing")
 	} else if workflow.GraphContent == nil {
-		return nil, errors.New("workflow graph content is empty")
+		return nil, fmt.Errorf("workflow graph content is empty")
 	} else if err := workflow.GraphContent.Verify(); err != nil {
 		return nil, fmt.Errorf("workflow graph content is invalid: %w", err)
 	}
@@ -119,9 +119,9 @@ func (s *WorkflowService) CancelRun(ctx context.Context, req *dtos.WorkflowCance
 	if err != nil {
 		return nil, err
 	} else if workflowRun.WorkflowId != workflow.Id {
-		return nil, errors.New("workflow run not found")
+		return nil, fmt.Errorf("workflow run not found")
 	} else if workflowRun.Status != domain.WorkflowRunStatusTypePending && workflowRun.Status != domain.WorkflowRunStatusTypeProcessing {
-		return nil, errors.New("workflow run is not pending or processing")
+		return nil, fmt.Errorf("workflow run is not pending or processing")
 	}
 
 	if err := s.dispatcher.Cancel(ctx, workflowRun.Id); err != nil {
@@ -148,10 +148,10 @@ func (s *WorkflowService) cleanupHistoryRuns(ctx context.Context) error {
 
 	persistenceSettings := settings.Content.AsPersistence()
 	if persistenceSettings.WorkflowRunsRetentionMaxDays != 0 {
-		ret, err := s.workflowRunRepo.DeleteWhere(
+		ret, err := s.workflowRunRepo.DeleteWithExprs(
 			ctx,
-			dbx.NewExp(fmt.Sprintf("status!='%s'", string(domain.WorkflowRunStatusTypePending))),
-			dbx.NewExp(fmt.Sprintf("status!='%s'", string(domain.WorkflowRunStatusTypeProcessing))),
+			dbx.NewExp(fmt.Sprintf("status!='%s'", domain.WorkflowRunStatusTypePending)),
+			dbx.NewExp(fmt.Sprintf("status!='%s'", domain.WorkflowRunStatusTypeProcessing)),
 			dbx.NewExp(fmt.Sprintf("endedAt<DATETIME('now', '-%d days')", persistenceSettings.WorkflowRunsRetentionMaxDays)),
 		)
 		if err != nil {

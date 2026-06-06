@@ -43,14 +43,10 @@ const BizDeployNodeConfigFieldsProviderAWSCloudFront = () => {
         label={t("workflow_node.deploy.form.aws_cloudfront_certificate_source.label")}
         rules={[formRule]}
       >
-        <Select placeholder={t("workflow_node.deploy.form.aws_cloudfront_certificate_source.placeholder")}>
-          <Select.Option key="ACM" value="ACM">
-            ACM
-          </Select.Option>
-          <Select.Option key="IAM" value="IAM">
-            IAM
-          </Select.Option>
-        </Select>
+        <Select
+          options={["ACM", "IAM"].map((s) => ({ label: s, value: s }))}
+          placeholder={t("workflow_node.deploy.form.aws_cloudfront_certificate_source.placeholder")}
+        />
       </Form.Item>
     </>
   );
@@ -63,12 +59,12 @@ const getInitialValues = (): Nullish<z.infer<ReturnType<typeof getSchema>>> => {
 };
 
 const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) => {
-  const { t } = i18n;
+  const { t: _ } = i18n;
 
   return z.object({
-    region: z.string().nonempty(t("workflow_node.deploy.form.aws_cloudfront_region.placeholder")),
-    distributionId: z.string().nonempty(t("workflow_node.deploy.form.aws_cloudfront_distribution_id.placeholder")),
-    certificateSource: z.string().nonempty(t("workflow_node.deploy.form.aws_cloudfront_certificate_source.placeholder")),
+    region: z.string().nonempty(),
+    distributionId: z.string().nonempty(),
+    certificateSource: z.string().nonempty(),
   });
 };
 

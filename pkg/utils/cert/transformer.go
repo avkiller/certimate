@@ -3,7 +3,6 @@ package cert
 import (
 	"bytes"
 	"crypto/x509"
-	"errors"
 	"fmt"
 	"time"
 
@@ -21,7 +20,7 @@ import (
 // 出参:
 //   - data: PFX 格式的证书数据。
 //   - err: 错误。
-func TransformCertificateFromPEMToPFX(certPEM string, privkeyPEM string, pfxPassword string) ([]byte, error) {
+func TransformCertificateFromPEMToPFX(certPEM string, privkeyPEM string, pfxPassword string, pfxEncoder *pkcs12.Encoder) ([]byte, error) {
 	blocks := decodePEMBlocks([]byte(certPEM))
 
 	certs := make([]*x509.Certificate, 0, len(blocks))
@@ -42,13 +41,18 @@ func TransformCertificateFromPEMToPFX(certPEM string, privkeyPEM string, pfxPass
 		return nil, err
 	}
 
+	encoder := pfxEncoder
+	if encoder == nil {
+		encoder = pkcs12.Legacy
+	}
+
 	var pfxData []byte
 	if len(certs) == 0 {
-		return nil, errors.New("failed to decode certificate PEM")
+		return nil, fmt.Errorf("failed to decode certificate PEM")
 	} else if len(certs) == 1 {
-		pfxData, err = pkcs12.Legacy.Encode(privkey, certs[0], nil, pfxPassword)
+		pfxData, err = encoder.Encode(privkey, certs[0], nil, pfxPassword)
 	} else {
-		pfxData, err = pkcs12.Legacy.Encode(privkey, certs[0], certs[1:], pfxPassword)
+		pfxData, err = encoder.Encode(privkey, certs[0], certs[1:], pfxPassword)
 	}
 
 	return pfxData, err
@@ -69,12 +73,12 @@ func TransformCertificateFromPEMToPFX(certPEM string, privkeyPEM string, pfxPass
 func TransformCertificateFromPEMToJKS(certPEM string, privkeyPEM string, jksAlias string, jksKeypass string, jksStorepass string) ([]byte, error) {
 	certBlocks := decodePEMBlocks([]byte(certPEM))
 	if len(certBlocks) == 0 {
-		return nil, errors.New("failed to decode certificate PEM")
+		return nil, fmt.Errorf("failed to decode certificate PEM")
 	}
 
 	privkeyBlocks := decodePEMBlocks([]byte(privkeyPEM))
 	if len(privkeyBlocks) == 0 {
-		return nil, errors.New("failed to decode private key PEM")
+		return nil, fmt.Errorf("failed to decode private key PEM")
 	}
 
 	entry := keystore.PrivateKeyEntry{

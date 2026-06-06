@@ -1,0 +1,41 @@
+﻿package v20191205
+
+import (
+	ssl "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/ssl/v20191205"
+)
+
+type (
+	ResourceTypeRegions = ssl.ResourceTypeRegions
+)
+
+type DescribeHostCosInstanceListRequest = ssl.DescribeHostCosInstanceListRequest
+
+type DescribeHostCosInstanceListResponse = ssl.DescribeHostCosInstanceListResponse
+
+type DescribeHostDeployRecordDetailRequest = ssl.DescribeHostDeployRecordDetailRequest
+
+type DescribeHostDeployRecordDetailResponse = ssl.DescribeHostDeployRecordDetailResponse
+
+type DescribeHostUpdateRecordDetailRequest = ssl.DescribeHostUpdateRecordDetailRequest
+
+type DescribeHostUpdateRecordDetailResponse = ssl.DescribeHostUpdateRecordDetailResponse
+
+type DescribeHostUploadUpdateRecordDetailRequest = ssl.DescribeHostUploadUpdateRecordDetailRequest
+
+type DescribeHostUploadUpdateRecordDetailResponse = ssl.DescribeHostUploadUpdateRecordDetailResponse
+
+type DeployCertificateInstanceRequest = ssl.DeployCertificateInstanceRequest
+
+type DeployCertificateInstanceResponse = ssl.DeployCertificateInstanceResponse
+
+type UpdateCertificateInstanceRequest = ssl.UpdateCertificateInstanceRequest
+
+type UpdateCertificateInstanceResponse = ssl.UpdateCertificateInstanceResponse
+
+type UploadCertificateRequest = ssl.UploadCertificateRequest
+
+type UploadCertificateResponse = ssl.UploadCertificateResponse
+
+type UploadUpdateCertificateInstanceRequest = ssl.UploadUpdateCertificateInstanceRequest
+
+type UploadUpdateCertificateInstanceResponse = ssl.UploadUpdateCertificateInstanceResponse
