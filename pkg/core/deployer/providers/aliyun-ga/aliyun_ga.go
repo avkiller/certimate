@@ -8,14 +8,19 @@ import (
 	"strings"
 
 	aliopen "github.com/alibabacloud-go/darabonba-openapi/v2/client"
-	aliga "github.com/alibabacloud-go/ga-20191120/v4/client"
+	"github.com/alibabacloud-go/tea/dara"
 	"github.com/alibabacloud-go/tea/tea"
 	"github.com/samber/lo"
 
-	"github.com/certimate-go/certimate/pkg/core/certmgr"
-	mcertmgr "github.com/certimate-go/certimate/pkg/core/certmgr/providers/aliyun-cas"
-	"github.com/certimate-go/certimate/pkg/core/deployer"
-	"github.com/certimate-go/certimate/pkg/core/deployer/providers/aliyun-ga/internal"
+	aliga "github.com/certimate-go/certimate/pkg/sdk3rd-trimmed/github.com/alibabacloud-go/ga-20191120/v4/client"
+
+	"github.com/certimate-go/certimate/pkg/core"
+	cmgrimpl "github.com/certimate-go/certimate/pkg/core/certmgr/providers/aliyun-cas"
+)
+
+type (
+	Provider     = core.Deployer
+	DeployResult = core.DeployerDeployResult
 )
 
 type DeployerConfig struct {
@@ -25,30 +30,30 @@ type DeployerConfig struct {
 	AccessKeySecret string `json:"accessKeySecret"`
 	// 阿里云资源组 ID。
 	ResourceGroupId string `json:"resourceGroupId,omitempty"`
-	// 部署资源类型。
-	ResourceType string `json:"resourceType"`
+	// 部署目标。
+	DeployTarget string `json:"deployTarget"`
 	// 全球加速实例 ID。
 	AcceleratorId string `json:"acceleratorId"`
 	// 全球加速监听 ID。
-	// 部署资源类型为 [RESOURCE_TYPE_LISTENER] 时必填。
+	// 部署目标为 [DEPLOY_TARGET_LISTENER] 时必填。
 	ListenerId string `json:"listenerId,omitempty"`
 	// SNI 域名（不支持泛域名）。
-	// 部署资源类型为 [RESOURCE_TYPE_ACCELERATOR]、[RESOURCE_TYPE_LISTENER] 时选填。
+	// 部署目标为 [DEPLOY_TARGET_ACCELERATOR]、[DEPLOY_TARGET_LISTENER] 时选填。
 	Domain string `json:"domain,omitempty"`
 }
 
 type Deployer struct {
 	config     *DeployerConfig
 	logger     *slog.Logger
-	sdkClient  *internal.GaClient
-	sdkCertmgr certmgr.Provider
+	sdkClient  *aliga.Client
+	sdkCertmgr core.Certmgr
 }
 
-var _ deployer.Provider = (*Deployer)(nil)
+var _ Provider = (*Deployer)(nil)
 
 func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the deployer provider is nil")
+		return nil, fmt.Errorf("the configuration of the deployer provider is nil")
 	}
 
 	client, err := createSDKClient(config.AccessKeyId, config.AccessKeySecret)
@@ -56,7 +61,7 @@ func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 		return nil, fmt.Errorf("could not create client: %w", err)
 	}
 
-	pcertmgr, err := mcertmgr.NewCertmgr(&mcertmgr.CertmgrConfig{
+	pcertmgr, err := cmgrimpl.NewCertmgr(&cmgrimpl.CertmgrConfig{
 		AccessKeyId:     config.AccessKeyId,
 		AccessKeySecret: config.AccessKeySecret,
 		ResourceGroupId: config.ResourceGroupId,
@@ -84,7 +89,7 @@ func (d *Deployer) SetLogger(logger *slog.Logger) {
 	d.sdkCertmgr.SetLogger(logger)
 }
 
-func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*deployer.DeployResult, error) {
+func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*DeployResult, error) {
 	// 上传证书
 	upres, err := d.sdkCertmgr.Upload(ctx, certPEM, privkeyPEM)
 	if err != nil {
@@ -93,28 +98,28 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 		d.logger.Info("ssl certificate uploaded", slog.Any("result", upres))
 	}
 
-	// 根据部署资源类型决定部署方式
-	switch d.config.ResourceType {
-	case RESOURCE_TYPE_ACCELERATOR:
+	// 根据部署目标决定业务流程
+	switch d.config.DeployTarget {
+	case DEPLOY_TARGET_ACCELERATOR:
 		if err := d.deployToAccelerator(ctx, upres.ExtendedData["CertIdentifier"].(string)); err != nil {
 			return nil, err
 		}
 
-	case RESOURCE_TYPE_LISTENER:
+	case DEPLOY_TARGET_LISTENER:
 		if err := d.deployToListener(ctx, upres.ExtendedData["CertIdentifier"].(string)); err != nil {
 			return nil, err
 		}
 
 	default:
-		return nil, fmt.Errorf("unsupported resource type '%s'", d.config.ResourceType)
+		return nil, fmt.Errorf("unsupported deploy target '%s'", d.config.DeployTarget)
 	}
 
-	return &deployer.DeployResult{}, nil
+	return &DeployResult{}, nil
 }
 
 func (d *Deployer) deployToAccelerator(ctx context.Context, cloudCertId string) error {
 	if d.config.AcceleratorId == "" {
-		return errors.New("config `acceleratorId` is required")
+		return fmt.Errorf("config `acceleratorId` is required")
 	}
 
 	// 查询 HTTPS 监听列表
@@ -135,7 +140,7 @@ func (d *Deployer) deployToAccelerator(ctx context.Context, cloudCertId string) 
 			PageNumber:    tea.Int32(int32(listListenersPageNumber)),
 			PageSize:      tea.Int32(int32(listListenersPageSize)),
 		}
-		listListenersResp, err := d.sdkClient.ListListeners(listListenersReq)
+		listListenersResp, err := d.sdkClient.ListListenersWithContext(ctx, listListenersReq, &dara.RuntimeOptions{})
 		d.logger.Debug("sdk request 'ga.ListListeners'", slog.Any("request", listListenersReq), slog.Any("response", listListenersResp))
 		if err != nil {
 			return fmt.Errorf("failed to execute sdk request 'ga.ListListeners': %w", err)
@@ -186,10 +191,10 @@ func (d *Deployer) deployToAccelerator(ctx context.Context, cloudCertId string) 
 
 func (d *Deployer) deployToListener(ctx context.Context, cloudCertId string) error {
 	if d.config.AcceleratorId == "" {
-		return errors.New("config `acceleratorId` is required")
+		return fmt.Errorf("config `acceleratorId` is required")
 	}
 	if d.config.ListenerId == "" {
-		return errors.New("config `listenerId` is required")
+		return fmt.Errorf("config `listenerId` is required")
 	}
 
 	// 更新监听
@@ -214,7 +219,7 @@ func (d *Deployer) updateListenerCertificate(ctx context.Context, cloudAccelerat
 			NextToken:     listListenerCertificatesNextToken,
 			MaxResults:    tea.Int32(20),
 		}
-		listListenerCertificatesResp, err := d.sdkClient.ListListenerCertificates(listListenerCertificatesReq)
+		listListenerCertificatesResp, err := d.sdkClient.ListListenerCertificatesWithContext(ctx, listListenerCertificatesReq, &dara.RuntimeOptions{})
 		d.logger.Debug("sdk request 'ga.ListListenerCertificates'", slog.Any("request", listListenerCertificatesReq), slog.Any("response", listListenerCertificatesResp))
 		if err != nil {
 			return fmt.Errorf("failed to execute sdk request 'ga.ListListenerCertificates': %w", err)
@@ -255,7 +260,7 @@ func (d *Deployer) updateListenerCertificate(ctx context.Context, cloudAccelerat
 				Id: tea.String(cloudCertId),
 			}},
 		}
-		updateListenerResp, err := d.sdkClient.UpdateListener(updateListenerReq)
+		updateListenerResp, err := d.sdkClient.UpdateListenerWithContext(ctx, updateListenerReq, &dara.RuntimeOptions{})
 		d.logger.Debug("sdk request 'ga.UpdateListener'", slog.Any("request", updateListenerReq), slog.Any("response", updateListenerResp))
 		if err != nil {
 			return fmt.Errorf("failed to execute sdk request 'ga.UpdateListener': %w", err)
@@ -281,7 +286,7 @@ func (d *Deployer) updateListenerCertificate(ctx context.Context, cloudAccelerat
 				CertificateId: tea.String(cloudCertId),
 				Domain:        tea.String(d.config.Domain),
 			}
-			updateAdditionalCertificateWithListenerResp, err := d.sdkClient.UpdateAdditionalCertificateWithListener(updateAdditionalCertificateWithListenerReq)
+			updateAdditionalCertificateWithListenerResp, err := d.sdkClient.UpdateAdditionalCertificateWithListenerWithContext(ctx, updateAdditionalCertificateWithListenerReq, &dara.RuntimeOptions{})
 			d.logger.Debug("sdk request 'ga.UpdateAdditionalCertificateWithListener'", slog.Any("request", updateAdditionalCertificateWithListenerReq), slog.Any("response", updateAdditionalCertificateWithListenerResp))
 			if err != nil {
 				return fmt.Errorf("failed to execute sdk request 'ga.UpdateAdditionalCertificateWithListener': %w", err)
@@ -298,7 +303,7 @@ func (d *Deployer) updateListenerCertificate(ctx context.Context, cloudAccelerat
 					Domain: tea.String(d.config.Domain),
 				}},
 			}
-			associateAdditionalCertificatesWithListenerResp, err := d.sdkClient.AssociateAdditionalCertificatesWithListener(associateAdditionalCertificatesWithListenerReq)
+			associateAdditionalCertificatesWithListenerResp, err := d.sdkClient.AssociateAdditionalCertificatesWithListenerWithContext(ctx, associateAdditionalCertificatesWithListenerReq, &dara.RuntimeOptions{})
 			d.logger.Debug("sdk request 'ga.AssociateAdditionalCertificatesWithListener'", slog.Any("request", associateAdditionalCertificatesWithListenerReq), slog.Any("response", associateAdditionalCertificatesWithListenerResp))
 			if err != nil {
 				return fmt.Errorf("failed to execute sdk request 'ga.AssociateAdditionalCertificatesWithListener': %w", err)
@@ -309,7 +314,7 @@ func (d *Deployer) updateListenerCertificate(ctx context.Context, cloudAccelerat
 	return nil
 }
 
-func createSDKClient(accessKeyId, accessKeySecret string) (*internal.GaClient, error) {
+func createSDKClient(accessKeyId, accessKeySecret string) (*aliga.Client, error) {
 	// 接入点一览 https://api.aliyun.com/product/Ga
 	config := &aliopen.Config{
 		AccessKeyId:     tea.String(accessKeyId),
@@ -317,7 +322,7 @@ func createSDKClient(accessKeyId, accessKeySecret string) (*internal.GaClient, e
 		Endpoint:        tea.String("ga.cn-hangzhou.aliyuncs.com"),
 	}
 
-	client, err := internal.NewGaClient(config)
+	client, err := aliga.NewClient(config)
 	if err != nil {
 		return nil, err
 	}

@@ -5,41 +5,46 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
 	"time"
 
-	bytepluscdn "github.com/byteplus-sdk/byteplus-sdk-golang/service/cdn"
+	bpcdn "github.com/byteplus-sdk/byteplus-sdk-golang/service/cdn"
 
-	"github.com/certimate-go/certimate/pkg/core/certmgr"
+	"github.com/certimate-go/certimate/pkg/core"
 	xcert "github.com/certimate-go/certimate/pkg/utils/cert"
 )
 
+type (
+	Provider      = core.Certmgr
+	UploadResult  = core.CertmgrUploadResult
+	ReplaceResult = core.CertmgrReplaceResult
+)
+
 type CertmgrConfig struct {
-	// BytePlus AccessKey。
-	AccessKey string `json:"accessKey"`
-	// BytePlus SecretKey。
-	SecretKey string `json:"secretKey"`
+	// BytePlus AccessKeyId。
+	AccessKeyId string `json:"accessKeyId"`
+	// BytePlus SecretAccessKey。
+	SecretAccessKey string `json:"secretAccessKey"`
 }
 
 type Certmgr struct {
 	config    *CertmgrConfig
 	logger    *slog.Logger
-	sdkClient *bytepluscdn.CDN
+	sdkClient *bpcdn.CDN
 }
 
-var _ certmgr.Provider = (*Certmgr)(nil)
+var _ Provider = (*Certmgr)(nil)
 
 func NewCertmgr(config *CertmgrConfig) (*Certmgr, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the certmgr provider is nil")
+		return nil, fmt.Errorf("the configuration of the certmgr provider is nil")
 	}
 
-	client := bytepluscdn.NewInstance()
-	client.Client.SetAccessKey(config.AccessKey)
-	client.Client.SetSecretKey(config.SecretKey)
+	client := bpcdn.NewInstance()
+	client.Client.SetAccessKey(config.AccessKeyId)
+	client.Client.SetSecretKey(config.SecretAccessKey)
 
 	return &Certmgr{
 		config:    config,
@@ -56,7 +61,7 @@ func (c *Certmgr) SetLogger(logger *slog.Logger) {
 	}
 }
 
-func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*certmgr.UploadResult, error) {
+func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*UploadResult, error) {
 	// 解析证书内容
 	certX509, err := xcert.ParseCertificateFromPEM(certPEM)
 	if err != nil {
@@ -74,10 +79,10 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 		default:
 		}
 
-		listCertInfoReq := &bytepluscdn.ListCertInfoRequest{
-			PageNum:  bytepluscdn.GetInt64Ptr(int64(listCertInfoPageNum)),
-			PageSize: bytepluscdn.GetInt64Ptr(int64(listCertInfoPageSize)),
-			Source:   bytepluscdn.GetStrPtr("cert_center"),
+		listCertInfoReq := &bpcdn.ListCertInfoRequest{
+			PageNum:  bpcdn.GetInt64Ptr(int64(listCertInfoPageNum)),
+			PageSize: bpcdn.GetInt64Ptr(int64(listCertInfoPageSize)),
+			Source:   bpcdn.GetStrPtr("cert_center"),
 		}
 		listCertInfoResp, err := c.sdkClient.ListCertInfo(listCertInfoReq)
 		c.logger.Debug("sdk request 'cdn.ListCertInfo'", slog.Any("request", listCertInfoReq), slog.Any("response", listCertInfoResp))
@@ -100,7 +105,7 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 
 			// 如果以上信息都一致，则视为已存在相同证书，直接返回
 			c.logger.Info("ssl certificate already exists")
-			return &certmgr.UploadResult{
+			return &UploadResult{
 				CertId:   certItem.CertId,
 				CertName: certItem.Desc,
 			}, nil
@@ -118,11 +123,11 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 
 	// 上传新证书
 	// REF: https://docs.byteplus.com/en/docs/byteplus-cdn/reference-addcertificate
-	addCertificateReq := &bytepluscdn.AddCertificateRequest{
+	addCertificateReq := &bpcdn.AddCertificateRequest{
 		Certificate: certPEM,
 		PrivateKey:  privkeyPEM,
-		Source:      bytepluscdn.GetStrPtr("cert_center"),
-		Desc:        bytepluscdn.GetStrPtr(certName),
+		Source:      bpcdn.GetStrPtr("cert_center"),
+		Desc:        bpcdn.GetStrPtr(certName),
 	}
 	addCertificateResp, err := c.sdkClient.AddCertificate(addCertificateReq)
 	c.logger.Debug("sdk request 'cdn.AddCertificate'", slog.Any("request", addCertificateReq), slog.Any("response", addCertificateResp))
@@ -130,12 +135,12 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 		return nil, fmt.Errorf("failed to execute sdk request 'cdn.AddCertificate': %w", err)
 	}
 
-	return &certmgr.UploadResult{
+	return &UploadResult{
 		CertId:   addCertificateResp.Result.CertId,
 		CertName: certName,
 	}, nil
 }
 
-func (c *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, privkeyPEM string) (*certmgr.OperateResult, error) {
-	return nil, certmgr.ErrUnsupported
+func (c *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, privkeyPEM string) (*ReplaceResult, error) {
+	return nil, core.ErrUnsupported
 }

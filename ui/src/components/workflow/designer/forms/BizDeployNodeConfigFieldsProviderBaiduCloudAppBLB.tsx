@@ -8,8 +8,8 @@ import { isDomain, isPortNumber } from "@/utils/validator";
 
 import { useFormNestedFieldsContext } from "./_context";
 
-const RESOURCE_TYPE_LOADBALANCER = "loadbalancer" as const;
-const RESOURCE_TYPE_LISTENER = "listener" as const;
+const DEPLOY_TARGET_LOADBALANCER = "loadbalancer" as const;
+const DEPLOY_TARGET_LISTENER = "listener" as const;
 
 const BizDeployNodeConfigFieldsProviderBaiduCloudAppBLB = () => {
   const { i18n, t } = useTranslation();
@@ -22,7 +22,7 @@ const BizDeployNodeConfigFieldsProviderBaiduCloudAppBLB = () => {
   const formInst = Form.useFormInstance();
   const initialValues = getInitialValues();
 
-  const fieldResourceType = Form.useWatch([parentNamePath, "resourceType"], formInst);
+  const fieldResourceType = Form.useWatch([parentNamePath, "deployTarget"], formInst);
 
   return (
     <>
@@ -37,17 +37,17 @@ const BizDeployNodeConfigFieldsProviderBaiduCloudAppBLB = () => {
       </Form.Item>
 
       <Form.Item
-        name={[parentNamePath, "resourceType"]}
-        initialValue={initialValues.resourceType}
-        label={t("workflow_node.deploy.form.shared_resource_type.label")}
+        name={[parentNamePath, "deployTarget"]}
+        initialValue={initialValues.deployTarget}
+        label={t("workflow_node.deploy.form.shared_deploy_target.label")}
         rules={[formRule]}
       >
         <Select
-          options={[RESOURCE_TYPE_LOADBALANCER, RESOURCE_TYPE_LISTENER].map((s) => ({
+          options={[DEPLOY_TARGET_LOADBALANCER, DEPLOY_TARGET_LISTENER].map((s) => ({
+            label: t(`workflow_node.deploy.form.baiducloud_appblb_deploy_target.option.${s}.label`),
             value: s,
-            label: t(`workflow_node.deploy.form.baiducloud_appblb_resource_type.option.${s}.label`),
           }))}
-          placeholder={t("workflow_node.deploy.form.shared_resource_type.placeholder")}
+          placeholder={t("workflow_node.deploy.form.shared_deploy_target.placeholder")}
         />
       </Form.Item>
 
@@ -61,7 +61,7 @@ const BizDeployNodeConfigFieldsProviderBaiduCloudAppBLB = () => {
         <Input placeholder={t("workflow_node.deploy.form.baiducloud_appblb_loadbalancer_id.placeholder")} />
       </Form.Item>
 
-      <Show when={fieldResourceType === RESOURCE_TYPE_LISTENER}>
+      <Show when={fieldResourceType === DEPLOY_TARGET_LISTENER}>
         <Form.Item
           name={[parentNamePath, "listenerPort"]}
           initialValue={initialValues.listenerPort}
@@ -73,7 +73,7 @@ const BizDeployNodeConfigFieldsProviderBaiduCloudAppBLB = () => {
         </Form.Item>
       </Show>
 
-      <Show when={fieldResourceType === RESOURCE_TYPE_LOADBALANCER || fieldResourceType === RESOURCE_TYPE_LISTENER}>
+      <Show when={fieldResourceType === DEPLOY_TARGET_LOADBALANCER || fieldResourceType === DEPLOY_TARGET_LISTENER}>
         <Form.Item
           name={[parentNamePath, "domain"]}
           initialValue={initialValues.domain}
@@ -91,7 +91,7 @@ const BizDeployNodeConfigFieldsProviderBaiduCloudAppBLB = () => {
 const getInitialValues = (): Nullish<z.infer<ReturnType<typeof getSchema>>> => {
   return {
     region: "",
-    resourceType: RESOURCE_TYPE_LISTENER,
+    deployTarget: DEPLOY_TARGET_LISTENER,
     loadbalancerId: "",
     listenerPort: 443,
   };
@@ -102,10 +102,10 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
 
   return z
     .object({
-      region: z.string().nonempty(t("workflow_node.deploy.form.baiducloud_appblb_region.placeholder")),
-      resourceType: z.literal([RESOURCE_TYPE_LOADBALANCER, RESOURCE_TYPE_LISTENER], t("workflow_node.deploy.form.shared_resource_type.placeholder")),
-      loadbalancerId: z.string().nonempty(t("workflow_node.deploy.form.baiducloud_appblb_loadbalancer_id.placeholder")),
-      listenerPort: z.preprocess((v) => (v == null || v === "" ? void 0 : Number(v)), z.number().nullish()),
+      region: z.string().nonempty(),
+      deployTarget: z.enum([DEPLOY_TARGET_LOADBALANCER, DEPLOY_TARGET_LISTENER]),
+      loadbalancerId: z.string().nonempty(),
+      listenerPort: z.union([z.string(), z.int().positive()]).nullish(),
       domain: z
         .string()
         .nullish()
@@ -115,13 +115,15 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
         }, t("common.errmsg.domain_invalid")),
     })
     .superRefine((values, ctx) => {
-      switch (values.resourceType) {
-        case RESOURCE_TYPE_LISTENER:
+      switch (values.deployTarget) {
+        case DEPLOY_TARGET_LISTENER:
           {
-            if (!isPortNumber(values.listenerPort!)) {
+            const scListenerPort = z.coerce.number().refine((v) => isPortNumber(v), t("common.errmsg.port_invalid"));
+            const spListenerPort = scListenerPort.safeParse(values.listenerPort);
+            if (!spListenerPort.success) {
               ctx.addIssue({
                 code: "custom",
-                message: t("workflow_node.deploy.form.baiducloud_appblb_listener_port.placeholder"),
+                message: z.treeifyError(spListenerPort.error).errors.join(),
                 path: ["listenerPort"],
               });
             }

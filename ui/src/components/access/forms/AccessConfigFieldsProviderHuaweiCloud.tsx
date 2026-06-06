@@ -44,7 +44,7 @@ const AccessConfigFormFieldsProviderHuaweiCloud = () => {
         rules={[formRule]}
         tooltip={<span dangerouslySetInnerHTML={{ __html: t("access.form.huaweicloud_enterprise_project_id.tooltip") }}></span>}
       >
-        <Input allowClear autoComplete="new-password" placeholder={t("access.form.huaweicloud_enterprise_project_id.placeholder")} />
+        <Input allowClear placeholder={t("access.form.huaweicloud_enterprise_project_id.placeholder")} />
       </Form.Item>
     </>
   );
@@ -58,11 +58,11 @@ const getInitialValues = (): Nullish<z.infer<ReturnType<typeof getSchema>>> => {
 };
 
 const getSchema = ({ i18n = getI18n() }: { i18n: ReturnType<typeof getI18n> }) => {
-  const { t } = i18n;
+  const { t: _ } = i18n;
 
   return z.object({
-    accessKeyId: z.string().nonempty(t("access.form.huaweicloud_access_key_id.placeholder")),
-    secretAccessKey: z.string().nonempty(t("access.form.huaweicloud_secret_access_key.placeholder")),
+    accessKeyId: z.string().nonempty(),
+    secretAccessKey: z.string().nonempty(),
     enterpriseProjectId: z.string().nullish(),
   });
 };

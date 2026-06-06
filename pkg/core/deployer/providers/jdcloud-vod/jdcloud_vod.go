@@ -9,12 +9,18 @@ import (
 	"time"
 
 	jdcore "github.com/jdcloud-api/jdcloud-sdk-go/core"
-	jdvod "github.com/jdcloud-api/jdcloud-sdk-go/services/vod/apis"
+	jdvodapis "github.com/jdcloud-api/jdcloud-sdk-go/services/vod/apis"
 	"github.com/samber/lo"
 
-	"github.com/certimate-go/certimate/pkg/core/deployer"
-	"github.com/certimate-go/certimate/pkg/core/deployer/providers/jdcloud-vod/internal"
+	jdvod "github.com/certimate-go/certimate/pkg/sdk3rd-trimmed/github.com/jdcloud-api/jdcloud-sdk-go/services/vod/client"
+
+	"github.com/certimate-go/certimate/pkg/core"
 	xcerthostname "github.com/certimate-go/certimate/pkg/utils/cert/hostname"
+)
+
+type (
+	Provider     = core.Deployer
+	DeployResult = core.DeployerDeployResult
 )
 
 type DeployerConfig struct {
@@ -32,14 +38,14 @@ type DeployerConfig struct {
 type Deployer struct {
 	config    *DeployerConfig
 	logger    *slog.Logger
-	sdkClient *internal.VodClient
+	sdkClient *jdvod.VodClient
 }
 
-var _ deployer.Provider = (*Deployer)(nil)
+var _ Provider = (*Deployer)(nil)
 
 func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the deployer provider is nil")
+		return nil, fmt.Errorf("the configuration of the deployer provider is nil")
 	}
 
 	client, err := createSDKClient(config.AccessKeyId, config.AccessKeySecret)
@@ -62,14 +68,14 @@ func (d *Deployer) SetLogger(logger *slog.Logger) {
 	}
 }
 
-func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*deployer.DeployResult, error) {
+func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*DeployResult, error) {
 	// 获取待部署的域名列表
 	var domains []string
 	switch d.config.DomainMatchPattern {
 	case "", DOMAIN_MATCH_PATTERN_EXACT:
 		{
 			if d.config.Domain == "" {
-				return nil, errors.New("config `domain` is required")
+				return nil, fmt.Errorf("config `domain` is required")
 			}
 
 			domains = []string{d.config.Domain}
@@ -86,7 +92,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 				return xcerthostname.IsMatchByCertificatePEM(certPEM, domain)
 			})
 			if len(domains) == 0 {
-				return nil, errors.New("could not find any domains matched by certificate")
+				return nil, fmt.Errorf("could not find any domains matched by certificate")
 			}
 		}
 
@@ -117,7 +123,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 		}
 	}
 
-	return &deployer.DeployResult{}, nil
+	return &DeployResult{}, nil
 }
 
 func (d *Deployer) getAllDomains(ctx context.Context) ([]string, error) {
@@ -134,7 +140,7 @@ func (d *Deployer) getAllDomains(ctx context.Context) ([]string, error) {
 		default:
 		}
 
-		listDomainsReq := jdvod.NewListDomainsRequestWithoutParam()
+		listDomainsReq := jdvodapis.NewListDomainsRequestWithoutParam()
 		listDomainsReq.SetPageNumber(listDomainsPageNumber)
 		listDomainsReq.SetPageSize(listDomainsPageSize)
 		listDomainsResp, err := d.sdkClient.ListDomains(listDomainsReq)
@@ -171,7 +177,7 @@ func (d *Deployer) updateDomainCertificate(ctx context.Context, domain string, c
 
 	// 查询域名 SSL 配置
 	// REF: https://docs.jdcloud.com/cn/video-on-demand/api/gethttpssl
-	getHttpSslReq := jdvod.NewGetHttpSslRequestWithoutParam()
+	getHttpSslReq := jdvodapis.NewGetHttpSslRequestWithoutParam()
 	getHttpSslReq.SetDomainId(domainId)
 	getHttpSslResp, err := d.sdkClient.GetHttpSsl(getHttpSslReq)
 	d.logger.Debug("sdk request 'vod.GetHttpSsl'", slog.Any("request", getHttpSslReq), slog.Any("response", getHttpSslResp))
@@ -181,7 +187,7 @@ func (d *Deployer) updateDomainCertificate(ctx context.Context, domain string, c
 
 	// 设置域名 SSL 配置
 	// REF: https://docs.jdcloud.com/cn/video-on-demand/api/sethttpssl
-	setHttpSslReq := jdvod.NewSetHttpSslRequestWithoutParam()
+	setHttpSslReq := jdvodapis.NewSetHttpSslRequestWithoutParam()
 	setHttpSslReq.SetDomainId(domainId)
 	setHttpSslReq.SetTitle(fmt.Sprintf("certimate-%d", time.Now().UnixMilli()))
 	setHttpSslReq.SetSslCert(certPEM)
@@ -210,7 +216,7 @@ func (d *Deployer) findDomainIdByDomain(ctx context.Context, domain string) (int
 		default:
 		}
 
-		listDomainsReq := jdvod.NewListDomainsRequestWithoutParam()
+		listDomainsReq := jdvodapis.NewListDomainsRequestWithoutParam()
 		listDomainsReq.SetPageNumber(listDomainsPageNumber)
 		listDomainsReq.SetPageSize(listDomainsPageSize)
 		listDomainsResp, err := d.sdkClient.ListDomains(listDomainsReq)
@@ -236,8 +242,9 @@ func (d *Deployer) findDomainIdByDomain(ctx context.Context, domain string) (int
 	return 0, fmt.Errorf("could not find domain '%s'", domain)
 }
 
-func createSDKClient(accessKeyId, accessKeySecret string) (*internal.VodClient, error) {
+func createSDKClient(accessKeyId, accessKeySecret string) (*jdvod.VodClient, error) {
 	clientCredentials := jdcore.NewCredentials(accessKeyId, accessKeySecret)
-	client := internal.NewVodClient(clientCredentials)
+	client := jdvod.NewVodClient(clientCredentials)
+	client.DisableLogger()
 	return client, nil
 }

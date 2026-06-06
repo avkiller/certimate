@@ -2,7 +2,6 @@ package tencentcloudcos
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -10,13 +9,17 @@ import (
 	"github.com/samber/lo"
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common"
 	"github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common/profile"
-	tcssl "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/ssl/v20191205"
 
-	"github.com/certimate-go/certimate/pkg/core/certmgr"
-	mcertmgr "github.com/certimate-go/certimate/pkg/core/certmgr/providers/tencentcloud-ssl"
-	"github.com/certimate-go/certimate/pkg/core/deployer"
-	"github.com/certimate-go/certimate/pkg/core/deployer/providers/tencentcloud-cos/internal"
+	tcssl "github.com/certimate-go/certimate/pkg/sdk3rd-trimmed/github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/ssl/v20191205"
+
+	"github.com/certimate-go/certimate/pkg/core"
+	cmgrimpl "github.com/certimate-go/certimate/pkg/core/certmgr/providers/tencentcloud-ssl"
 	xwait "github.com/certimate-go/certimate/pkg/utils/wait"
+)
+
+type (
+	Provider     = core.Deployer
+	DeployResult = core.DeployerDeployResult
 )
 
 type DeployerConfig struct {
@@ -24,6 +27,8 @@ type DeployerConfig struct {
 	SecretId string `json:"secretId"`
 	// 腾讯云 SecretKey。
 	SecretKey string `json:"secretKey"`
+	// 腾讯云项目 ID。
+	ProjectId int64 `json:"projectId,omitempty"`
 	// 腾讯云地域。
 	Region string `json:"region"`
 	// 存储桶名。
@@ -36,18 +41,18 @@ type Deployer struct {
 	config     *DeployerConfig
 	logger     *slog.Logger
 	sdkClient  *wSDKClients
-	sdkCertmgr certmgr.Provider
+	sdkCertmgr core.Certmgr
 }
 
-var _ deployer.Provider = (*Deployer)(nil)
+var _ Provider = (*Deployer)(nil)
 
 type wSDKClients struct {
-	SSL *internal.SslClient
+	SSL *tcssl.Client
 }
 
 func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the deployer provider is nil")
+		return nil, fmt.Errorf("the configuration of the deployer provider is nil")
 	}
 
 	clients, err := createSDKClients(config.SecretId, config.SecretKey, config.Region)
@@ -55,9 +60,10 @@ func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 		return nil, fmt.Errorf("could not create client: %w", err)
 	}
 
-	pcertmgr, err := mcertmgr.NewCertmgr(&mcertmgr.CertmgrConfig{
+	pcertmgr, err := cmgrimpl.NewCertmgr(&cmgrimpl.CertmgrConfig{
 		SecretId:  config.SecretId,
 		SecretKey: config.SecretKey,
+		ProjectId: config.ProjectId,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("could not create certmgr: %w", err)
@@ -81,12 +87,12 @@ func (d *Deployer) SetLogger(logger *slog.Logger) {
 	d.sdkCertmgr.SetLogger(logger)
 }
 
-func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*deployer.DeployResult, error) {
+func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*DeployResult, error) {
 	if d.config.Bucket == "" {
-		return nil, errors.New("config `bucket` is required")
+		return nil, fmt.Errorf("config `bucket` is required")
 	}
 	if d.config.Domain == "" {
-		return nil, errors.New("config `domain` is required")
+		return nil, fmt.Errorf("config `domain` is required")
 	}
 
 	// 上传证书
@@ -100,7 +106,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 	// 避免多次部署，否则会报错 https://github.com/certimate-go/certimate/issues/897#issuecomment-3182904098
 	if bind, _ := d.checkIsBind(ctx, upres.CertId); bind {
 		d.logger.Info("ssl certificate already deployed")
-		return &deployer.DeployResult{}, nil
+		return &DeployResult{}, nil
 	}
 
 	// 证书部署到 COS 实例
@@ -110,7 +116,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 	deployCertificateInstanceReq.ResourceType = common.StringPtr("cos")
 	deployCertificateInstanceReq.Status = common.Int64Ptr(1)
 	deployCertificateInstanceReq.InstanceIdList = common.StringPtrs([]string{fmt.Sprintf("%s|%s|%s", d.config.Region, d.config.Bucket, d.config.Domain)})
-	deployCertificateInstanceResp, err := d.sdkClient.SSL.DeployCertificateInstance(deployCertificateInstanceReq)
+	deployCertificateInstanceResp, err := d.sdkClient.SSL.DeployCertificateInstanceWithContext(ctx, deployCertificateInstanceReq)
 	d.logger.Debug("sdk request 'ssl.DeployCertificateInstance'", slog.Any("request", deployCertificateInstanceReq), slog.Any("response", deployCertificateInstanceResp))
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute sdk request 'ssl.DeployCertificateInstance': %w", err)
@@ -121,7 +127,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 	if _, err := xwait.UntilWithContext(ctx, func(_ context.Context, _ int) (bool, error) {
 		describeHostDeployRecordDetailReq := tcssl.NewDescribeHostDeployRecordDetailRequest()
 		describeHostDeployRecordDetailReq.DeployRecordId = common.StringPtr(fmt.Sprintf("%d", *deployCertificateInstanceResp.Response.DeployRecordId))
-		describeHostDeployRecordDetailResp, err := d.sdkClient.SSL.DescribeHostDeployRecordDetail(describeHostDeployRecordDetailReq)
+		describeHostDeployRecordDetailResp, err := d.sdkClient.SSL.DescribeHostDeployRecordDetailWithContext(ctx, describeHostDeployRecordDetailReq)
 		d.logger.Debug("sdk request 'ssl.DescribeHostDeployRecordDetail'", slog.Any("request", describeHostDeployRecordDetailReq), slog.Any("response", describeHostDeployRecordDetailResp))
 		if err != nil {
 			return false, fmt.Errorf("failed to execute sdk request 'ssl.DescribeHostDeployRecordDetail': %w", err)
@@ -147,11 +153,11 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 
 		d.logger.Info(fmt.Sprintf("waiting for tencentcloud deployment job completion (pending: %d, running: %d, succeeded: %d, failed: %d, total: %d) ...", pendingCount, runningCount, succeededCount, failedCount, totalCount))
 		return false, nil
-	}, time.Second*5); err != nil {
+	}, 10*time.Second); err != nil {
 		return nil, err
 	}
 
-	return &deployer.DeployResult{}, nil
+	return &DeployResult{}, nil
 }
 
 func (d *Deployer) checkIsBind(ctx context.Context, cloudCertId string) (bool, error) {
@@ -172,7 +178,7 @@ func (d *Deployer) checkIsBind(ctx context.Context, cloudCertId string) (bool, e
 		describeHostCosInstanceListReq.IsCache = common.Uint64Ptr(0)
 		describeHostCosInstanceListReq.Offset = common.Int64Ptr(int64(describeHostCosInstanceListOffset))
 		describeHostCosInstanceListReq.Limit = common.Int64Ptr(int64(describeHostCosInstanceListLimit))
-		describeHostCosInstanceListResp, err := d.sdkClient.SSL.DescribeHostCosInstanceList(describeHostCosInstanceListReq)
+		describeHostCosInstanceListResp, err := d.sdkClient.SSL.DescribeHostCosInstanceListWithContext(ctx, describeHostCosInstanceListReq)
 		d.logger.Debug("sdk request 'ssl.DescribeHostCosInstanceList'", slog.Any("request", describeHostCosInstanceListReq), slog.Any("response", describeHostCosInstanceListResp))
 		if err != nil {
 			return false, fmt.Errorf("failed to execute sdk request 'ssl.DescribeHostCosInstanceList': %w", err)
@@ -207,7 +213,7 @@ func (d *Deployer) checkIsBind(ctx context.Context, cloudCertId string) (bool, e
 
 func createSDKClients(secretId, secretKey, region string) (*wSDKClients, error) {
 	credential := common.NewCredential(secretId, secretKey)
-	client, err := internal.NewSslClient(credential, region, profile.NewClientProfile())
+	client, err := tcssl.NewClient(credential, region, profile.NewClientProfile())
 	if err != nil {
 		return nil, err
 	}

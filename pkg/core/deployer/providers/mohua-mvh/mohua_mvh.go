@@ -2,7 +2,6 @@ package mohuamvh
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"strconv"
@@ -10,7 +9,12 @@ import (
 	mohuasdk "github.com/mohuatech/mohuacloud-go-sdk"
 	mohuasdktypes "github.com/mohuatech/mohuacloud-go-sdk/types"
 
-	"github.com/certimate-go/certimate/pkg/core/deployer"
+	"github.com/certimate-go/certimate/pkg/core"
+)
+
+type (
+	Provider     = core.Deployer
+	DeployResult = core.DeployerDeployResult
 )
 
 type DeployerConfig struct {
@@ -30,11 +34,11 @@ type Deployer struct {
 	sdkClient *mohuasdk.Client
 }
 
-var _ deployer.Provider = (*Deployer)(nil)
+var _ Provider = (*Deployer)(nil)
 
 func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the deployer provider is nil")
+		return nil, fmt.Errorf("the configuration of the deployer provider is nil")
 	}
 
 	client, err := createSDKClient(config.Username, config.ApiPassword)
@@ -57,12 +61,12 @@ func (d *Deployer) SetLogger(logger *slog.Logger) {
 	}
 }
 
-func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*deployer.DeployResult, error) {
+func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*DeployResult, error) {
 	if d.config.HostId == "" {
-		return nil, errors.New("config `hostId` is required")
+		return nil, fmt.Errorf("config `hostId` is required")
 	}
 	if d.config.DomainId == "" {
-		return nil, errors.New("config `domainId` is required")
+		return nil, fmt.Errorf("config `domainId` is required")
 	}
 
 	domainId, err := strconv.ParseInt(d.config.DomainId, 10, 64)
@@ -88,15 +92,15 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 		return nil, fmt.Errorf("failed to execute sdk request 'mvh.SetSSL': %w", err)
 	}
 
-	return &deployer.DeployResult{}, nil
+	return &DeployResult{}, nil
 }
 
 func createSDKClient(username, apiPassword string) (*mohuasdk.Client, error) {
 	if username == "" {
-		return nil, errors.New("mohua: invalid username")
+		return nil, fmt.Errorf("mohua: invalid username")
 	}
 	if apiPassword == "" {
-		return nil, errors.New("mohua: invalid api password")
+		return nil, fmt.Errorf("mohua: invalid api password")
 	}
 
 	client := mohuasdk.NewClient(

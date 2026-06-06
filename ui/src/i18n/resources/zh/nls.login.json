@@ -1,0 +1,17 @@
+{
+  "$ns": "login",
+
+  "form": {
+    "username": {
+      "label": "用户名/邮箱",
+      "placeholder": "请输入用户名/邮箱"
+    },
+    "password": {
+      "label": "密码",
+      "placeholder": "请输入密码"
+    },
+    "submit": {
+      "button": "登录"
+    }
+  }
+}

@@ -1,0 +1,77 @@
+{
+  "$ns": "preset",
+
+  "text": {
+    "excceeded_warning": "The maximum number of presets has been reached"
+  },
+
+  "page": {
+    "heading": "Presets",
+    "subheading": "Presets are a set of reusable data snippets, for filling forms conveniently."
+  },
+
+  "action": {
+    "create.button": "Create preset",
+    "create.modal": {
+      "title": "Create preset"
+    },
+    "modify.menu": "Edit",
+    "modify.modal": {
+      "title": "Edit preset"
+    },
+    "delete.menu": "Delete",
+    "delete.modal": {
+      "title": "Delete \"{{name}}\"",
+      "content": "Are you sure want to delete this preset? <br>This action cannot be undone."
+    }
+  },
+
+  "props": {
+    "name": "Name",
+    "usage": {
+      "notification": {
+        "": "Notification template",
+        "tips": "You can use these preset notification subjects and messages in workflow notification nodes."
+      },
+      "script": {
+        "": "Script template",
+        "tips": "You can use these preset script commands in workflow deployment nodes (for <i>Local host</i>, <i>Remote host</i>, etc.)."
+      }
+    }
+  },
+
+  "form": {
+    "name": {
+      "label": "Preset name",
+      "placeholder": "Please enter preset name",
+      "errmsg": {
+        "duplicated": "The name already exists, please use a different one."
+      }
+    },
+    "notification_subject": {
+      "label": "Notification subject",
+      "placeholder": "Please enter notification subject"
+    },
+    "notification_message": {
+      "label": "Notification message",
+      "placeholder": "Please enter notification message"
+    },
+    "script_command": {
+      "label": "Script command",
+      "placeholder": "Please enter script command"
+    }
+  },
+
+  "dropdown": {
+    "notification": {
+      "button": "Use preset notification"
+    },
+    "script": {
+      "button": "Use preset script"
+    },
+    "option_group": {
+      "builtin": "Built-in templates",
+      "custom": "Customized templates"
+    }
+  }
+}

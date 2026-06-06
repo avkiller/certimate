@@ -44,7 +44,6 @@ const BizDeployNodeConfigFieldsProviderTencentCloudCSS = () => {
       >
         <Radio.Group
           options={[DOMAIN_MATCH_PATTERN_EXACT, DOMAIN_MATCH_PATTERN_CERTSAN].map((s) => ({
-            key: s,
             label: t(`workflow_node.deploy.form.shared_domain_match_pattern.option.${s}.label`),
             value: s,
           }))}
@@ -78,7 +77,7 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
   return z
     .object({
       endpoint: z.string().nullish(),
-      domainMatchPattern: z.string().nonempty(t("workflow_node.deploy.form.shared_domain_match_pattern.placeholder")).default(DOMAIN_MATCH_PATTERN_EXACT),
+      domainMatchPattern: z.string().nonempty().default(DOMAIN_MATCH_PATTERN_EXACT),
       domain: z.string().nullish(),
     })
     .superRefine((values, ctx) => {
@@ -86,10 +85,12 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
         switch (values.domainMatchPattern) {
           case DOMAIN_MATCH_PATTERN_EXACT:
             {
-              if (!isDomain(values.domain!)) {
+              const scDomain = z.string().refine((v) => isDomain(v), t("common.errmsg.domain_invalid"));
+              const spDomain = scDomain.safeParse(values.domain);
+              if (!spDomain.success) {
                 ctx.addIssue({
                   code: "custom",
-                  message: t("common.errmsg.domain_invalid"),
+                  message: z.treeifyError(spDomain.error).errors.join(),
                   path: ["domain"],
                 });
               }

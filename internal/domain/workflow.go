@@ -74,6 +74,10 @@ func (g *WorkflowGraph) Clone() *WorkflowGraph {
 
 type WorkflowTriggerType string
 
+func (t WorkflowTriggerType) String() string {
+	return string(t)
+}
+
 const (
 	WorkflowTriggerTypeScheduled = WorkflowTriggerType("scheduled")
 	WorkflowTriggerTypeManual    = WorkflowTriggerType("manual")
@@ -87,6 +91,10 @@ type WorkflowNode struct {
 }
 
 type WorkflowNodeType string
+
+func (t WorkflowNodeType) String() string {
+	return string(t)
+}
 
 const (
 	WorkflowNodeTypeStart       = WorkflowNodeType("start")
@@ -149,7 +157,7 @@ func (c WorkflowNodeConfig) AsBizApply() WorkflowNodeConfigForBizApply {
 		ProviderAccessId:      xmaps.GetString(c, "providerAccessId"),
 		ProviderConfig:        xmaps.GetKVMapAny(c, "providerConfig"),
 		KeySource:             xmaps.GetOrDefaultString(c, "keySource", "auto"),
-		KeyAlgorithm:          xmaps.GetOrDefaultString(c, "keyAlgorithm", string(CertificateKeyAlgorithmTypeRSA2048)),
+		KeyAlgorithm:          xmaps.GetOrDefaultString(c, "keyAlgorithm", CertificateKeyAlgorithmTypeRSA2048.String()),
 		KeyContent:            xmaps.GetString(c, "keyContent"),
 		CAProvider:            xmaps.GetString(c, "caProvider"),
 		CAProviderAccessId:    xmaps.GetString(c, "caProviderAccessId"),
@@ -234,11 +242,11 @@ type WorkflowNodeConfigForBizApply struct {
 	PreferredChain        string         `json:"preferredChain,omitempty"`        // 首选证书链
 	ACMEProfile           string         `json:"acmeProfile,omitempty"`           // ACME Profiles Extension
 	Nameservers           []string       `json:"nameservers,omitempty"`           // DNS 服务器列表，以半角分号分隔。等同于 lego 的 `--dns.resolvers` 参数
-	DnsPropagationWait    int            `json:"dnsPropagationWait,omitempty"`    // DNS 传播等待时间。等同于 lego 的 `--dns.propagation-wait` 参数
-	DnsPropagationTimeout int            `json:"dnsPropagationTimeout,omitempty"` // DNS 传播检查超时时间。等同于 lego 的 `--dns-timeout` 参数
+	DnsPropagationWait    int            `json:"dnsPropagationWait,omitempty"`    // DNS 传播等待时间。等同于 lego 的 `--dns.propagation.wait` 参数
+	DnsPropagationTimeout int            `json:"dnsPropagationTimeout,omitempty"` // DNS 传播检查超时时间。等同于 lego 的 `--dns.timeout` 参数
 	DnsTTL                int            `json:"dnsTTL,omitempty"`                // DNS 解析记录 TTL
 	HttpDelayWait         int            `json:"httpDelayWait,omitempty"`         // HTTP 等待时间。等同于 lego 的 `--http.delay` 参数
-	DisableCommonName     bool           `json:"disableCommonName,omitempty"`     // 是否不包含 CommonName。等同于 lego 的 `--disable-cn` 参数
+	DisableCommonName     bool           `json:"disableCommonName,omitempty"`     // 是否不包含 CommonName
 	DisableFollowCNAME    bool           `json:"disableFollowCNAME,omitempty"`    // 是否关闭 CNAME 跟随
 	DisableARI            bool           `json:"disableARI,omitempty"`            // 是否关闭 ARI
 	SkipBeforeExpiryDays  int            `json:"skipBeforeExpiryDays,omitempty"`  // 证书到期前多少天前跳过续期

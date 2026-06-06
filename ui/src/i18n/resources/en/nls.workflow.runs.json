@@ -1,0 +1,84 @@
+{
+  "$ns": "workflow_run",
+
+  "text": {
+    "nodata": "This workflow has no runs yet",
+    "nodata_description": "It looks like you don't have any runs. Get started by running this workflow.",
+    "deletion_warning": "The workflow run contains the execution results of each node. Deleting it may trigger re-application or re-deployment of certificates due to the inability to find the previous execution result. Please do not delete unless necessary. Recommend keeping it for at least 180 days. ",
+    "cancellation_warning": "If the process is unexpectedly terminated or the server times out, you can manually cancel long-hanging runs to prevent blocking subsequent executions."
+  },
+
+  "action": {
+    "view.menu": "View details",
+    "cancel.menu": "Cancel",
+    "cancel.modal": {
+      "title": "Cancel workflow run",
+      "content": "Are you sure to cancel this run?"
+    },
+    "delete.menu": "Delete",
+    "delete.modal": {
+      "title": "Delete \"{{name}}\"",
+      "content": "Are you sure want to delete this workflow run? <br>This action cannot be undone."
+    },
+    "batch_delete.modal": {
+      "title": "Delete workflow runs",
+      "content": "Are you sure want to delete these {{count}} selected workflow runs? <br>This action cannot be undone."
+    }
+  },
+
+  "props": {
+    "workflow": "Workflow",
+    "status": {
+      "": "Status",
+      "pending": "Pending",
+      "processing": "Processing",
+      "succeeded": "Succeeded",
+      "failed": "Failed",
+      "canceled": "Canceled"
+    },
+    "trigger": {
+      "": "Trigger",
+      "scheduled": "Scheduled",
+      "manual": "Manual"
+    },
+    "started_at": "Started at",
+    "ended_at": "Ended at",
+    "artifacts": "Artifacts"
+  },
+
+  "base": {
+    "description": "Triggered {{trigger}} at {{startedAt}}",
+    "description_with_time_cost": "Triggered {{trigger}} at {{startedAt}}. Time cost: {{timeCost}}.",
+    "trigger": {
+      "scheduled": "scheduledly",
+      "manual": "manually"
+    }
+  },
+
+  "process": {
+    "": "Process",
+    "menu": {
+      "export": "Export"
+    }
+  },
+
+  "logs": {
+    "": "Logs",
+    "menu": {
+      "show_timestamps": "Show timestamps",
+      "show_whitespaces": "Show whitespaces",
+      "download_logs": "Download logs"
+    }
+  },
+
+  "artifacts": {
+    "": "Artifacts",
+    "props": {
+      "name": "Name",
+      "type": {
+        "": "Type",
+        "certificate": "Certificate"
+      }
+    }
+  }
+}

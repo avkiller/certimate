@@ -8,15 +8,19 @@ import (
 	"strings"
 
 	aliopen "github.com/alibabacloud-go/darabonba-openapi/v2/client"
-	alinlb "github.com/alibabacloud-go/nlb-20220430/v4/client"
 	"github.com/alibabacloud-go/tea/dara"
 	"github.com/alibabacloud-go/tea/tea"
 	"github.com/samber/lo"
 
-	"github.com/certimate-go/certimate/pkg/core/certmgr"
-	mcertmgr "github.com/certimate-go/certimate/pkg/core/certmgr/providers/aliyun-cas"
-	"github.com/certimate-go/certimate/pkg/core/deployer"
-	"github.com/certimate-go/certimate/pkg/core/deployer/providers/aliyun-nlb/internal"
+	alinlb "github.com/certimate-go/certimate/pkg/sdk3rd-trimmed/github.com/alibabacloud-go/nlb-20220430/v4/client"
+
+	"github.com/certimate-go/certimate/pkg/core"
+	cmgrimpl "github.com/certimate-go/certimate/pkg/core/certmgr/providers/aliyun-cas"
+)
+
+type (
+	Provider     = core.Deployer
+	DeployResult = core.DeployerDeployResult
 )
 
 type DeployerConfig struct {
@@ -28,28 +32,28 @@ type DeployerConfig struct {
 	ResourceGroupId string `json:"resourceGroupId,omitempty"`
 	// 阿里云地域。
 	Region string `json:"region"`
-	// 部署资源类型。
-	ResourceType string `json:"resourceType"`
+	// 部署目标。
+	DeployTarget string `json:"deployTarget"`
 	// 负载均衡实例 ID。
-	// 部署资源类型为 [RESOURCE_TYPE_LOADBALANCER] 时必填。
+	// 部署目标为 [DEPLOY_TARGET_LOADBALANCER] 时必填。
 	LoadbalancerId string `json:"loadbalancerId,omitempty"`
 	// 负载均衡监听 ID。
-	// 部署资源类型为 [RESOURCE_TYPE_LISTENER] 时必填。
+	// 部署目标为 [DEPLOY_TARGET_LISTENER] 时必填。
 	ListenerId string `json:"listenerId,omitempty"`
 }
 
 type Deployer struct {
 	config     *DeployerConfig
 	logger     *slog.Logger
-	sdkClient  *internal.NlbClient
-	sdkCertmgr certmgr.Provider
+	sdkClient  *alinlb.Client
+	sdkCertmgr core.Certmgr
 }
 
-var _ deployer.Provider = (*Deployer)(nil)
+var _ Provider = (*Deployer)(nil)
 
 func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the deployer provider is nil")
+		return nil, fmt.Errorf("the configuration of the deployer provider is nil")
 	}
 
 	client, err := createSDKClient(config.AccessKeyId, config.AccessKeySecret, config.Region)
@@ -57,7 +61,7 @@ func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 		return nil, fmt.Errorf("could not create client: %w", err)
 	}
 
-	pcertmgr, err := mcertmgr.NewCertmgr(&mcertmgr.CertmgrConfig{
+	pcertmgr, err := cmgrimpl.NewCertmgr(&cmgrimpl.CertmgrConfig{
 		AccessKeyId:     config.AccessKeyId,
 		AccessKeySecret: config.AccessKeySecret,
 		ResourceGroupId: config.ResourceGroupId,
@@ -87,7 +91,7 @@ func (d *Deployer) SetLogger(logger *slog.Logger) {
 	d.sdkCertmgr.SetLogger(logger)
 }
 
-func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*deployer.DeployResult, error) {
+func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*DeployResult, error) {
 	// 上传证书
 	upres, err := d.sdkCertmgr.Upload(ctx, certPEM, privkeyPEM)
 	if err != nil {
@@ -96,28 +100,28 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 		d.logger.Info("ssl certificate uploaded", slog.Any("result", upres))
 	}
 
-	// 根据部署资源类型决定部署方式
-	switch d.config.ResourceType {
-	case RESOURCE_TYPE_LOADBALANCER:
+	// 根据部署目标决定业务流程
+	switch d.config.DeployTarget {
+	case DEPLOY_TARGET_LOADBALANCER:
 		if err := d.deployToLoadbalancer(ctx, upres.ExtendedData["CertIdentifier"].(string)); err != nil {
 			return nil, err
 		}
 
-	case RESOURCE_TYPE_LISTENER:
+	case DEPLOY_TARGET_LISTENER:
 		if err := d.deployToListener(ctx, upres.ExtendedData["CertIdentifier"].(string)); err != nil {
 			return nil, err
 		}
 
 	default:
-		return nil, fmt.Errorf("unsupported resource type '%s'", d.config.ResourceType)
+		return nil, fmt.Errorf("unsupported deploy target '%s'", d.config.DeployTarget)
 	}
 
-	return &deployer.DeployResult{}, nil
+	return &DeployResult{}, nil
 }
 
 func (d *Deployer) deployToLoadbalancer(ctx context.Context, cloudCertId string) error {
 	if d.config.LoadbalancerId == "" {
-		return errors.New("config `loadbalancerId` is required")
+		return fmt.Errorf("config `loadbalancerId` is required")
 	}
 
 	// 查询负载均衡实例的详细信息
@@ -197,7 +201,7 @@ func (d *Deployer) deployToLoadbalancer(ctx context.Context, cloudCertId string)
 
 func (d *Deployer) deployToListener(ctx context.Context, cloudCertId string) error {
 	if d.config.ListenerId == "" {
-		return errors.New("config `listenerId` is required")
+		return fmt.Errorf("config `listenerId` is required")
 	}
 
 	// 更新监听
@@ -235,7 +239,7 @@ func (d *Deployer) updateListenerCertificate(ctx context.Context, cloudListenerI
 	return nil
 }
 
-func createSDKClient(accessKeyId, accessKeySecret, region string) (*internal.NlbClient, error) {
+func createSDKClient(accessKeyId, accessKeySecret, region string) (*alinlb.Client, error) {
 	// 接入点一览 https://api.aliyun.com/product/Nlb
 	var endpoint string
 	switch region {
@@ -251,7 +255,7 @@ func createSDKClient(accessKeyId, accessKeySecret, region string) (*internal.Nlb
 		Endpoint:        tea.String(endpoint),
 	}
 
-	client, err := internal.NewNlbClient(config)
+	client, err := alinlb.NewClient(config)
 	if err != nil {
 		return nil, err
 	}

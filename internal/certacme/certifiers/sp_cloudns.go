@@ -3,21 +3,20 @@ package certifiers
 import (
 	"fmt"
 
-	"github.com/go-acme/lego/v4/challenge"
-
 	"github.com/certimate-go/certimate/internal/domain"
-	"github.com/certimate-go/certimate/pkg/core/certifier/challengers/dns01/cloudns"
+	"github.com/certimate-go/certimate/pkg/core"
+	chlgimpl "github.com/certimate-go/certimate/pkg/core/certifier/challengers/dns01/cloudns"
 	xmaps "github.com/certimate-go/certimate/pkg/utils/maps"
 )
 
 func init() {
-	ACMEDns01Registries.MustRegister(domain.ACMEDns01ProviderTypeClouDNS, func(options *ProviderFactoryOptions) (challenge.Provider, error) {
+	ACMEDns01Registries.MustRegister(domain.ACMEDns01ProviderTypeClouDNS, func(options *ProviderFactoryOptions) (core.ACMEChallenger, error) {
 		credentials := domain.AccessConfigForClouDNS{}
 		if err := xmaps.Populate(options.ProviderAccessConfig, &credentials); err != nil {
 			return nil, fmt.Errorf("failed to populate provider access config: %w", err)
 		}
 
-		provider, err := cloudns.NewChallenger(&cloudns.ChallengerConfig{
+		provider, err := chlgimpl.NewChallenger(&chlgimpl.ChallengerConfig{
 			AuthId:                credentials.AuthId,
 			AuthPassword:          credentials.AuthPassword,
 			DnsPropagationTimeout: options.DnsPropagationTimeout,

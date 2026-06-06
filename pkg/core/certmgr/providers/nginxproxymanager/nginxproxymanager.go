@@ -3,15 +3,20 @@ package nginxproxymanager
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"log/slog"
 	"strconv"
 	"time"
 
-	"github.com/certimate-go/certimate/pkg/core/certmgr"
+	"github.com/certimate-go/certimate/pkg/core"
 	npmsdk "github.com/certimate-go/certimate/pkg/sdk3rd/nginxproxymanager"
 	xcert "github.com/certimate-go/certimate/pkg/utils/cert"
+)
+
+type (
+	Provider      = core.Certmgr
+	UploadResult  = core.CertmgrUploadResult
+	ReplaceResult = core.CertmgrReplaceResult
 )
 
 type CertmgrConfig struct {
@@ -37,11 +42,11 @@ type Certmgr struct {
 	sdkClient *npmsdk.Client
 }
 
-var _ certmgr.Provider = (*Certmgr)(nil)
+var _ Provider = (*Certmgr)(nil)
 
 func NewCertmgr(config *CertmgrConfig) (*Certmgr, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the certmgr provider is nil")
+		return nil, fmt.Errorf("the configuration of the certmgr provider is nil")
 	}
 
 	client, err := createSDKClient(config.ServerUrl, config.AuthMethod, config.Username, config.Password, config.ApiToken, config.AllowInsecureConnections)
@@ -64,7 +69,7 @@ func (c *Certmgr) SetLogger(logger *slog.Logger) {
 	}
 }
 
-func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*certmgr.UploadResult, error) {
+func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*UploadResult, error) {
 	// 提取服务器证书和中间证书
 	serverCertPEM, intermediaCertPEM, err := xcert.ExtractCertificatesFromPEM(certPEM)
 	if err != nil {
@@ -84,7 +89,7 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 				certItem.Meta.IntermediateCertificate == intermediaCertPEM {
 				// 如果已存在相同证书，直接返回
 				c.logger.Info("ssl certificate already exists")
-				return &certmgr.UploadResult{
+				return &UploadResult{
 					CertId:   fmt.Sprintf("%d", certItem.Id),
 					CertName: certItem.NiceName,
 				}, nil
@@ -117,13 +122,13 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 		return nil, fmt.Errorf("failed to execute sdk request 'nginx.UploadCertificate': %w", err)
 	}
 
-	return &certmgr.UploadResult{
+	return &UploadResult{
 		CertId:   fmt.Sprintf("%d", nginxCreateCertificateResp.Id),
 		CertName: nginxCreateCertificateResp.NiceName,
 	}, nil
 }
 
-func (c *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, privkeyPEM string) (*certmgr.OperateResult, error) {
+func (c *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, privkeyPEM string) (*ReplaceResult, error) {
 	certId, err := strconv.ParseInt(certIdOrName, 10, 64)
 	if err != nil {
 		return nil, err
@@ -149,7 +154,7 @@ func (c *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, pri
 		return nil, fmt.Errorf("failed to execute sdk request 'nginx.UploadCertificate': %w", err)
 	}
 
-	return &certmgr.OperateResult{}, nil
+	return &ReplaceResult{}, nil
 }
 
 func createSDKClient(serverUrl, authMethod, username, password, apiToken string, skipTlsVerify bool) (*npmsdk.Client, error) {

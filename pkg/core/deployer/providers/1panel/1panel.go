@@ -9,13 +9,17 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/certimate-go/certimate/pkg/core/certmgr"
-	mcertmgr "github.com/certimate-go/certimate/pkg/core/certmgr/providers/1panel"
-	"github.com/certimate-go/certimate/pkg/core/deployer"
+	"github.com/certimate-go/certimate/pkg/core"
+	cmgrimpl "github.com/certimate-go/certimate/pkg/core/certmgr/providers/1panel"
 	onepanelsdk "github.com/certimate-go/certimate/pkg/sdk3rd/1panel"
 	onepanelsdk2 "github.com/certimate-go/certimate/pkg/sdk3rd/1panel/v2"
 	xcerthostname "github.com/certimate-go/certimate/pkg/utils/cert/hostname"
 	xwait "github.com/certimate-go/certimate/pkg/utils/wait"
+)
+
+type (
+	Provider     = core.Deployer
+	DeployResult = core.DeployerDeployResult
 )
 
 type DeployerConfig struct {
@@ -31,16 +35,16 @@ type DeployerConfig struct {
 	// 子节点名称。
 	// 选填。
 	NodeName string `json:"nodeName,omitempty"`
-	// 部署资源类型。
-	ResourceType string `json:"resourceType"`
+	// 部署目标。
+	DeployTarget string `json:"deployTarget"`
 	// 域名匹配模式。
 	// 零值时默认值 [WEBSITE_MATCH_PATTERN_SPECIFIED]。
 	WebsiteMatchPattern string `json:"websiteMatchPattern,omitempty"`
 	// 网站 ID。
-	// 部署资源类型为 [RESOURCE_TYPE_WEBSITE]、且匹配模式非 [WEBSITE_MATCH_PATTERN_CERTSAN] 时必填。
+	// 部署目标为 [DEPLOY_TARGET_WEBSITE]、且匹配模式非 [WEBSITE_MATCH_PATTERN_CERTSAN] 时必填。
 	WebsiteId int64 `json:"websiteId,omitempty"`
 	// 证书 ID。
-	// 部署资源类型为 [RESOURCE_TYPE_CERTIFICATE] 时必填。
+	// 部署目标为 [DEPLOY_TARGET_CERTIFICATE] 时必填。
 	CertificateId int64 `json:"certificateId,omitempty"`
 }
 
@@ -48,14 +52,14 @@ type Deployer struct {
 	config     *DeployerConfig
 	logger     *slog.Logger
 	sdkClient  any
-	sdkCertmgr certmgr.Provider
+	sdkCertmgr core.Certmgr
 }
 
-var _ deployer.Provider = (*Deployer)(nil)
+var _ Provider = (*Deployer)(nil)
 
 func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the deployer provider is nil")
+		return nil, fmt.Errorf("the configuration of the deployer provider is nil")
 	}
 
 	client, err := createSDKClient(config.ServerUrl, config.ApiVersion, config.ApiKey, config.AllowInsecureConnections, config.NodeName)
@@ -63,7 +67,7 @@ func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 		return nil, fmt.Errorf("could not create client: %w", err)
 	}
 
-	pcertmgr, err := mcertmgr.NewCertmgr(&mcertmgr.CertmgrConfig{
+	pcertmgr, err := cmgrimpl.NewCertmgr(&cmgrimpl.CertmgrConfig{
 		ServerUrl:                config.ServerUrl,
 		ApiVersion:               config.ApiVersion,
 		ApiKey:                   config.ApiKey,
@@ -92,24 +96,24 @@ func (d *Deployer) SetLogger(logger *slog.Logger) {
 	d.sdkCertmgr.SetLogger(logger)
 }
 
-func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*deployer.DeployResult, error) {
-	// 根据部署资源类型决定部署方式
-	switch d.config.ResourceType {
-	case RESOURCE_TYPE_WEBSITE:
+func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*DeployResult, error) {
+	// 根据部署目标决定业务流程
+	switch d.config.DeployTarget {
+	case DEPLOY_TARGET_WEBSITE:
 		if err := d.deployToWebsite(ctx, certPEM, privkeyPEM); err != nil {
 			return nil, err
 		}
 
-	case RESOURCE_TYPE_CERTIFICATE:
+	case DEPLOY_TARGET_CERTIFICATE:
 		if err := d.deployToCertificate(ctx, certPEM, privkeyPEM); err != nil {
 			return nil, err
 		}
 
 	default:
-		return nil, fmt.Errorf("unsupported resource type '%s'", d.config.ResourceType)
+		return nil, fmt.Errorf("unsupported deploy target '%s'", d.config.DeployTarget)
 	}
 
-	return &deployer.DeployResult{}, nil
+	return &DeployResult{}, nil
 }
 
 func (d *Deployer) deployToWebsite(ctx context.Context, certPEM, privkeyPEM string) error {
@@ -127,7 +131,7 @@ func (d *Deployer) deployToWebsite(ctx context.Context, certPEM, privkeyPEM stri
 	case "", WEBSITE_MATCH_PATTERN_SPECIFIED:
 		{
 			if d.config.WebsiteId == 0 {
-				return errors.New("config `websiteId` is required")
+				return fmt.Errorf("config `websiteId` is required")
 			}
 
 			websiteIds = []int64{d.config.WebsiteId}
@@ -162,9 +166,8 @@ func (d *Deployer) deployToWebsite(ctx context.Context, certPEM, privkeyPEM stri
 			default:
 				if err := d.updateWebsiteCertificate(ctx, websiteId, websiteSSLId); err != nil {
 					errs = append(errs, err)
-				}
-				if i < len(websiteIds)-1 {
-					xwait.DelayWithContext(ctx, time.Second*5)
+				} else if i < len(websiteIds)-1 {
+					xwait.DelayWithContext(ctx, 5*time.Second)
 				}
 			}
 		}
@@ -179,15 +182,15 @@ func (d *Deployer) deployToWebsite(ctx context.Context, certPEM, privkeyPEM stri
 
 func (d *Deployer) deployToCertificate(ctx context.Context, certPEM, privkeyPEM string) error {
 	if d.config.CertificateId == 0 {
-		return errors.New("config `certificateId` is required")
+		return fmt.Errorf("config `certificateId` is required")
 	}
 
 	// 替换证书
-	opres, err := d.sdkCertmgr.Replace(ctx, strconv.FormatInt(d.config.CertificateId, 10), certPEM, privkeyPEM)
+	rplres, err := d.sdkCertmgr.Replace(ctx, strconv.FormatInt(d.config.CertificateId, 10), certPEM, privkeyPEM)
 	if err != nil {
 		return fmt.Errorf("failed to replace certificate file: %w", err)
 	} else {
-		d.logger.Info("ssl certificate replaced", slog.Any("result", opres))
+		d.logger.Info("ssl certificate replaced", slog.Any("result", rplres))
 	}
 
 	return nil
@@ -214,9 +217,9 @@ func (d *Deployer) getMatchedWebsiteIdsByCertificate(ctx context.Context, certPE
 					PageSize: int32(websiteSearchPageSize),
 				}
 				websiteSearchResp, err := sdkClient.WebsiteSearchWithContext(ctx, websiteSearchReq)
-				d.logger.Debug("sdk request '1panel.WebsiteSearch'", slog.Any("request", websiteSearchReq), slog.Any("response", websiteSearchResp))
+				d.logger.Debug("sdk request 'WebsiteSearch'", slog.Any("request", websiteSearchReq), slog.Any("response", websiteSearchResp))
 				if err != nil {
-					return nil, fmt.Errorf("failed to execute sdk request '1panel.WebsiteSearch': %w", err)
+					return nil, fmt.Errorf("failed to execute sdk request 'WebsiteSearch': %w", err)
 				}
 
 				if websiteSearchResp.Data == nil {
@@ -229,9 +232,9 @@ func (d *Deployer) getMatchedWebsiteIdsByCertificate(ctx context.Context, certPE
 					}
 
 					websiteGetResp, err := sdkClient.WebsiteGetWithContext(ctx, websiteItem.ID)
-					d.logger.Debug("sdk request '1panel.WebsiteGet'", slog.Int64("websiteId", websiteItem.ID), slog.Any("response", websiteGetResp))
+					d.logger.Debug("sdk request 'WebsiteGet'", slog.Int64("websiteId", websiteItem.ID), slog.Any("response", websiteGetResp))
 					if err != nil {
-						return nil, fmt.Errorf("failed to execute sdk request '1panel.WebsiteGet': %w", err)
+						return nil, fmt.Errorf("failed to execute sdk request 'WebsiteGet': %w", err)
 					}
 
 					for _, domainInfo := range websiteGetResp.Data.Domains {
@@ -268,9 +271,9 @@ func (d *Deployer) getMatchedWebsiteIdsByCertificate(ctx context.Context, certPE
 					PageSize: int32(websiteSearchPageSize),
 				}
 				websiteSearchResp, err := sdkClient.WebsiteSearchWithContext(ctx, websiteSearchReq)
-				d.logger.Debug("sdk request '1panel.WebsiteSearch'", slog.Any("request", websiteSearchReq), slog.Any("response", websiteSearchResp))
+				d.logger.Debug("sdk request 'WebsiteSearch'", slog.Any("request", websiteSearchReq), slog.Any("response", websiteSearchResp))
 				if err != nil {
-					return nil, fmt.Errorf("failed to execute sdk request '1panel.WebsiteSearch': %w", err)
+					return nil, fmt.Errorf("failed to execute sdk request 'WebsiteSearch': %w", err)
 				}
 
 				if websiteSearchResp.Data == nil {
@@ -283,9 +286,9 @@ func (d *Deployer) getMatchedWebsiteIdsByCertificate(ctx context.Context, certPE
 					}
 
 					websiteGetResp, err := sdkClient.WebsiteGetWithContext(ctx, websiteItem.ID)
-					d.logger.Debug("sdk request '1panel.WebsiteGet'", slog.Int64("websiteId", websiteItem.ID), slog.Any("response", websiteGetResp))
+					d.logger.Debug("sdk request 'WebsiteGet'", slog.Int64("websiteId", websiteItem.ID), slog.Any("response", websiteGetResp))
 					if err != nil {
-						return nil, fmt.Errorf("failed to execute sdk request '1panel.WebsiteGet': %w", err)
+						return nil, fmt.Errorf("failed to execute sdk request 'WebsiteGet': %w", err)
 					}
 
 					for _, domainInfo := range websiteGetResp.Data.Domains {
@@ -309,7 +312,7 @@ func (d *Deployer) getMatchedWebsiteIdsByCertificate(ctx context.Context, certPE
 	}
 
 	if len(websiteIds) == 0 {
-		return nil, errors.New("could not find any websites matched by certificate")
+		return nil, fmt.Errorf("could not find any websites matched by certificate")
 	}
 
 	return websiteIds, nil
@@ -321,9 +324,9 @@ func (d *Deployer) updateWebsiteCertificate(ctx context.Context, websiteId int64
 		{
 			// 获取网站 HTTPS 配置
 			websiteHttpsGetResp, err := sdkClient.WebsiteHttpsGetWithContext(ctx, websiteId)
-			d.logger.Debug("sdk request '1panel.WebsiteHttpsGet'", slog.Int64("websiteId", websiteId), slog.Any("response", websiteHttpsGetResp))
+			d.logger.Debug("sdk request 'WebsiteHttpsGet'", slog.Int64("websiteId", websiteId), slog.Any("response", websiteHttpsGetResp))
 			if err != nil {
-				return fmt.Errorf("failed to execute sdk request '1panel.WebsiteHttpsGet': %w", err)
+				return fmt.Errorf("failed to execute sdk request 'WebsiteHttpsGet': %w", err)
 			} else {
 				if websiteHttpsGetResp.Data.Enable && websiteHttpsGetResp.Data.WebsiteSSLID == websiteSSLId {
 					return nil
@@ -345,9 +348,9 @@ func (d *Deployer) updateWebsiteCertificate(ctx context.Context, websiteId int64
 				websiteHttpsPostReq.HttpConfig = "HTTPToHTTPS"
 			}
 			websiteHttpsPostResp, err := sdkClient.WebsiteHttpsPostWithContext(ctx, websiteId, websiteHttpsPostReq)
-			d.logger.Debug("sdk request '1panel.WebsiteHttpsPost'", slog.Int64("websiteId", websiteId), slog.Any("request", websiteHttpsPostReq), slog.Any("response", websiteHttpsPostResp))
+			d.logger.Debug("sdk request 'WebsiteHttpsPost'", slog.Int64("websiteId", websiteId), slog.Any("request", websiteHttpsPostReq), slog.Any("response", websiteHttpsPostResp))
 			if err != nil {
-				return fmt.Errorf("failed to execute sdk request '1panel.WebsiteHttpsPost': %w", err)
+				return fmt.Errorf("failed to execute sdk request 'WebsiteHttpsPost': %w", err)
 			}
 		}
 
@@ -355,9 +358,9 @@ func (d *Deployer) updateWebsiteCertificate(ctx context.Context, websiteId int64
 		{
 			// 获取网站 HTTPS 配置
 			websiteHttpsGetResp, err := sdkClient.WebsiteHttpsGetWithContext(ctx, websiteId)
-			d.logger.Debug("sdk request '1panel.WebsiteHttpsGet'", slog.Int64("websiteId", websiteId), slog.Any("response", websiteHttpsGetResp))
+			d.logger.Debug("sdk request 'WebsiteHttpsGet'", slog.Int64("websiteId", websiteId), slog.Any("response", websiteHttpsGetResp))
 			if err != nil {
-				return fmt.Errorf("failed to execute sdk request '1panel.WebsiteHttpsGet': %w", err)
+				return fmt.Errorf("failed to execute sdk request 'WebsiteHttpsGet': %w", err)
 			} else {
 				if websiteHttpsGetResp.Data.Enable && websiteHttpsGetResp.Data.WebsiteSSLID == websiteSSLId {
 					return nil
@@ -380,9 +383,9 @@ func (d *Deployer) updateWebsiteCertificate(ctx context.Context, websiteId int64
 				websiteHttpsPostReq.HttpConfig = "HTTPToHTTPS"
 			}
 			websiteHttpsPostResp, err := sdkClient.WebsiteHttpsPostWithContext(ctx, websiteId, websiteHttpsPostReq)
-			d.logger.Debug("sdk request '1panel.WebsiteHttpsPost'", slog.Int64("websiteId", websiteId), slog.Any("request", websiteHttpsPostReq), slog.Any("response", websiteHttpsPostResp))
+			d.logger.Debug("sdk request 'WebsiteHttpsPost'", slog.Int64("websiteId", websiteId), slog.Any("request", websiteHttpsPostReq), slog.Any("response", websiteHttpsPostResp))
 			if err != nil {
-				return fmt.Errorf("failed to execute sdk request '1panel.WebsiteHttpsPost': %w", err)
+				return fmt.Errorf("failed to execute sdk request 'WebsiteHttpsPost': %w", err)
 			}
 		}
 
@@ -430,5 +433,5 @@ func createSDKClient(serverUrl, apiVersion, apiKey string, skipTlsVerify bool, n
 		return client, nil
 	}
 
-	return nil, errors.New("1panel: invalid api version")
+	return nil, fmt.Errorf("1panel: invalid api version")
 }

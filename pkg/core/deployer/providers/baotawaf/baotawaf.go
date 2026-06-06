@@ -10,9 +10,14 @@ import (
 
 	"github.com/samber/lo"
 
-	"github.com/certimate-go/certimate/pkg/core/deployer"
+	"github.com/certimate-go/certimate/pkg/core"
 	btwafsdk "github.com/certimate-go/certimate/pkg/sdk3rd/btwaf"
 	xwait "github.com/certimate-go/certimate/pkg/utils/wait"
+)
+
+type (
+	Provider     = core.Deployer
+	DeployResult = core.DeployerDeployResult
 )
 
 type DeployerConfig struct {
@@ -35,11 +40,11 @@ type Deployer struct {
 	sdkClient *btwafsdk.Client
 }
 
-var _ deployer.Provider = (*Deployer)(nil)
+var _ Provider = (*Deployer)(nil)
 
 func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the deployer provider is nil")
+		return nil, fmt.Errorf("the configuration of the deployer provider is nil")
 	}
 
 	client, err := createSDKClient(config.ServerUrl, config.ApiKey, config.AllowInsecureConnections)
@@ -62,9 +67,9 @@ func (d *Deployer) SetLogger(logger *slog.Logger) {
 	}
 }
 
-func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*deployer.DeployResult, error) {
+func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*DeployResult, error) {
 	if len(d.config.SiteNames) == 0 {
-		return nil, errors.New("config `siteNames` is required")
+		return nil, fmt.Errorf("config `siteNames` is required")
 	}
 
 	// 遍历更新站点证书
@@ -76,9 +81,8 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 		default:
 			if err := d.updateSiteCertificate(ctx, siteName, d.config.SitePort, certPEM, privkeyPEM); err != nil {
 				errs = append(errs, err)
-			}
-			if i < len(d.config.SiteNames)-1 {
-				xwait.DelayWithContext(ctx, time.Second*5)
+			} else if i < len(d.config.SiteNames)-1 {
+				xwait.DelayWithContext(ctx, 5*time.Second)
 			}
 		}
 	}
@@ -86,7 +90,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 		return nil, errors.Join(errs...)
 	}
 
-	return &deployer.DeployResult{}, nil
+	return &DeployResult{}, nil
 }
 
 func (d *Deployer) findSiteByName(ctx context.Context, siteName string) (*btwafsdk.SiteRecord, error) {
@@ -106,9 +110,9 @@ func (d *Deployer) findSiteByName(ctx context.Context, siteName string) (*btwafs
 			PageSize: lo.ToPtr(int32(getSiteListPageSize)),
 		}
 		getSiteListResp, err := d.sdkClient.GetSiteListWithContext(ctx, getSiteListReq)
-		d.logger.Debug("sdk request 'bt.GetSiteList'", slog.Any("request", getSiteListReq), slog.Any("response", getSiteListResp))
+		d.logger.Debug("sdk request 'wafmastersite.GetSiteList'", slog.Any("request", getSiteListReq), slog.Any("response", getSiteListResp))
 		if err != nil {
-			return nil, fmt.Errorf("failed to execute sdk request 'bt.GetSiteList': %w", err)
+			return nil, fmt.Errorf("failed to execute sdk request 'wafmastersite.GetSiteList': %w", err)
 		}
 
 		if getSiteListResp.Result == nil {
@@ -156,9 +160,9 @@ func (d *Deployer) updateSiteCertificate(ctx context.Context, siteName string, s
 		},
 	}
 	modifySiteResp, err := d.sdkClient.ModifySiteWithContext(ctx, modifySiteReq)
-	d.logger.Debug("sdk request 'bt.ModifySite'", slog.Any("request", modifySiteReq), slog.Any("response", modifySiteResp))
+	d.logger.Debug("sdk request 'wafmastersite.ModifySite'", slog.Any("request", modifySiteReq), slog.Any("response", modifySiteResp))
 	if err != nil {
-		return fmt.Errorf("failed to execute sdk request 'bt.ModifySite': %w", err)
+		return fmt.Errorf("failed to execute sdk request 'wafmastersite.ModifySite': %w", err)
 	}
 
 	return nil

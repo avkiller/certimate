@@ -5,13 +5,13 @@ import (
 	"strings"
 
 	"github.com/certimate-go/certimate/internal/domain"
-	"github.com/certimate-go/certimate/pkg/core/deployer"
-	k8ssecret "github.com/certimate-go/certimate/pkg/core/deployer/providers/k8s-secret"
+	"github.com/certimate-go/certimate/pkg/core"
+	dplyimpl "github.com/certimate-go/certimate/pkg/core/deployer/providers/k8s-secret"
 	xmaps "github.com/certimate-go/certimate/pkg/utils/maps"
 )
 
 func init() {
-	Registries.MustRegister(domain.DeploymentProviderTypeKubernetesSecret, func(options *ProviderFactoryOptions) (deployer.Provider, error) {
+	Registries.MustRegister(domain.DeploymentProviderTypeKubernetesSecret, func(options *ProviderFactoryOptions) (core.Deployer, error) {
 		credentials := domain.AccessConfigForKubernetes{}
 		if err := xmaps.Populate(options.ProviderAccessConfig, &credentials); err != nil {
 			return nil, fmt.Errorf("failed to populate provider access config: %w", err)
@@ -61,15 +61,17 @@ func init() {
 			secretLabels = temp
 		}
 
-		provider, err := k8ssecret.NewDeployer(&k8ssecret.DeployerConfig{
-			KubeConfig:          credentials.KubeConfig,
-			Namespace:           xmaps.GetOrDefaultString(options.ProviderExtendedConfig, "namespace", "default"),
-			SecretName:          xmaps.GetString(options.ProviderExtendedConfig, "secretName"),
-			SecretType:          xmaps.GetOrDefaultString(options.ProviderExtendedConfig, "secretType", "kubernetes.io/tls"),
-			SecretDataKeyForCrt: xmaps.GetOrDefaultString(options.ProviderExtendedConfig, "secretDataKeyForCrt", "tls.crt"),
-			SecretDataKeyForKey: xmaps.GetOrDefaultString(options.ProviderExtendedConfig, "secretDataKeyForKey", "tls.key"),
-			SecretAnnotations:   secretAnnotations,
-			SecretLabels:        secretLabels,
+		provider, err := dplyimpl.NewDeployer(&dplyimpl.DeployerConfig{
+			KubeConfig:                        credentials.KubeConfig,
+			Namespace:                         xmaps.GetOrDefaultString(options.ProviderExtendedConfig, "namespace", "default"),
+			SecretName:                        xmaps.GetString(options.ProviderExtendedConfig, "secretName"),
+			SecretType:                        xmaps.GetOrDefaultString(options.ProviderExtendedConfig, "secretType", "kubernetes.io/tls"),
+			SecretDataKeyForKey:               xmaps.GetOrDefaultString(options.ProviderExtendedConfig, "secretDataKeyForKey", "tls.key"),
+			SecretDataKeyForCrt:               xmaps.GetOrDefaultString(options.ProviderExtendedConfig, "secretDataKeyForCrt", "tls.crt"),
+			SecretDataKeyForCrtOnlyServer:     xmaps.GetString(options.ProviderExtendedConfig, "secretDataKeyForCrtOnlyServer"),
+			SecretDataKeyForCrtOnlyIntermedia: xmaps.GetString(options.ProviderExtendedConfig, "secretDataKeyForCrtOnlyIntermedia"),
+			SecretAnnotations:                 secretAnnotations,
+			SecretLabels:                      secretLabels,
 		})
 		return provider, err
 	})

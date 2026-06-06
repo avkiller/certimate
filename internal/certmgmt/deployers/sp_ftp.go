@@ -4,32 +4,33 @@ import (
 	"fmt"
 
 	"github.com/certimate-go/certimate/internal/domain"
-	"github.com/certimate-go/certimate/pkg/core/deployer"
-	"github.com/certimate-go/certimate/pkg/core/deployer/providers/ftp"
+	"github.com/certimate-go/certimate/pkg/core"
+	dplyimpl "github.com/certimate-go/certimate/pkg/core/deployer/providers/ftp"
 	xmaps "github.com/certimate-go/certimate/pkg/utils/maps"
 )
 
 func init() {
-	Registries.MustRegister(domain.DeploymentProviderTypeFTP, func(options *ProviderFactoryOptions) (deployer.Provider, error) {
+	Registries.MustRegister(domain.DeploymentProviderTypeFTP, func(options *ProviderFactoryOptions) (core.Deployer, error) {
 		credentials := domain.AccessConfigForFTP{}
 		if err := xmaps.Populate(options.ProviderAccessConfig, &credentials); err != nil {
 			return nil, fmt.Errorf("failed to populate provider access config: %w", err)
 		}
 
-		provider, err := ftp.NewDeployer(&ftp.DeployerConfig{
-			FtpHost:                  credentials.Host,
-			FtpPort:                  credentials.Port,
-			FtpUsername:              credentials.Username,
-			FtpPassword:              credentials.Password,
-			OutputFormat:             xmaps.GetOrDefaultString(options.ProviderExtendedConfig, "format", ftp.OUTPUT_FORMAT_PEM),
-			OutputKeyPath:            xmaps.GetString(options.ProviderExtendedConfig, "keyPath"),
-			OutputCertPath:           xmaps.GetString(options.ProviderExtendedConfig, "certPath"),
-			OutputServerCertPath:     xmaps.GetString(options.ProviderExtendedConfig, "certPathForServerOnly"),
-			OutputIntermediaCertPath: xmaps.GetString(options.ProviderExtendedConfig, "certPathForIntermediaOnly"),
-			PfxPassword:              xmaps.GetString(options.ProviderExtendedConfig, "pfxPassword"),
-			JksAlias:                 xmaps.GetString(options.ProviderExtendedConfig, "jksAlias"),
-			JksKeypass:               xmaps.GetString(options.ProviderExtendedConfig, "jksKeypass"),
-			JksStorepass:             xmaps.GetString(options.ProviderExtendedConfig, "jksStorepass"),
+		provider, err := dplyimpl.NewDeployer(&dplyimpl.DeployerConfig{
+			FtpHost:                      credentials.Host,
+			FtpPort:                      credentials.Port,
+			FtpUsername:                  credentials.Username,
+			FtpPassword:                  credentials.Password,
+			FileFormat:                   xmaps.GetOrDefaultString(options.ProviderExtendedConfig, "fileFormat", dplyimpl.FILE_FORMAT_PEM),
+			FilePathForKey:               xmaps.GetString(options.ProviderExtendedConfig, "filePathForKey"),
+			FilePathForCrt:               xmaps.GetString(options.ProviderExtendedConfig, "filePathForCrt"),
+			FilePathForCrtOnlyServer:     xmaps.GetString(options.ProviderExtendedConfig, "filePathForCrtOnlyServer"),
+			FilePathForCrtOnlyIntermedia: xmaps.GetString(options.ProviderExtendedConfig, "filePathForCrtOnlyIntermedia"),
+			PfxPassword:                  xmaps.GetString(options.ProviderExtendedConfig, "pfxPassword"),
+			PfxEncoder:                   xmaps.GetString(options.ProviderExtendedConfig, "pfxEncoder"),
+			JksAlias:                     xmaps.GetString(options.ProviderExtendedConfig, "jksAlias"),
+			JksKeypass:                   xmaps.GetString(options.ProviderExtendedConfig, "jksKeypass"),
+			JksStorepass:                 xmaps.GetString(options.ProviderExtendedConfig, "jksStorepass"),
 		})
 		return provider, err
 	})

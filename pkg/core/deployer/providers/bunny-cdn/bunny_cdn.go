@@ -3,12 +3,16 @@ package bunnycdn
 import (
 	"context"
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"log/slog"
 
-	"github.com/certimate-go/certimate/pkg/core/deployer"
+	"github.com/certimate-go/certimate/pkg/core"
 	bunnysdk "github.com/certimate-go/certimate/pkg/sdk3rd/bunny"
+)
+
+type (
+	Provider     = core.Deployer
+	DeployResult = core.DeployerDeployResult
 )
 
 type DeployerConfig struct {
@@ -26,11 +30,11 @@ type Deployer struct {
 	sdkClient *bunnysdk.Client
 }
 
-var _ deployer.Provider = (*Deployer)(nil)
+var _ Provider = (*Deployer)(nil)
 
 func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the deployer provider is nil")
+		return nil, fmt.Errorf("the configuration of the deployer provider is nil")
 	}
 
 	client, err := createSDKClient(config.ApiKey)
@@ -53,7 +57,7 @@ func (d *Deployer) SetLogger(logger *slog.Logger) {
 	}
 }
 
-func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*deployer.DeployResult, error) {
+func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*DeployResult, error) {
 	if d.config.PullZoneId == "" {
 		return nil, fmt.Errorf("config `pullZoneId` is required")
 	}
@@ -68,12 +72,12 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 		CertificateKey: base64.StdEncoding.EncodeToString([]byte(privkeyPEM)),
 	}
 	err := d.sdkClient.AddCustomCertificateWithContext(ctx, d.config.PullZoneId, createCertificateReq)
-	d.logger.Debug("sdk request 'bunny.AddCustomCertificate'", slog.Any("request", createCertificateReq))
+	d.logger.Debug("sdk request 'cdn.AddCustomCertificate'", slog.Any("request", createCertificateReq))
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute sdk request 'bunny.AddCustomCertificate': %w", err)
+		return nil, fmt.Errorf("failed to execute sdk request 'cdn.AddCustomCertificate': %w", err)
 	}
 
-	return &deployer.DeployResult{}, nil
+	return &DeployResult{}, nil
 }
 
 func createSDKClient(apiKey string) (*bunnysdk.Client, error) {

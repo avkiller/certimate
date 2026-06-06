@@ -18,23 +18,33 @@ const AccessConfigFormFieldsProviderBytePlus = () => {
   return (
     <>
       <Form.Item
-        name={[parentNamePath, "accessKey"]}
-        initialValue={initialValues.accessKey}
-        label={t("access.form.byteplus_access_key.label")}
+        name={[parentNamePath, "accessKeyId"]}
+        initialValue={initialValues.accessKeyId}
+        label={t("access.form.byteplus_access_key_id.label")}
         rules={[formRule]}
-        tooltip={<span dangerouslySetInnerHTML={{ __html: t("access.form.byteplus_access_key.tooltip") }}></span>}
+        tooltip={<span dangerouslySetInnerHTML={{ __html: t("access.form.byteplus_access_key_id.tooltip") }}></span>}
       >
-        <Input autoComplete="new-password" placeholder={t("access.form.byteplus_access_key.placeholder")} />
+        <Input autoComplete="new-password" placeholder={t("access.form.byteplus_access_key_id.placeholder")} />
       </Form.Item>
 
       <Form.Item
-        name={[parentNamePath, "secretKey"]}
-        initialValue={initialValues.secretKey}
-        label={t("access.form.byteplus_secret_key.label")}
+        name={[parentNamePath, "secretAccessKey"]}
+        initialValue={initialValues.secretAccessKey}
+        label={t("access.form.byteplus_secret_access_key.label")}
         rules={[formRule]}
-        tooltip={<span dangerouslySetInnerHTML={{ __html: t("access.form.byteplus_secret_key.tooltip") }}></span>}
+        tooltip={<span dangerouslySetInnerHTML={{ __html: t("access.form.byteplus_secret_access_key.tooltip") }}></span>}
       >
-        <Input.Password autoComplete="new-password" placeholder={t("access.form.byteplus_secret_key.placeholder")} />
+        <Input.Password autoComplete="new-password" placeholder={t("access.form.byteplus_secret_access_key.placeholder")} />
+      </Form.Item>
+
+      <Form.Item
+        name={[parentNamePath, "projectName"]}
+        initialValue={initialValues.projectName}
+        label={t("access.form.byteplus_project_name.label")}
+        rules={[formRule]}
+        tooltip={<span dangerouslySetInnerHTML={{ __html: t("access.form.byteplus_project_name.tooltip") }}></span>}
+      >
+        <Input allowClear placeholder={t("access.form.byteplus_project_name.placeholder")} />
       </Form.Item>
     </>
   );
@@ -42,17 +52,18 @@ const AccessConfigFormFieldsProviderBytePlus = () => {
 
 const getInitialValues = (): Nullish<z.infer<ReturnType<typeof getSchema>>> => {
   return {
-    accessKey: "",
-    secretKey: "",
+    accessKeyId: "",
+    secretAccessKey: "",
   };
 };
 
 const getSchema = ({ i18n = getI18n() }: { i18n: ReturnType<typeof getI18n> }) => {
-  const { t } = i18n;
+  const { t: _ } = i18n;
 
   return z.object({
-    accessKey: z.string().nonempty(t("access.form.byteplus_access_key.placeholder")),
-    secretKey: z.string().nonempty(t("access.form.byteplus_secret_key.placeholder")),
+    accessKeyId: z.string().nonempty(),
+    secretAccessKey: z.string().nonempty(),
+    projectName: z.string().nullish(),
   });
 };
 

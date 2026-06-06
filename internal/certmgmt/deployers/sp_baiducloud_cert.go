@@ -4,19 +4,19 @@ import (
 	"fmt"
 
 	"github.com/certimate-go/certimate/internal/domain"
-	"github.com/certimate-go/certimate/pkg/core/deployer"
-	baiducloudcert "github.com/certimate-go/certimate/pkg/core/deployer/providers/baiducloud-cert"
+	"github.com/certimate-go/certimate/pkg/core"
+	dplyimpl "github.com/certimate-go/certimate/pkg/core/deployer/providers/baiducloud-cert"
 	xmaps "github.com/certimate-go/certimate/pkg/utils/maps"
 )
 
 func init() {
-	Registries.MustRegister(domain.DeploymentProviderTypeBaiduCloudCert, func(options *ProviderFactoryOptions) (deployer.Provider, error) {
+	Registries.MustRegister(domain.DeploymentProviderTypeBaiduCloudCert, func(options *ProviderFactoryOptions) (core.Deployer, error) {
 		credentials := domain.AccessConfigForBaiduCloud{}
 		if err := xmaps.Populate(options.ProviderAccessConfig, &credentials); err != nil {
 			return nil, fmt.Errorf("failed to populate provider access config: %w", err)
 		}
 
-		provider, err := baiducloudcert.NewDeployer(&baiducloudcert.DeployerConfig{
+		provider, err := dplyimpl.NewDeployer(&dplyimpl.DeployerConfig{
 			AccessKeyId:     credentials.AccessKeyId,
 			SecretAccessKey: credentials.SecretAccessKey,
 		})

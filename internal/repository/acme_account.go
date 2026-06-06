@@ -4,8 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
-	"github.com/go-acme/lego/v4/acme"
+	"github.com/go-acme/lego/v5/acme"
 	"github.com/pocketbase/dbx"
 	"github.com/pocketbase/pocketbase/core"
 
@@ -73,9 +74,9 @@ func (r *ACMEAccountRepository) Save(ctx context.Context, acmeAccount *domain.AC
 	record.Set("ca", acmeAccount.CA)
 	record.Set("email", acmeAccount.Email)
 	record.Set("privateKey", acmeAccount.PrivateKey)
-	record.Set("acmeAccount", acmeAccount.ACMEAccount)
-	record.Set("acmeAcctUrl", acmeAccount.ACMEAcctUrl)
 	record.Set("acmeDirUrl", acmeAccount.ACMEDirUrl)
+	record.Set("acmeAcctUrl", acmeAccount.ACMEAcctUrl)
+	record.Set("acmeAccount", acmeAccount.ACMEAccount)
 	if err := app.GetApp().Save(record); err != nil {
 		return acmeAccount, err
 	}
@@ -88,12 +89,12 @@ func (r *ACMEAccountRepository) Save(ctx context.Context, acmeAccount *domain.AC
 
 func (r *ACMEAccountRepository) castRecordToModel(record *core.Record) (*domain.ACMEAccount, error) {
 	if record == nil {
-		return nil, errors.New("the record is nil")
+		return nil, fmt.Errorf("the record is nil")
 	}
 
 	account := &acme.Account{}
 	if err := record.UnmarshalJSONField("acmeAccount", account); err != nil {
-		return nil, errors.New("field 'acmeAccount' is malformed")
+		return nil, fmt.Errorf("field 'acmeAccount' is malformed")
 	}
 
 	acmeAccount := &domain.ACMEAccount{
@@ -105,9 +106,9 @@ func (r *ACMEAccountRepository) castRecordToModel(record *core.Record) (*domain.
 		CA:          record.GetString("ca"),
 		Email:       record.GetString("email"),
 		PrivateKey:  record.GetString("privateKey"),
-		ACMEAccount: account,
-		ACMEAcctUrl: record.GetString("acmeAcctUrl"),
 		ACMEDirUrl:  record.GetString("acmeDirUrl"),
+		ACMEAcctUrl: record.GetString("acmeAcctUrl"),
+		ACMEAccount: account,
 	}
 	return acmeAccount, nil
 }

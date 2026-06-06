@@ -1,11 +1,12 @@
 package xinnet
 
 import (
-	"errors"
+	"fmt"
 	"time"
 
-	"github.com/certimate-go/certimate/pkg/core/certifier"
-	"github.com/certimate-go/certimate/pkg/core/certifier/challengers/dns01/xinnet/internal"
+	"github.com/go-acme/lego/v5/providers/dns/xinnet"
+
+	"github.com/certimate-go/certimate/pkg/core"
 )
 
 type ChallengerConfig struct {
@@ -15,14 +16,14 @@ type ChallengerConfig struct {
 	DnsTTL                int    `json:"dnsTTL,omitempty"`
 }
 
-func NewChallenger(config *ChallengerConfig) (certifier.ACMEChallenger, error) {
+func NewChallenger(config *ChallengerConfig) (core.ACMEChallenger, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the acme challenge provider is nil")
+		return nil, fmt.Errorf("the configuration of the acme challenge provider is nil")
 	}
 
-	providerConfig := internal.NewDefaultConfig()
+	providerConfig := xinnet.NewDefaultConfig()
 	providerConfig.AgentID = config.AgentId
-	providerConfig.AppSecret = config.ApiPassword
+	providerConfig.Secret = config.ApiPassword
 	if config.DnsPropagationTimeout != 0 {
 		providerConfig.PropagationTimeout = time.Duration(config.DnsPropagationTimeout) * time.Second
 	}
@@ -30,7 +31,7 @@ func NewChallenger(config *ChallengerConfig) (certifier.ACMEChallenger, error) {
 		providerConfig.TTL = config.DnsTTL
 	}
 
-	provider, err := internal.NewDNSProviderConfig(providerConfig)
+	provider, err := xinnet.NewDNSProviderConfig(providerConfig)
 	if err != nil {
 		return nil, err
 	}

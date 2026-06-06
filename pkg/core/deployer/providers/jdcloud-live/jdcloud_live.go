@@ -7,12 +7,18 @@ import (
 	"log/slog"
 
 	jdcore "github.com/jdcloud-api/jdcloud-sdk-go/core"
-	jdlive "github.com/jdcloud-api/jdcloud-sdk-go/services/live/apis"
+	jdliveapis "github.com/jdcloud-api/jdcloud-sdk-go/services/live/apis"
 	"github.com/samber/lo"
 
-	"github.com/certimate-go/certimate/pkg/core/deployer"
-	"github.com/certimate-go/certimate/pkg/core/deployer/providers/jdcloud-live/internal"
+	jdlive "github.com/certimate-go/certimate/pkg/sdk3rd-trimmed/github.com/jdcloud-api/jdcloud-sdk-go/services/live/client"
+
+	"github.com/certimate-go/certimate/pkg/core"
 	xcerthostname "github.com/certimate-go/certimate/pkg/utils/cert/hostname"
+)
+
+type (
+	Provider     = core.Deployer
+	DeployResult = core.DeployerDeployResult
 )
 
 type DeployerConfig struct {
@@ -30,14 +36,14 @@ type DeployerConfig struct {
 type Deployer struct {
 	config    *DeployerConfig
 	logger    *slog.Logger
-	sdkClient *internal.LiveClient
+	sdkClient *jdlive.LiveClient
 }
 
-var _ deployer.Provider = (*Deployer)(nil)
+var _ Provider = (*Deployer)(nil)
 
 func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the deployer provider is nil")
+		return nil, fmt.Errorf("the configuration of the deployer provider is nil")
 	}
 
 	client, err := createSDKClient(config.AccessKeyId, config.AccessKeySecret)
@@ -60,14 +66,14 @@ func (d *Deployer) SetLogger(logger *slog.Logger) {
 	}
 }
 
-func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*deployer.DeployResult, error) {
+func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*DeployResult, error) {
 	// 获取待部署的域名列表
 	var domains []string
 	switch d.config.DomainMatchPattern {
 	case "", DOMAIN_MATCH_PATTERN_EXACT:
 		{
 			if d.config.Domain == "" {
-				return nil, errors.New("config `domain` is required")
+				return nil, fmt.Errorf("config `domain` is required")
 			}
 
 			domains = []string{d.config.Domain}
@@ -84,7 +90,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 				return xcerthostname.IsMatchByCertificatePEM(certPEM, domain)
 			})
 			if len(domains) == 0 {
-				return nil, errors.New("could not find any domains matched by certificate")
+				return nil, fmt.Errorf("could not find any domains matched by certificate")
 			}
 		}
 
@@ -115,7 +121,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 		}
 	}
 
-	return &deployer.DeployResult{}, nil
+	return &DeployResult{}, nil
 }
 
 func (d *Deployer) getAllDomains(ctx context.Context) ([]string, error) {
@@ -132,7 +138,7 @@ func (d *Deployer) getAllDomains(ctx context.Context) ([]string, error) {
 		default:
 		}
 
-		describeLiveDomainsReq := jdlive.NewDescribeLiveDomainsRequestWithoutParam()
+		describeLiveDomainsReq := jdliveapis.NewDescribeLiveDomainsRequestWithoutParam()
 		describeLiveDomainsReq.SetPageNum(describeLiveDomainsPageNumber)
 		describeLiveDomainsReq.SetPageSize(describeLiveDomainsPageSize)
 		describeLiveDomainsResp, err := d.sdkClient.DescribeLiveDomains(describeLiveDomainsReq)
@@ -165,7 +171,7 @@ func (d *Deployer) getAllDomains(ctx context.Context) ([]string, error) {
 func (d *Deployer) updateDomainCertificate(ctx context.Context, domain string, certPEM, privkeyPEM string) error {
 	// 设置直播证书
 	// REF: https://docs.jdcloud.com/cn/live-video/api/setlivedomaincertificate
-	setLiveDomainCertificateReq := jdlive.NewSetLiveDomainCertificateRequestWithoutParam()
+	setLiveDomainCertificateReq := jdliveapis.NewSetLiveDomainCertificateRequestWithoutParam()
 	setLiveDomainCertificateReq.SetPlayDomain(domain)
 	setLiveDomainCertificateReq.SetCertStatus("on")
 	setLiveDomainCertificateReq.SetCert(certPEM)
@@ -179,8 +185,9 @@ func (d *Deployer) updateDomainCertificate(ctx context.Context, domain string, c
 	return nil
 }
 
-func createSDKClient(accessKeyId, accessKeySecret string) (*internal.LiveClient, error) {
+func createSDKClient(accessKeyId, accessKeySecret string) (*jdlive.LiveClient, error) {
 	clientCredentials := jdcore.NewCredentials(accessKeyId, accessKeySecret)
-	client := internal.NewLiveClient(clientCredentials)
+	client := jdlive.NewLiveClient(clientCredentials)
+	client.DisableLogger()
 	return client, nil
 }

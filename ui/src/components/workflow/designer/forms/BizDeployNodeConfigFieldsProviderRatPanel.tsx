@@ -9,8 +9,8 @@ import Tips from "@/components/Tips";
 
 import { useFormNestedFieldsContext } from "./_context";
 
-const RESOURCE_TYPE_WEBSITE = "website" as const;
-const RESOURCE_TYPE_CERTIFICATE = "certificate" as const;
+const DEPLOY_TARGET_WEBSITE = "website" as const;
+const DEPLOY_TARGET_CERTIFICATE = "certificate" as const;
 
 const MULTIPLE_INPUT_SEPARATOR = ";";
 
@@ -25,7 +25,7 @@ const BizDeployNodeConfigFieldsProviderRatPanel = () => {
   const formInst = Form.useFormInstance();
   const initialValues = getInitialValues();
 
-  const fieldResourceType = Form.useWatch([parentNamePath, "resourceType"], formInst);
+  const fieldResourceType = Form.useWatch([parentNamePath, "deployTarget"], formInst);
 
   return (
     <>
@@ -34,21 +34,21 @@ const BizDeployNodeConfigFieldsProviderRatPanel = () => {
       </Form.Item>
 
       <Form.Item
-        name={[parentNamePath, "resourceType"]}
-        initialValue={initialValues.resourceType}
-        label={t("workflow_node.deploy.form.shared_resource_type.label")}
+        name={[parentNamePath, "deployTarget"]}
+        initialValue={initialValues.deployTarget}
+        label={t("workflow_node.deploy.form.shared_deploy_target.label")}
         rules={[formRule]}
       >
         <Select
-          options={[RESOURCE_TYPE_WEBSITE, RESOURCE_TYPE_CERTIFICATE].map((s) => ({
+          options={[DEPLOY_TARGET_WEBSITE, DEPLOY_TARGET_CERTIFICATE].map((s) => ({
+            label: t(`workflow_node.deploy.form.ratpanel_deploy_target.option.${s}.label`),
             value: s,
-            label: t(`workflow_node.deploy.form.ratpanel_resource_type.option.${s}.label`),
           }))}
-          placeholder={t("workflow_node.deploy.form.shared_resource_type.placeholder")}
+          placeholder={t("workflow_node.deploy.form.shared_deploy_target.placeholder")}
         />
       </Form.Item>
 
-      <Show when={fieldResourceType === RESOURCE_TYPE_WEBSITE}>
+      <Show when={fieldResourceType === DEPLOY_TARGET_WEBSITE}>
         <Form.Item
           name={[parentNamePath, "siteNames"]}
           initialValue={initialValues.siteNames}
@@ -67,7 +67,7 @@ const BizDeployNodeConfigFieldsProviderRatPanel = () => {
         </Form.Item>
       </Show>
 
-      <Show when={fieldResourceType === RESOURCE_TYPE_CERTIFICATE}>
+      <Show when={fieldResourceType === DEPLOY_TARGET_CERTIFICATE}>
         <Form.Item
           name={[parentNamePath, "certificateId"]}
           initialValue={initialValues.certificateId}
@@ -84,48 +84,49 @@ const BizDeployNodeConfigFieldsProviderRatPanel = () => {
 
 const getInitialValues = (): Nullish<z.infer<ReturnType<typeof getSchema>>> => {
   return {
-    resourceType: RESOURCE_TYPE_WEBSITE,
+    deployTarget: DEPLOY_TARGET_WEBSITE,
     siteNames: "",
   };
 };
 
 const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) => {
-  const { t } = i18n;
+  const { t: _ } = i18n;
 
   return z
     .object({
-      resourceType: z.literal([RESOURCE_TYPE_WEBSITE, RESOURCE_TYPE_CERTIFICATE], t("workflow_node.deploy.form.cpanel_resource_type.placeholder")),
+      deployTarget: z.enum([DEPLOY_TARGET_WEBSITE, DEPLOY_TARGET_CERTIFICATE]),
       siteNames: z.string().nullish(),
-      certificateId: z.union([z.string(), z.number().int()]).nullish(),
+      certificateId: z.union([z.string(), z.int().positive()]).nullish(),
     })
     .superRefine((values, ctx) => {
-      switch (values.resourceType) {
-        case RESOURCE_TYPE_WEBSITE:
+      switch (values.deployTarget) {
+        case DEPLOY_TARGET_WEBSITE:
           {
             const scSiteNames = z
               .string()
               .nonempty()
               .refine((v) => {
-                if (!v) return false;
                 return v.split(MULTIPLE_INPUT_SEPARATOR).every((s) => !!s.trim());
               });
-            if (!scSiteNames.safeParse(values.siteNames).success) {
+            const spSiteNames = scSiteNames.safeParse(values.siteNames);
+            if (!spSiteNames.success) {
               ctx.addIssue({
                 code: "custom",
-                message: t("workflow_node.deploy.form.ratpanel_site_names.placeholder"),
+                message: z.treeifyError(spSiteNames.error).errors.join(),
                 path: ["siteNames"],
               });
             }
           }
           break;
 
-        case RESOURCE_TYPE_CERTIFICATE:
+        case DEPLOY_TARGET_CERTIFICATE:
           {
             const scCertificateId = z.coerce.number().int().positive();
-            if (!scCertificateId.safeParse(values.certificateId).success) {
+            const spCertificateId = scCertificateId.safeParse(values.certificateId);
+            if (!spCertificateId.success) {
               ctx.addIssue({
                 code: "custom",
-                message: t("workflow_node.deploy.form.ratpanel_certificate_id.placeholder"),
+                message: z.treeifyError(spCertificateId.error).errors.join(),
                 path: ["certificateId"],
               });
             }

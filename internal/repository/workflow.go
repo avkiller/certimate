@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/certimate-go/certimate/internal/app"
 	"github.com/certimate-go/certimate/internal/domain"
@@ -23,7 +24,7 @@ func (r *WorkflowRepository) ListEnabledScheduled(ctx context.Context) ([]*domai
 		"enabled={:enabled} && trigger={:trigger}",
 		"-created",
 		0, 0,
-		dbx.Params{"enabled": true, "trigger": string(domain.WorkflowTriggerTypeScheduled)},
+		dbx.Params{"enabled": true, "trigger": domain.WorkflowTriggerTypeScheduled.String()},
 	)
 	if err != nil {
 		return nil, err
@@ -75,7 +76,7 @@ func (r *WorkflowRepository) Save(ctx context.Context, workflow *domain.Workflow
 
 	record.Set("name", workflow.Name)
 	record.Set("description", workflow.Description)
-	record.Set("trigger", string(workflow.Trigger))
+	record.Set("trigger", workflow.Trigger.String())
 	record.Set("triggerCron", workflow.TriggerCron)
 	record.Set("enabled", workflow.Enabled)
 	record.Set("graphDraft", workflow.GraphDraft)
@@ -83,7 +84,7 @@ func (r *WorkflowRepository) Save(ctx context.Context, workflow *domain.Workflow
 	record.Set("hasDraft", workflow.HasDraft)
 	record.Set("hasContent", workflow.HasContent)
 	record.Set("lastRunRef", workflow.LastRunId)
-	record.Set("lastRunStatus", string(workflow.LastRunStatus))
+	record.Set("lastRunStatus", workflow.LastRunStatus.String())
 	record.Set("lastRunTime", workflow.LastRunTime)
 	if err := app.GetApp().Save(record); err != nil {
 		return workflow, err
@@ -97,17 +98,17 @@ func (r *WorkflowRepository) Save(ctx context.Context, workflow *domain.Workflow
 
 func (r *WorkflowRepository) castRecordToModel(record *core.Record) (*domain.Workflow, error) {
 	if record == nil {
-		return nil, errors.New("the record is nil")
+		return nil, fmt.Errorf("the record is nil")
 	}
 
 	graphDraft := &domain.WorkflowGraph{}
 	if err := record.UnmarshalJSONField("graphDraft", graphDraft); err != nil {
-		return nil, errors.New("field 'graphDraft' is malformed")
+		return nil, fmt.Errorf("field 'graphDraft' is malformed")
 	}
 
 	graphContent := &domain.WorkflowGraph{}
 	if err := record.UnmarshalJSONField("graphContent", graphContent); err != nil {
-		return nil, errors.New("field 'graphContent' is malformed")
+		return nil, fmt.Errorf("field 'graphContent' is malformed")
 	}
 
 	workflow := &domain.Workflow{

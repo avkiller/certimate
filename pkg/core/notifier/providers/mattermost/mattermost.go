@@ -2,7 +2,6 @@ package mattermost
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -10,7 +9,12 @@ import (
 	"github.com/go-resty/resty/v2"
 
 	"github.com/certimate-go/certimate/internal/app"
-	"github.com/certimate-go/certimate/pkg/core/notifier"
+	"github.com/certimate-go/certimate/pkg/core"
+)
+
+type (
+	Provider     = core.Notifier
+	NotifyResult = core.NotifierNotifyResult
 )
 
 type NotifierConfig struct {
@@ -30,11 +34,11 @@ type Notifier struct {
 	httpClient *resty.Client
 }
 
-var _ notifier.Provider = (*Notifier)(nil)
+var _ Provider = (*Notifier)(nil)
 
 func NewNotifier(config *NotifierConfig) (*Notifier, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the notifier provider is nil")
+		return nil, fmt.Errorf("the configuration of the notifier provider is nil")
 	}
 
 	client := resty.New().
@@ -56,7 +60,7 @@ func (n *Notifier) SetLogger(logger *slog.Logger) {
 	}
 }
 
-func (n *Notifier) Notify(ctx context.Context, subject string, message string) (*notifier.NotifyResult, error) {
+func (n *Notifier) Notify(ctx context.Context, subject string, message string) (*NotifyResult, error) {
 	serverUrl := strings.TrimSuffix(n.config.ServerUrl, "/")
 
 	// REF: https://developers.mattermost.com/api-documentation/#/operations/Login
@@ -97,5 +101,5 @@ func (n *Notifier) Notify(ctx context.Context, subject string, message string) (
 		return nil, fmt.Errorf("mattermost api error: unexpected status code: %d (resp: %s)", postResp.StatusCode(), postResp.String())
 	}
 
-	return &notifier.NotifyResult{}, nil
+	return &NotifyResult{}, nil
 }

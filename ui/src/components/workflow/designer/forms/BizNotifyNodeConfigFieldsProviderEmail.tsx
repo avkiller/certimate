@@ -3,8 +3,6 @@ import { Form, Input, Select } from "antd";
 import { createSchemaFieldRule } from "antd-zod";
 import { z } from "zod";
 
-import { isEmail } from "@/utils/validator";
-
 import { useFormNestedFieldsContext } from "./_context";
 
 const MESSAGE_FORMAT_PLAIN = "plain" as const;
@@ -30,7 +28,6 @@ const BizNotifyNodeConfigFieldsProviderEmail = () => {
       >
         <Select
           options={[MESSAGE_FORMAT_PLAIN, MESSAGE_FORMAT_HTML].map((s) => ({
-            key: s,
             label: t(`workflow_node.notify.form.email_format.option.${s}.label`),
             value: s,
           }))}
@@ -58,17 +55,11 @@ const getInitialValues = (): Nullish<z.infer<ReturnType<typeof getSchema>>> => {
 };
 
 const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) => {
-  const { t } = i18n;
+  const { t: _ } = i18n;
 
   return z.object({
-    format: z.enum([MESSAGE_FORMAT_PLAIN, MESSAGE_FORMAT_HTML]).nullish(),
-    receiverAddress: z
-      .string()
-      .nullish()
-      .refine((v) => {
-        if (!v) return true;
-        return isEmail(v);
-      }, t("common.errmsg.email_invalid")),
+    format: z.enum([MESSAGE_FORMAT_PLAIN, MESSAGE_FORMAT_HTML]).nullish().default(MESSAGE_FORMAT_PLAIN),
+    receiverAddress: z.email().or(z.literal("")).nullish(),
   });
 };
 

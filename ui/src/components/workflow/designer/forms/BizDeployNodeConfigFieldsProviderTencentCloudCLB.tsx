@@ -8,9 +8,9 @@ import { isDomain } from "@/utils/validator";
 
 import { useFormNestedFieldsContext } from "./_context";
 
-const RESOURCE_TYPE_LOADBALANCER = "loadbalancer" as const;
-const RESOURCE_TYPE_LISTENER = "listener" as const;
-const RESOURCE_TYPE_RULEDOMAIN = "ruledomain" as const;
+const DEPLOY_TARGET_LOADBALANCER = "loadbalancer" as const;
+const DEPLOY_TARGET_LISTENER = "listener" as const;
+const DEPLOY_TARGET_RULEDOMAIN = "ruledomain" as const;
 
 const BizDeployNodeConfigFieldsProviderTencentCloudCLB = () => {
   const { i18n, t } = useTranslation();
@@ -23,7 +23,7 @@ const BizDeployNodeConfigFieldsProviderTencentCloudCLB = () => {
   const formInst = Form.useFormInstance();
   const initialValues = getInitialValues();
 
-  const fieldResourceType = Form.useWatch([parentNamePath, "resourceType"], formInst);
+  const fieldResourceType = Form.useWatch([parentNamePath, "deployTarget"], formInst);
 
   return (
     <>
@@ -48,17 +48,17 @@ const BizDeployNodeConfigFieldsProviderTencentCloudCLB = () => {
       </Form.Item>
 
       <Form.Item
-        name={[parentNamePath, "resourceType"]}
-        initialValue={initialValues.resourceType}
-        label={t("workflow_node.deploy.form.shared_resource_type.label")}
+        name={[parentNamePath, "deployTarget"]}
+        initialValue={initialValues.deployTarget}
+        label={t("workflow_node.deploy.form.shared_deploy_target.label")}
         rules={[formRule]}
       >
         <Select
-          options={[RESOURCE_TYPE_LOADBALANCER, RESOURCE_TYPE_LISTENER, RESOURCE_TYPE_RULEDOMAIN].map((s) => ({
+          options={[DEPLOY_TARGET_LOADBALANCER, DEPLOY_TARGET_LISTENER, DEPLOY_TARGET_RULEDOMAIN].map((s) => ({
+            label: t(`workflow_node.deploy.form.tencentcloud_clb_deploy_target.option.${s}.label`),
             value: s,
-            label: t(`workflow_node.deploy.form.tencentcloud_clb_resource_type.option.${s}.label`),
           }))}
-          placeholder={t("workflow_node.deploy.form.shared_resource_type.placeholder")}
+          placeholder={t("workflow_node.deploy.form.shared_deploy_target.placeholder")}
         />
       </Form.Item>
 
@@ -72,7 +72,7 @@ const BizDeployNodeConfigFieldsProviderTencentCloudCLB = () => {
         <Input placeholder={t("workflow_node.deploy.form.tencentcloud_clb_loadbalancer_id.placeholder")} />
       </Form.Item>
 
-      <Show when={fieldResourceType === RESOURCE_TYPE_LISTENER || fieldResourceType === RESOURCE_TYPE_RULEDOMAIN}>
+      <Show when={fieldResourceType === DEPLOY_TARGET_LISTENER || fieldResourceType === DEPLOY_TARGET_RULEDOMAIN}>
         <Form.Item
           name={[parentNamePath, "listenerId"]}
           initialValue={initialValues.listenerId}
@@ -84,7 +84,7 @@ const BizDeployNodeConfigFieldsProviderTencentCloudCLB = () => {
         </Form.Item>
       </Show>
 
-      <Show when={fieldResourceType === RESOURCE_TYPE_RULEDOMAIN}>
+      <Show when={fieldResourceType === DEPLOY_TARGET_RULEDOMAIN}>
         <Form.Item
           name={[parentNamePath, "domain"]}
           initialValue={initialValues.domain}
@@ -101,7 +101,7 @@ const BizDeployNodeConfigFieldsProviderTencentCloudCLB = () => {
 const getInitialValues = (): Nullish<z.infer<ReturnType<typeof getSchema>>> => {
   return {
     region: "",
-    resourceType: RESOURCE_TYPE_LISTENER,
+    deployTarget: DEPLOY_TARGET_LISTENER,
     loadbalancerId: "",
   };
 };
@@ -112,43 +112,46 @@ const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) 
   return z
     .object({
       endpoint: z.string().nullish(),
-      resourceType: z.literal(
-        [RESOURCE_TYPE_LOADBALANCER, RESOURCE_TYPE_LISTENER, RESOURCE_TYPE_RULEDOMAIN],
-        t("workflow_node.deploy.form.shared_resource_type.placeholder")
-      ),
-      region: z.string().nonempty(t("workflow_node.deploy.form.tencentcloud_clb_region.placeholder")),
-      loadbalancerId: z.string().nonempty(t("workflow_node.deploy.form.tencentcloud_clb_loadbalancer_id.placeholder")),
+      deployTarget: z.enum([DEPLOY_TARGET_LOADBALANCER, DEPLOY_TARGET_LISTENER, DEPLOY_TARGET_RULEDOMAIN]),
+      region: z.string().nonempty(),
+      loadbalancerId: z.string().nonempty(),
       listenerId: z.string().nullish(),
       domain: z.string().nullish(),
     })
     .superRefine((values, ctx) => {
-      switch (values.resourceType) {
-        case RESOURCE_TYPE_LISTENER:
+      switch (values.deployTarget) {
+        case DEPLOY_TARGET_LISTENER:
           {
-            if (!values.listenerId?.trim()) {
+            const scListenerId = z.string().nonempty();
+            const spListenerId = scListenerId.safeParse(values.listenerId);
+            if (!spListenerId.success) {
               ctx.addIssue({
                 code: "custom",
-                message: t("workflow_node.deploy.form.tencentcloud_clb_listener_id.placeholder"),
+                message: z.treeifyError(spListenerId.error).errors.join(),
                 path: ["listenerId"],
               });
             }
           }
           break;
 
-        case RESOURCE_TYPE_RULEDOMAIN:
+        case DEPLOY_TARGET_RULEDOMAIN:
           {
-            if (!values.listenerId?.trim()) {
+            const scListenerId = z.string().nonempty();
+            const spListenerId = scListenerId.safeParse(values.listenerId);
+            if (!spListenerId.success) {
               ctx.addIssue({
                 code: "custom",
-                message: t("workflow_node.deploy.form.tencentcloud_clb_listener_id.placeholder"),
+                message: z.treeifyError(spListenerId.error).errors.join(),
                 path: ["listenerId"],
               });
             }
 
-            if (!isDomain(values.domain!, { allowWildcard: true })) {
+            const scDomain = z.string().refine((v) => isDomain(v, { allowWildcard: true }), t("common.errmsg.domain_invalid"));
+            const spDomain = scDomain.safeParse(values.domain);
+            if (!spDomain.success) {
               ctx.addIssue({
                 code: "custom",
-                message: t("common.errmsg.domain_invalid"),
+                message: z.treeifyError(spDomain.error).errors.join(),
                 path: ["domain"],
               });
             }

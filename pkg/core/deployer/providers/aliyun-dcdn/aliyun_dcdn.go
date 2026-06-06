@@ -9,16 +9,20 @@ import (
 	"strings"
 
 	aliopen "github.com/alibabacloud-go/darabonba-openapi/v2/client"
-	alidcdn "github.com/alibabacloud-go/dcdn-20180115/v4/client"
 	"github.com/alibabacloud-go/tea/dara"
 	"github.com/alibabacloud-go/tea/tea"
 	"github.com/samber/lo"
 
-	"github.com/certimate-go/certimate/pkg/core/certmgr"
-	mcertmgr "github.com/certimate-go/certimate/pkg/core/certmgr/providers/aliyun-cas"
-	"github.com/certimate-go/certimate/pkg/core/deployer"
-	"github.com/certimate-go/certimate/pkg/core/deployer/providers/aliyun-dcdn/internal"
+	alidcdn "github.com/certimate-go/certimate/pkg/sdk3rd-trimmed/github.com/alibabacloud-go/dcdn-20180115/v4/client"
+
+	"github.com/certimate-go/certimate/pkg/core"
+	cmgrimpl "github.com/certimate-go/certimate/pkg/core/certmgr/providers/aliyun-cas"
 	xcerthostname "github.com/certimate-go/certimate/pkg/utils/cert/hostname"
+)
+
+type (
+	Provider     = core.Deployer
+	DeployResult = core.DeployerDeployResult
 )
 
 type DeployerConfig struct {
@@ -40,15 +44,15 @@ type DeployerConfig struct {
 type Deployer struct {
 	config     *DeployerConfig
 	logger     *slog.Logger
-	sdkClient  *internal.DcdnClient
-	sdkCertmgr certmgr.Provider
+	sdkClient  *alidcdn.Client
+	sdkCertmgr core.Certmgr
 }
 
-var _ deployer.Provider = (*Deployer)(nil)
+var _ Provider = (*Deployer)(nil)
 
 func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the deployer provider is nil")
+		return nil, fmt.Errorf("the configuration of the deployer provider is nil")
 	}
 
 	client, err := createSDKClient(config.AccessKeyId, config.AccessKeySecret)
@@ -56,7 +60,7 @@ func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 		return nil, fmt.Errorf("could not create client: %w", err)
 	}
 
-	pcertmgr, err := mcertmgr.NewCertmgr(&mcertmgr.CertmgrConfig{
+	pcertmgr, err := cmgrimpl.NewCertmgr(&cmgrimpl.CertmgrConfig{
 		AccessKeyId:     config.AccessKeyId,
 		AccessKeySecret: config.AccessKeySecret,
 		ResourceGroupId: config.ResourceGroupId,
@@ -84,7 +88,7 @@ func (d *Deployer) SetLogger(logger *slog.Logger) {
 	}
 }
 
-func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*deployer.DeployResult, error) {
+func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*DeployResult, error) {
 	// 上传证书
 	upres, err := d.sdkCertmgr.Upload(ctx, certPEM, privkeyPEM)
 	if err != nil {
@@ -99,7 +103,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 	case "", DOMAIN_MATCH_PATTERN_EXACT:
 		{
 			if d.config.Domain == "" {
-				return nil, errors.New("config `domain` is required")
+				return nil, fmt.Errorf("config `domain` is required")
 			}
 
 			// "*.example.com" → ".example.com"，适配阿里云 DCDN 要求的泛域名格式
@@ -110,7 +114,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 	case DOMAIN_MATCH_PATTERN_WILDCARD:
 		{
 			if d.config.Domain == "" {
-				return nil, errors.New("config `domain` is required")
+				return nil, fmt.Errorf("config `domain` is required")
 			}
 
 			if strings.HasPrefix(d.config.Domain, "*.") {
@@ -123,7 +127,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 					return xcerthostname.IsMatch(d.config.Domain, domain)
 				})
 				if len(domains) == 0 {
-					return nil, errors.New("could not find any domains matched by wildcard")
+					return nil, fmt.Errorf("could not find any domains matched by wildcard")
 				}
 			} else {
 				domains = []string{d.config.Domain}
@@ -141,7 +145,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 				return xcerthostname.IsMatchByCertificatePEM(certPEM, domain)
 			})
 			if len(domains) == 0 {
-				return nil, errors.New("could not find any domains matched by certificate")
+				return nil, fmt.Errorf("could not find any domains matched by certificate")
 			}
 		}
 
@@ -180,7 +184,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 		}
 	}
 
-	return &deployer.DeployResult{}, nil
+	return &DeployResult{}, nil
 }
 
 func (d *Deployer) getAllDomains(ctx context.Context) ([]string, error) {
@@ -251,14 +255,14 @@ func (d *Deployer) updateDomainCertificate(ctx context.Context, domain string, c
 	return nil
 }
 
-func createSDKClient(accessKeyId, accessKeySecret string) (*internal.DcdnClient, error) {
+func createSDKClient(accessKeyId, accessKeySecret string) (*alidcdn.Client, error) {
 	config := &aliopen.Config{
 		AccessKeyId:     tea.String(accessKeyId),
 		AccessKeySecret: tea.String(accessKeySecret),
 		Endpoint:        tea.String("dcdn.aliyuncs.com"),
 	}
 
-	client, err := internal.NewDcdnClient(config)
+	client, err := alidcdn.NewClient(config)
 	if err != nil {
 		return nil, err
 	}

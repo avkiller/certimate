@@ -1,0 +1,207 @@
+{
+  "$ns": "settings",
+
+  "page": {
+    "heading": "Settings"
+  },
+
+  "account": {
+    "tab": "Account",
+    "username": {
+      "title": "Username",
+      "tips": "Email you can use to sign in to your account.",
+      "button": {
+        "label": "Change email"
+      },
+      "form": {
+        "email": {
+          "label": "Email",
+          "placeholder": "Please enter email"
+        }
+      }
+    },
+    "password": {
+      "title": "Password",
+      "tips": "It's recommended to change your password regularly, or sooner if you suspect any issues.",
+      "button": {
+        "label": "Change password"
+      },
+      "form": {
+        "email": {
+          "old_password": {
+            "label": "Current password",
+            "placeholder": "Please enter the current password"
+          },
+          "new_password": {
+            "label": "New password",
+            "placeholder": "Please enter the new password"
+          },
+          "confirm_password": {
+            "label": "Confirm password",
+            "placeholder": "Please enter the new password again"
+          },
+          "password": {
+            "errmsg": {
+              "not_matched": "Passwords do not match"
+            }
+          }
+        }
+      }
+    },
+    "2fa": {
+      "title": "Two-factor authentication"
+    }
+  },
+
+  "appearance": {
+    "tab": "Appearance",
+    "theme": {
+      "title": "Theme",
+      "form": {
+        "value": {
+          "extra": "Reload the page for the change to take effect."
+        }
+      }
+    },
+    "language": {
+      "title": "Language",
+      "form": {
+        "value": {
+          "extra": "Reload the page for the change to take effect."
+        }
+      }
+    },
+    "pagination": {
+      "title": "Pagination",
+      "form": {
+        "default_per_page": {
+          "label": "Default items per page",
+          "placeholder": "Please enter default items per page",
+          "unit": "items per page"
+        }
+      }
+    },
+    "workflow": {
+      "title": "Workflow",
+      "form": {
+        "default_designer_layout": {
+          "label": "Default designer layout",
+          "placeholder": "Please select default designer layout",
+          "option": {
+            "horizontal": "Horizontal layout",
+            "vertical": "Vertical layout"
+          }
+        }
+      }
+    }
+  },
+
+  "sslprovider": {
+    "tab": "Certificate authority",
+    "ca": {
+      "title": "System-wide CA",
+      "tips": "You can use different CAs for each workflow as well. If you want to do this, please visit the credentials page.",
+      "form": {
+        "provider": {
+          "label": "ACME CA provider",
+          "help": "Notes: The certificate validity lifetime, certificate algorithm, domain names count, and support for wildcard domain names are allowed may vary among different providers. After switching service providers, please check whether the configuration of the workflows needs to be adjusted."
+        },
+        "letsencryptstaging_alert": "The staging environment can reduce the chance of your running up against rate limits. <br><br>Learn more:<br><a href=\"https://letsencrypt.org/docs/staging-environment/\" target=\"_blank\">https://letsencrypt.org/docs/staging-environment/</a>"
+      }
+    },
+    "others": {
+      "title": "Others",
+      "form": {
+        "timeout": {
+          "label": "Certificate obtaining timeout",
+          "placeholder": "Please enter certificate obtaining timeout",
+          "unit": "seconds",
+          "tooltip": "If you don't understand this option, just keep it by default."
+        }
+      }
+    }
+  },
+
+  "persistence": {
+    "tab": "Persistence",
+    "alerting": {
+      "title": "Alerting",
+      "form": {
+        "certificates_warning_days_before_expire": {
+          "label": "Certificate expiration warning threshold",
+          "placeholder": "Please enter the certificate expiration warning threshold",
+          "unit": "days",
+          "help": "Notes: It determines when the certificate will be marked as \"Expiring-Soon\"."
+        }
+      }
+    },
+    "data_retention": {
+      "title": "Data retention",
+      "form": {
+        "workflow_runs_retention_max_days": {
+          "label": "Workflow runs retention max days",
+          "placeholder": "Please enter the maximum number of retention days for workflow history runs",
+          "unit": "days",
+          "help": "Notes: Set to <b>0</b> to disable cleanup workflow history runs. Recommend setting to <b>180</b> days or more."
+        },
+        "certificates_retention_max_days": {
+          "label": "Expired certificates retention max days",
+          "placeholder": "Please enter the maximum number of retention days for expired certificates",
+          "unit": "days",
+          "help": "Notes: Set to <b>0</emb> to disable cleanup expired certificates."
+        }
+      }
+    }
+  },
+
+  "diagnostics": {
+    "tab": "Diagnostics",
+    "logs": {
+      "title": "System logs",
+      "button": {
+        "refresh": {
+          "label": "Refresh"
+        },
+        "load_more": {
+          "label": "Load more"
+        }
+      }
+    },
+    "crons": {
+      "title": "CRON jobs",
+      "props": {
+        "next_trigger_time": "Expected next execution time: "
+      }
+    },
+    "workflow_dispatcher": {
+      "title": "Workflow dispatcher",
+      "statistics": {
+        "concurrency": "Concurrency",
+        "pending": "Pending",
+        "processing": "Processing"
+      }
+    }
+  },
+
+  "about": {
+    "tab": "About",
+    "version": {
+      "new": "New version available"
+    },
+    "socials": {
+      "document": "Documentation",
+      "github": "GitHub",
+      "telegram": "Telegram",
+      "donate": "Donate"
+    },
+    "feedback": {
+      "title": "Help us improve Certimate",
+      "subtitle": "Tell us how to make Certimate work better for you.",
+      "button": "Give feedback"
+    },
+    "contributors": {
+      "title": "Contributors",
+      "tips": "Thanks to all the people who have contributed to this project."
+    }
+  }
+}

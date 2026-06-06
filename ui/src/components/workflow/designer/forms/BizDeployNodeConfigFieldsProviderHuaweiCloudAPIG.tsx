@@ -7,7 +7,7 @@ import Show from "@/components/Show";
 
 import { useFormNestedFieldsContext } from "./_context";
 
-const RESOURCE_TYPE_CERTIFICATE = "certificate" as const;
+const DEPLOY_TARGET_CERTIFICATE = "certificate" as const;
 
 const BizDeployNodeConfigFieldsProviderHuaweiCloudAPIG = () => {
   const { i18n, t } = useTranslation();
@@ -20,7 +20,7 @@ const BizDeployNodeConfigFieldsProviderHuaweiCloudAPIG = () => {
   const formInst = Form.useFormInstance();
   const initialValues = getInitialValues();
 
-  const fieldResourceType = Form.useWatch([parentNamePath, "resourceType"], formInst);
+  const fieldResourceType = Form.useWatch([parentNamePath, "deployTarget"], formInst);
 
   return (
     <>
@@ -35,21 +35,21 @@ const BizDeployNodeConfigFieldsProviderHuaweiCloudAPIG = () => {
       </Form.Item>
 
       <Form.Item
-        name={[parentNamePath, "resourceType"]}
-        initialValue={initialValues.resourceType}
-        label={t("workflow_node.deploy.form.shared_resource_type.label")}
+        name={[parentNamePath, "deployTarget"]}
+        initialValue={initialValues.deployTarget}
+        label={t("workflow_node.deploy.form.shared_deploy_target.label")}
         rules={[formRule]}
       >
         <Select
-          options={[RESOURCE_TYPE_CERTIFICATE].map((s) => ({
+          options={[DEPLOY_TARGET_CERTIFICATE].map((s) => ({
+            label: t(`workflow_node.deploy.form.huaweicloud_apig_deploy_target.option.${s}.label`),
             value: s,
-            label: t(`workflow_node.deploy.form.huaweicloud_apig_resource_type.option.${s}.label`),
           }))}
-          placeholder={t("workflow_node.deploy.form.shared_resource_type.placeholder")}
+          placeholder={t("workflow_node.deploy.form.shared_deploy_target.placeholder")}
         />
       </Form.Item>
 
-      <Show when={fieldResourceType === RESOURCE_TYPE_CERTIFICATE}>
+      <Show when={fieldResourceType === DEPLOY_TARGET_CERTIFICATE}>
         <Form.Item
           name={[parentNamePath, "certificateId"]}
           initialValue={initialValues.certificateId}
@@ -67,27 +67,29 @@ const BizDeployNodeConfigFieldsProviderHuaweiCloudAPIG = () => {
 const getInitialValues = (): Nullish<z.infer<ReturnType<typeof getSchema>>> => {
   return {
     region: "",
-    resourceType: RESOURCE_TYPE_CERTIFICATE,
+    deployTarget: DEPLOY_TARGET_CERTIFICATE,
   };
 };
 
 const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) => {
-  const { t } = i18n;
+  const { t: _ } = i18n;
 
   return z
     .object({
-      region: z.string().nonempty(t("workflow_node.deploy.form.huaweicloud_apig_region.placeholder")),
-      resourceType: z.literal([RESOURCE_TYPE_CERTIFICATE], t("workflow_node.deploy.form.shared_resource_type.placeholder")),
+      region: z.string().nonempty(),
+      deployTarget: z.enum([DEPLOY_TARGET_CERTIFICATE]),
       certificateId: z.string().nullish(),
     })
     .superRefine((values, ctx) => {
-      switch (values.resourceType) {
-        case RESOURCE_TYPE_CERTIFICATE:
+      switch (values.deployTarget) {
+        case DEPLOY_TARGET_CERTIFICATE:
           {
-            if (!values.certificateId?.trim()) {
+            const scCertificateId = z.string().nonempty();
+            const spCertificateId = scCertificateId.safeParse(values.certificateId);
+            if (!spCertificateId.success) {
               ctx.addIssue({
                 code: "custom",
-                message: t("workflow_node.deploy.form.huaweicloud_apig_certificate_id.placeholder"),
+                message: z.treeifyError(spCertificateId.error).errors.join(),
                 path: ["certificateId"],
               });
             }

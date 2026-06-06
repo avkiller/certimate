@@ -2,7 +2,6 @@ package ctcccloudelb
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -10,9 +9,15 @@ import (
 	"github.com/pocketbase/pocketbase/tools/security"
 	"github.com/samber/lo"
 
-	"github.com/certimate-go/certimate/pkg/core/certmgr"
+	"github.com/certimate-go/certimate/pkg/core"
 	ctyunelb "github.com/certimate-go/certimate/pkg/sdk3rd/ctyun/elb"
 	xcert "github.com/certimate-go/certimate/pkg/utils/cert"
+)
+
+type (
+	Provider      = core.Certmgr
+	UploadResult  = core.CertmgrUploadResult
+	ReplaceResult = core.CertmgrReplaceResult
 )
 
 type CertmgrConfig struct {
@@ -30,11 +35,11 @@ type Certmgr struct {
 	sdkClient *ctyunelb.Client
 }
 
-var _ certmgr.Provider = (*Certmgr)(nil)
+var _ Provider = (*Certmgr)(nil)
 
 func NewCertmgr(config *CertmgrConfig) (*Certmgr, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the certmgr provider is nil")
+		return nil, fmt.Errorf("the configuration of the certmgr provider is nil")
 	}
 
 	client, err := createSDKClient(config.AccessKeyId, config.SecretAccessKey)
@@ -57,7 +62,7 @@ func (c *Certmgr) SetLogger(logger *slog.Logger) {
 	}
 }
 
-func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*certmgr.UploadResult, error) {
+func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*UploadResult, error) {
 	// 查询证书列表，避免重复上传
 	// REF: https://eop.ctyun.cn/ebp/ctapiDocument/search?sid=24&api=5692&data=88&isNormal=1&vid=82
 	listCertificatesReq := &ctyunelb.ListCertificatesRequest{
@@ -72,7 +77,7 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 			// 如果已存在相同证书，直接返回
 			if xcert.EqualCertificatesFromPEM(certPEM, certItem.Certificate) {
 				c.logger.Info("ssl certificate already exists")
-				return &certmgr.UploadResult{
+				return &UploadResult{
 					CertId:   certItem.ID,
 					CertName: certItem.Name,
 				}, nil
@@ -100,14 +105,14 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 		return nil, fmt.Errorf("failed to execute sdk request 'elb.CreateCertificate': %w", err)
 	}
 
-	return &certmgr.UploadResult{
+	return &UploadResult{
 		CertId:   createCertificateResp.ReturnObj.ID,
 		CertName: certName,
 	}, nil
 }
 
-func (c *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, privkeyPEM string) (*certmgr.OperateResult, error) {
-	return nil, certmgr.ErrUnsupported
+func (c *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, privkeyPEM string) (*ReplaceResult, error) {
+	return nil, core.ErrUnsupported
 }
 
 func createSDKClient(accessKeyId, secretAccessKey string) (*ctyunelb.Client, error) {

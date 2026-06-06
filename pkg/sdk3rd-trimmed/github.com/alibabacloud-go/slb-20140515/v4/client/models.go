@@ -1,0 +1,37 @@
+﻿package client
+
+import (
+	"github.com/alibabacloud-go/slb-20140515/v4/client"
+)
+
+type DescribeDomainExtensionsRequest = client.DescribeDomainExtensionsRequest
+
+type DescribeDomainExtensionsResponse = client.DescribeDomainExtensionsResponse
+
+type DescribeLoadBalancerListenersRequest = client.DescribeLoadBalancerListenersRequest
+
+type DescribeLoadBalancerListenersResponse = client.DescribeLoadBalancerListenersResponse
+
+type DescribeLoadBalancerAttributeRequest = client.DescribeLoadBalancerAttributeRequest
+
+type DescribeLoadBalancerAttributeResponse = client.DescribeLoadBalancerAttributeResponse
+
+type DescribeLoadBalancerHTTPSListenerAttributeRequest = client.DescribeLoadBalancerHTTPSListenerAttributeRequest
+
+type DescribeLoadBalancerHTTPSListenerAttributeResponse = client.DescribeLoadBalancerHTTPSListenerAttributeResponse
+
+type DescribeServerCertificatesRequest = client.DescribeServerCertificatesRequest
+
+type DescribeServerCertificatesResponse = client.DescribeServerCertificatesResponse
+
+type SetDomainExtensionAttributeRequest = client.SetDomainExtensionAttributeRequest
+
+type SetDomainExtensionAttributeResponse = client.SetDomainExtensionAttributeResponse
+
+type SetLoadBalancerHTTPSListenerAttributeRequest = client.SetLoadBalancerHTTPSListenerAttributeRequest
+
+type SetLoadBalancerHTTPSListenerAttributeResponse = client.SetLoadBalancerHTTPSListenerAttributeResponse
+
+type UploadServerCertificateRequest = client.UploadServerCertificateRequest
+
+type UploadServerCertificateResponse = client.UploadServerCertificateResponse

@@ -2,14 +2,18 @@ package telegrambot
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 
 	"github.com/go-resty/resty/v2"
 
 	"github.com/certimate-go/certimate/internal/app"
-	"github.com/certimate-go/certimate/pkg/core/notifier"
+	"github.com/certimate-go/certimate/pkg/core"
+)
+
+type (
+	Provider     = core.Notifier
+	NotifyResult = core.NotifierNotifyResult
 )
 
 type NotifierConfig struct {
@@ -25,11 +29,11 @@ type Notifier struct {
 	httpClient *resty.Client
 }
 
-var _ notifier.Provider = (*Notifier)(nil)
+var _ Provider = (*Notifier)(nil)
 
 func NewNotifier(config *NotifierConfig) (*Notifier, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the notifier provider is nil")
+		return nil, fmt.Errorf("the configuration of the notifier provider is nil")
 	}
 
 	client := resty.New().
@@ -51,7 +55,7 @@ func (n *Notifier) SetLogger(logger *slog.Logger) {
 	}
 }
 
-func (n *Notifier) Notify(ctx context.Context, subject string, message string) (*notifier.NotifyResult, error) {
+func (n *Notifier) Notify(ctx context.Context, subject string, message string) (*NotifyResult, error) {
 	// REF: https://core.telegram.org/bots/api#sendmessage
 	req := n.httpClient.R().
 		SetContext(ctx).
@@ -66,5 +70,5 @@ func (n *Notifier) Notify(ctx context.Context, subject string, message string) (
 		return nil, fmt.Errorf("telegram api error: unexpected status code: %d (resp: %s)", resp.StatusCode(), resp.String())
 	}
 
-	return &notifier.NotifyResult{}, nil
+	return &NotifyResult{}, nil
 }

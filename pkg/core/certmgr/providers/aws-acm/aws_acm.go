@@ -2,7 +2,6 @@ package awsacm
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -12,8 +11,14 @@ import (
 	awscred "github.com/aws/aws-sdk-go-v2/credentials"
 	awsacm "github.com/aws/aws-sdk-go-v2/service/acm"
 
-	"github.com/certimate-go/certimate/pkg/core/certmgr"
+	"github.com/certimate-go/certimate/pkg/core"
 	xcert "github.com/certimate-go/certimate/pkg/utils/cert"
+)
+
+type (
+	Provider      = core.Certmgr
+	UploadResult  = core.CertmgrUploadResult
+	ReplaceResult = core.CertmgrReplaceResult
 )
 
 type CertmgrConfig struct {
@@ -31,11 +36,11 @@ type Certmgr struct {
 	sdkClient *awsacm.Client
 }
 
-var _ certmgr.Provider = (*Certmgr)(nil)
+var _ Provider = (*Certmgr)(nil)
 
 func NewCertmgr(config *CertmgrConfig) (*Certmgr, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the certmgr provider is nil")
+		return nil, fmt.Errorf("the configuration of the certmgr provider is nil")
 	}
 
 	client, err := createSDKClient(config.AccessKeyId, config.SecretAccessKey, config.Region)
@@ -58,7 +63,7 @@ func (c *Certmgr) SetLogger(logger *slog.Logger) {
 	}
 }
 
-func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*certmgr.UploadResult, error) {
+func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*UploadResult, error) {
 	// 解析证书内容
 	certX509, err := xcert.ParseCertificateFromPEM(certPEM)
 	if err != nil {
@@ -72,8 +77,8 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 	}
 
 	// 获取证书列表，避免重复上传
-	// REF: https://docs.aws.amazon.com/en_us/acm/latest/APIReference/API_ListCertificates.html
-	// REF: https://docs.aws.amazon.com/en_us/acm/latest/APIReference/API_GetCertificate.html
+	// REF: https://docs.aws.amazon.com/acm/latest/APIReference/API_ListCertificates.html
+	// REF: https://docs.aws.amazon.com/acm/latest/APIReference/API_GetCertificate.html
 	listCertificatesNextToken := (*string)(nil)
 	for {
 		select {
@@ -121,8 +126,11 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 
 			// 如果以上信息都一致，则视为已存在相同证书，直接返回
 			c.logger.Info("ssl certificate already exists")
-			return &certmgr.UploadResult{
-				CertId: *certItem.CertificateArn,
+			return &UploadResult{
+				CertId: aws.ToString(certItem.CertificateArn),
+				ExtendedData: map[string]any{
+					"Arn": aws.ToString(certItem.CertificateArn),
+				},
 			}, nil
 		}
 
@@ -134,7 +142,7 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 	}
 
 	// 导入证书
-	// REF: https://docs.aws.amazon.com/en_us/acm/latest/APIReference/API_ImportCertificate.html
+	// REF: https://docs.aws.amazon.com/acm/latest/APIReference/API_ImportCertificate.html
 	importCertificateReq := &awsacm.ImportCertificateInput{
 		Certificate:      ([]byte)(serverCertPEM),
 		CertificateChain: ([]byte)(intermediaCertPEM),
@@ -146,12 +154,15 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 		return nil, fmt.Errorf("failed to execute sdk request 'acm.ImportCertificate': %w", err)
 	}
 
-	return &certmgr.UploadResult{
+	return &UploadResult{
 		CertId: aws.ToString(importCertificateResp.CertificateArn),
+		ExtendedData: map[string]any{
+			"Arn": aws.ToString(importCertificateResp.CertificateArn),
+		},
 	}, nil
 }
 
-func (c *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, privkeyPEM string) (*certmgr.OperateResult, error) {
+func (c *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, privkeyPEM string) (*ReplaceResult, error) {
 	// 提取服务器证书和中间证书
 	serverCertPEM, intermediaCertPEM, err := xcert.ExtractCertificatesFromPEM(certPEM)
 	if err != nil {
@@ -159,7 +170,7 @@ func (c *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, pri
 	}
 
 	// 导入证书
-	// REF: https://docs.aws.amazon.com/en_us/acm/latest/APIReference/API_ImportCertificate.html
+	// REF: https://docs.aws.amazon.com/acm/latest/APIReference/API_ImportCertificate.html
 	importCertificateReq := &awsacm.ImportCertificateInput{
 		CertificateArn:   aws.String(certIdOrName),
 		Certificate:      ([]byte)(serverCertPEM),
@@ -172,7 +183,7 @@ func (c *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, pri
 		return nil, fmt.Errorf("failed to execute sdk request 'acm.ImportCertificate': %w", err)
 	}
 
-	return &certmgr.OperateResult{}, nil
+	return &ReplaceResult{}, nil
 }
 
 func createSDKClient(accessKeyId, secretAccessKey, region string) (*awsacm.Client, error) {

@@ -1,13 +1,12 @@
 package acmedns
 
 import (
-	"errors"
 	"fmt"
 	"os"
 
-	"github.com/go-acme/lego/v4/providers/dns/acmedns"
+	"github.com/go-acme/lego/v5/providers/dns/acmedns"
 
-	"github.com/certimate-go/certimate/pkg/core/certifier"
+	"github.com/certimate-go/certimate/pkg/core"
 )
 
 type ChallengerConfig struct {
@@ -15,9 +14,9 @@ type ChallengerConfig struct {
 	Credentials string `json:"credentials"`
 }
 
-func NewChallenger(config *ChallengerConfig) (certifier.ACMEChallenger, error) {
+func NewChallenger(config *ChallengerConfig) (core.ACMEChallenger, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the acme challenge provider is nil")
+		return nil, fmt.Errorf("the configuration of the acme challenge provider is nil")
 	}
 
 	tempfile, err := os.CreateTemp("", "certimate.acmedns_*.tmp")

@@ -393,12 +393,12 @@ const WorkflowRunArtifacts = ({ runData }: { runData: WorkflowRunModel }) => {
     },
     {
       key: "type",
-      title: t("workflow_run_artifact.props.type"),
-      render: () => t("workflow_run_artifact.props.type.certificate"),
+      title: t("workflow_run.artifacts.props.type"),
+      render: () => t("workflow_run.artifacts.props.type.certificate"),
     },
     {
       key: "name",
-      title: t("workflow_run_artifact.props.name"),
+      title: t("workflow_run.artifacts.props.name"),
       render: (_, record) => {
         return (
           <div className="max-w-full truncate">
@@ -412,7 +412,7 @@ const WorkflowRunArtifacts = ({ runData }: { runData: WorkflowRunModel }) => {
     {
       key: "$action",
       align: "end",
-      width: 32,
+      width: 64,
       render: (_, record) => (
         <div className="flex items-center justify-end">
           <CertificateDetailDrawer
@@ -461,7 +461,7 @@ const WorkflowRunArtifacts = ({ runData }: { runData: WorkflowRunModel }) => {
       }}
       pagination={false}
       rowKey={(record) => record.id}
-      size="small"
+      size="medium"
     />
   );
 };

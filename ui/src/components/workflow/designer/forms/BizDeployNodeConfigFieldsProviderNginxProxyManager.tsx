@@ -7,8 +7,8 @@ import Show from "@/components/Show";
 
 import { useFormNestedFieldsContext } from "./_context";
 
-const RESOURCE_TYPE_HOST = "host" as const;
-const RESOURCE_TYPE_CERTIFICATE = "certificate" as const;
+const DEPLOY_TARGET_HOST = "host" as const;
+const DEPLOY_TARGET_CERTIFICATE = "certificate" as const;
 
 const HOST_MATCH_PATTERN_SPECIFIED = "specified" as const;
 const HOST_MATCH_PATTERN_CERTSAN = "certsan" as const;
@@ -29,27 +29,27 @@ const BizDeployNodeConfigFieldsProviderNginxProxyManager = () => {
   const formInst = Form.useFormInstance();
   const initialValues = getInitialValues();
 
-  const fieldResourceType = Form.useWatch([parentNamePath, "resourceType"], formInst);
+  const fieldResourceType = Form.useWatch([parentNamePath, "deployTarget"], formInst);
   const fieldHostMatchPattern = Form.useWatch([parentNamePath, "hostMatchPattern"], { form: formInst, preserve: true });
 
   return (
     <>
       <Form.Item
-        name={[parentNamePath, "resourceType"]}
-        initialValue={initialValues.resourceType}
-        label={t("workflow_node.deploy.form.shared_resource_type.label")}
+        name={[parentNamePath, "deployTarget"]}
+        initialValue={initialValues.deployTarget}
+        label={t("workflow_node.deploy.form.shared_deploy_target.label")}
         rules={[formRule]}
       >
         <Select
-          options={[RESOURCE_TYPE_HOST, RESOURCE_TYPE_CERTIFICATE].map((s) => ({
+          options={[DEPLOY_TARGET_HOST, DEPLOY_TARGET_CERTIFICATE].map((s) => ({
+            label: t(`workflow_node.deploy.form.nginxproxymanager_deploy_target.option.${s}.label`),
             value: s,
-            label: t(`workflow_node.deploy.form.nginxproxymanager_resource_type.option.${s}.label`),
           }))}
-          placeholder={t("workflow_node.deploy.form.shared_resource_type.placeholder")}
+          placeholder={t("workflow_node.deploy.form.shared_deploy_target.placeholder")}
         />
       </Form.Item>
 
-      <Show when={fieldResourceType === RESOURCE_TYPE_HOST}>
+      <Show when={fieldResourceType === DEPLOY_TARGET_HOST}>
         <Form.Item
           name={[parentNamePath, "hostMatchPattern"]}
           initialValue={initialValues.hostMatchPattern}
@@ -58,7 +58,6 @@ const BizDeployNodeConfigFieldsProviderNginxProxyManager = () => {
         >
           <Radio.Group
             options={[HOST_MATCH_PATTERN_SPECIFIED, HOST_MATCH_PATTERN_CERTSAN].map((s) => ({
-              key: s,
               label: t(`workflow_node.deploy.form.nginxproxymanager_host_match_pattern.option.${s}.label`),
               value: s,
             }))}
@@ -73,8 +72,8 @@ const BizDeployNodeConfigFieldsProviderNginxProxyManager = () => {
         >
           <Select
             options={[HOST_TYPE_PROXY, HOST_TYPE_REDIRECTION, HOST_TYPE_STREAM, HOST_TYPE_DEAD].map((s) => ({
-              value: s,
               label: t(`workflow_node.deploy.form.nginxproxymanager_host_type.option.${s}.label`),
+              value: s,
             }))}
             placeholder={t("workflow_node.deploy.form.nginxproxymanager_host_type.placeholder")}
           />
@@ -93,7 +92,7 @@ const BizDeployNodeConfigFieldsProviderNginxProxyManager = () => {
         </Show>
       </Show>
 
-      <Show when={fieldResourceType === RESOURCE_TYPE_CERTIFICATE}>
+      <Show when={fieldResourceType === DEPLOY_TARGET_CERTIFICATE}>
         <Form.Item
           name={[parentNamePath, "certificateId"]}
           initialValue={initialValues.certificateId}
@@ -110,7 +109,7 @@ const BizDeployNodeConfigFieldsProviderNginxProxyManager = () => {
 
 const getInitialValues = (): Nullish<z.infer<ReturnType<typeof getSchema>>> => {
   return {
-    resourceType: RESOURCE_TYPE_HOST,
+    deployTarget: DEPLOY_TARGET_HOST,
     hostMatchPattern: HOST_MATCH_PATTERN_SPECIFIED,
     hostType: HOST_TYPE_PROXY,
     hostId: "",
@@ -118,62 +117,67 @@ const getInitialValues = (): Nullish<z.infer<ReturnType<typeof getSchema>>> => {
 };
 
 const getSchema = ({ i18n = getI18n() }: { i18n?: ReturnType<typeof getI18n> }) => {
-  const { t } = i18n;
+  const { t: _ } = i18n;
 
   return z
     .object({
-      resourceType: z.literal([RESOURCE_TYPE_HOST, RESOURCE_TYPE_CERTIFICATE], t("workflow_node.deploy.form.shared_resource_type.placeholder")),
+      deployTarget: z.enum([DEPLOY_TARGET_HOST, DEPLOY_TARGET_CERTIFICATE]),
       hostMatchPattern: z.string().nullish(),
       hostType: z.string().nullish(),
-      hostId: z.union([z.string(), z.number().int()]).nullish(),
-      certificateId: z.union([z.string(), z.number().int()]).nullish(),
+      hostId: z.union([z.string(), z.int().positive()]).nullish(),
+      certificateId: z.union([z.string(), z.int().positive()]).nullish(),
     })
     .superRefine((values, ctx) => {
-      switch (values.resourceType) {
-        case RESOURCE_TYPE_HOST:
+      switch (values.deployTarget) {
+        case DEPLOY_TARGET_HOST:
           {
-            if (values.hostMatchPattern) {
-              switch (values.hostMatchPattern) {
-                case HOST_MATCH_PATTERN_SPECIFIED:
-                  {
-                    const scHostType = z.string().nonempty();
-                    if (!scHostType.safeParse(values.hostType).success) {
-                      ctx.addIssue({
-                        code: "custom",
-                        message: t("workflow_node.deploy.form.nginxproxymanager_host_type.placeholder"),
-                        path: ["hostType"],
-                      });
-                    }
-
-                    const scHostId = z.coerce.number().int().positive();
-                    if (!scHostId.safeParse(values.hostId).success) {
-                      ctx.addIssue({
-                        code: "custom",
-                        message: t("workflow_node.deploy.form.nginxproxymanager_host_id.placeholder"),
-                        path: ["hostId"],
-                      });
-                    }
-                  }
-                  break;
-              }
-            } else {
+            const scHostMatchPattern = z.coerce.number().int().positive();
+            const spHostMatchPattern = scHostMatchPattern.safeParse(values.hostMatchPattern);
+            if (!spHostMatchPattern.success) {
               ctx.addIssue({
                 code: "custom",
-                message: t("workflow_node.deploy.form.nginxproxymanager_host_match_pattern.placeholder"),
+                message: z.treeifyError(spHostMatchPattern.error).errors.join(),
                 path: ["hostMatchPattern"],
               });
+            }
+
+            switch (values.hostMatchPattern) {
+              case HOST_MATCH_PATTERN_SPECIFIED:
+                {
+                  const scHostType = z.string().nonempty();
+                  const spHostType = scHostType.safeParse(values.hostType);
+                  if (!spHostType.success) {
+                    ctx.addIssue({
+                      code: "custom",
+                      message: z.treeifyError(spHostType.error).errors.join(),
+                      path: ["hostType"],
+                    });
+                  }
+
+                  const scHostId = z.coerce.number().int().positive();
+                  const spHostId = scHostId.safeParse(values.hostId);
+                  if (!spHostId.success) {
+                    ctx.addIssue({
+                      code: "custom",
+                      message: z.treeifyError(spHostId.error).errors.join(),
+                      path: ["hostId"],
+                    });
+                  }
+                }
+                break;
             }
           }
           break;
 
-        case RESOURCE_TYPE_CERTIFICATE:
+        case DEPLOY_TARGET_CERTIFICATE:
           {
             const scCertificateId = z.coerce.number().int().positive();
-            if (!scCertificateId.safeParse(values.certificateId).success) {
+            const spCertificateId = scCertificateId.safeParse(values.certificateId);
+            if (!spCertificateId.success) {
               ctx.addIssue({
                 code: "custom",
-                message: t("workflow_node.deploy.form.nginxproxymanager_certificate_id.placeholder"),
-                path: ["hostId"],
+                message: z.treeifyError(spCertificateId.error).errors.join(),
+                path: ["certificateId"],
               });
             }
           }

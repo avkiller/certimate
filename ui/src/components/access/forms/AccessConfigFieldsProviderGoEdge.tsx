@@ -27,7 +27,12 @@ const AccessConfigFormFieldsProviderGoEdge = () => {
       </Form.Item>
 
       <Form.Item name={[parentNamePath, "apiRole"]} initialValue={initialValues.apiRole} label={t("access.form.goedge_api_role.label")} rules={[formRule]}>
-        <Radio.Group options={["user", "admin"].map((s) => ({ label: t(`access.form.goedge_api_role.option.${s}.label`), value: s }))} />
+        <Radio.Group
+          options={["user", "admin"].map((s) => ({
+            label: t(`access.form.goedge_api_role.option.${s}.label`),
+            value: s,
+          }))}
+        />
       </Form.Item>
 
       <Form.Item
@@ -72,13 +77,13 @@ const getInitialValues = (): Nullish<z.infer<ReturnType<typeof getSchema>>> => {
 };
 
 const getSchema = ({ i18n = getI18n() }: { i18n: ReturnType<typeof getI18n> }) => {
-  const { t } = i18n;
+  const { t: _ } = i18n;
 
   return z.object({
-    serverUrl: z.url(t("common.errmsg.url_invalid")),
-    apiRole: z.literal(["user", "admin"], t("access.form.goedge_api_role.placeholder")),
-    accessKeyId: z.string().nonempty(t("access.form.goedge_access_key_id.placeholder")),
-    accessKey: z.string().nonempty(t("access.form.goedge_access_key.placeholder")),
+    serverUrl: z.url({ protocol: z.core.regexes.httpProtocol }),
+    apiRole: z.enum(["user", "admin"]),
+    accessKeyId: z.string().nonempty(),
+    accessKey: z.string().nonempty(),
     allowInsecureConnections: z.boolean().nullish(),
   });
 };

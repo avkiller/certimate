@@ -2,7 +2,6 @@ package awscloudfront
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 
@@ -12,10 +11,14 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront/types"
 
-	"github.com/certimate-go/certimate/pkg/core/certmgr"
-	mcertmgracm "github.com/certimate-go/certimate/pkg/core/certmgr/providers/aws-acm"
-	mcertmgriam "github.com/certimate-go/certimate/pkg/core/certmgr/providers/aws-iam"
-	"github.com/certimate-go/certimate/pkg/core/deployer"
+	"github.com/certimate-go/certimate/pkg/core"
+	cmgrimplacm "github.com/certimate-go/certimate/pkg/core/certmgr/providers/aws-acm"
+	cmgrimpliam "github.com/certimate-go/certimate/pkg/core/certmgr/providers/aws-iam"
+)
+
+type (
+	Provider     = core.Deployer
+	DeployResult = core.DeployerDeployResult
 )
 
 type DeployerConfig struct {
@@ -36,14 +39,14 @@ type Deployer struct {
 	config     *DeployerConfig
 	logger     *slog.Logger
 	sdkClient  *cloudfront.Client
-	sdkCertmgr certmgr.Provider
+	sdkCertmgr core.Certmgr
 }
 
-var _ deployer.Provider = (*Deployer)(nil)
+var _ Provider = (*Deployer)(nil)
 
 func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the deployer provider is nil")
+		return nil, fmt.Errorf("the configuration of the deployer provider is nil")
 	}
 
 	client, err := createSDKClient(config.AccessKeyId, config.SecretAccessKey, config.Region)
@@ -51,10 +54,10 @@ func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 		return nil, fmt.Errorf("could not create client: %w", err)
 	}
 
-	var pcertmgr certmgr.Provider
+	var pcertmgr core.Certmgr
 	switch config.CertificateSource {
 	case CERTIFICATE_SOURCE_ACM:
-		pcertmgr, err = mcertmgracm.NewCertmgr(&mcertmgracm.CertmgrConfig{
+		pcertmgr, err = cmgrimplacm.NewCertmgr(&cmgrimplacm.CertmgrConfig{
 			AccessKeyId:     config.AccessKeyId,
 			SecretAccessKey: config.SecretAccessKey,
 			Region:          config.Region,
@@ -64,7 +67,7 @@ func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 		}
 
 	case CERTIFICATE_SOURCE_IAM:
-		pcertmgr, err = mcertmgriam.NewCertmgr(&mcertmgriam.CertmgrConfig{
+		pcertmgr, err = cmgrimpliam.NewCertmgr(&cmgrimpliam.CertmgrConfig{
 			AccessKeyId:     config.AccessKeyId,
 			SecretAccessKey: config.SecretAccessKey,
 			Region:          config.Region,
@@ -96,9 +99,9 @@ func (d *Deployer) SetLogger(logger *slog.Logger) {
 	d.sdkCertmgr.SetLogger(logger)
 }
 
-func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*deployer.DeployResult, error) {
+func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*DeployResult, error) {
 	if d.config.DistributionId == "" {
-		return nil, errors.New("config `distribuitionId` is required")
+		return nil, fmt.Errorf("config `distributionId` is required")
 	}
 
 	// 上传证书
@@ -110,7 +113,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 	}
 
 	// 获取分配配置
-	// REF: https://docs.aws.amazon.com/en_us/cloudfront/latest/APIReference/API_GetDistributionConfig.html
+	// REF: https://docs.aws.amazon.com/cloudfront/latest/APIReference/API_GetDistributionConfig.html
 	getDistributionConfigReq := &cloudfront.GetDistributionConfigInput{
 		Id: aws.String(d.config.DistributionId),
 	}
@@ -121,7 +124,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 	}
 
 	// 更新分配配置
-	// REF: https://docs.aws.amazon.com/zh_cn/cloudfront/latest/APIReference/API_UpdateDistribution.html
+	// REF: https://docs.aws.amazon.com/cloudfront/latest/APIReference/API_UpdateDistribution.html
 	updateDistributionReq := &cloudfront.UpdateDistributionInput{
 		Id:                 aws.String(d.config.DistributionId),
 		DistributionConfig: getDistributionConfigResp.DistributionConfig,
@@ -152,7 +155,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 		return nil, fmt.Errorf("failed to execute sdk request 'cloudfront.UpdateDistribution': %w", err)
 	}
 
-	return &deployer.DeployResult{}, nil
+	return &DeployResult{}, nil
 }
 
 func createSDKClient(accessKeyId, secretAccessKey, region string) (*cloudfront.Client, error) {

@@ -16,6 +16,7 @@ import (
 	"github.com/certimate-go/certimate/internal/domain"
 	"github.com/certimate-go/certimate/internal/domain/dtos"
 	xcert "github.com/certimate-go/certimate/pkg/utils/cert"
+	xcertpfx "github.com/certimate-go/certimate/pkg/utils/cert/pfx"
 )
 
 type CertificateService struct {
@@ -57,16 +58,26 @@ func (s *CertificateService) DownloadCertificate(ctx context.Context, req *dtos.
 	zipWriter := zip.NewWriter(&buf)
 	defer zipWriter.Close()
 
-	var bytes []byte
-	switch strings.ToUpper(req.CertificateFormat) {
-	case "", string(domain.CertificateFormatTypePEM):
+	var zipBytes []byte
+	switch req.FileFormat {
+	case "", domain.CertificateFormatTypePEM:
 		{
 			serverCertPEM, intermediaCertPEM, err := xcert.ExtractCertificatesFromPEM(certificate.Certificate)
 			if err != nil {
 				return nil, fmt.Errorf("failed to extract certs: %w", err)
 			}
 
-			certWriter, err := zipWriter.Create(fmt.Sprintf("%s.pem", canonicalName))
+			keyWriter, err := zipWriter.Create(fmt.Sprintf("%s.key", canonicalName))
+			if err != nil {
+				return nil, err
+			} else {
+				_, err = keyWriter.Write([]byte(certificate.PrivateKey))
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			certWriter, err := zipWriter.Create(fmt.Sprintf("%s.crt", canonicalName))
 			if err != nil {
 				return nil, err
 			} else {
@@ -96,29 +107,27 @@ func (s *CertificateService) DownloadCertificate(ctx context.Context, req *dtos.
 				}
 			}
 
-			keyWriter, err := zipWriter.Create(fmt.Sprintf("%s.key", canonicalName))
-			if err != nil {
-				return nil, err
-			} else {
-				_, err = keyWriter.Write([]byte(certificate.PrivateKey))
-				if err != nil {
-					return nil, err
-				}
-			}
-
 			err = zipWriter.Close()
 			if err != nil {
 				return nil, err
 			}
 
-			bytes = buf.Bytes()
+			zipBytes = buf.Bytes()
 		}
 
-	case string(domain.CertificateFormatTypePFX):
+	case domain.CertificateFormatTypePFX:
 		{
-			const pfxPassword = "certimate"
+			pfxPassword := "certimate"
+			if req.PfxPassword != "" {
+				pfxPassword = req.PfxPassword
+			}
 
-			certPFX, err := xcert.TransformCertificateFromPEMToPFX(certificate.Certificate, certificate.PrivateKey, pfxPassword)
+			pfxEncoder, err := xcertpfx.ResolvePfxEncoder(req.PfxEncoder)
+			if err != nil {
+				return nil, err
+			}
+
+			certPFX, err := xcert.TransformCertificateFromPEMToPFX(certificate.Certificate, certificate.PrivateKey, pfxPassword, pfxEncoder)
 			if err != nil {
 				return nil, err
 			}
@@ -133,11 +142,12 @@ func (s *CertificateService) DownloadCertificate(ctx context.Context, req *dtos.
 				}
 			}
 
-			keyWriter, err := zipWriter.Create("pfx-password.txt")
+			readmeWriter, err := zipWriter.Create("README.txt")
 			if err != nil {
 				return nil, err
 			} else {
-				_, err = keyWriter.Write([]byte(pfxPassword))
+				readme := fmt.Sprintf("[PFX Password]\n%s\n", pfxPassword)
+				_, err = readmeWriter.Write([]byte(readme))
 				if err != nil {
 					return nil, err
 				}
@@ -148,14 +158,27 @@ func (s *CertificateService) DownloadCertificate(ctx context.Context, req *dtos.
 				return nil, err
 			}
 
-			bytes = buf.Bytes()
+			zipBytes = buf.Bytes()
 		}
 
-	case string(domain.CertificateFormatTypeJKS):
+	case domain.CertificateFormatTypeJKS:
 		{
-			const jksPassword = "certimate"
+			jksAlias := "certimate"
+			if req.JksAlias != "" {
+				jksAlias = req.JksAlias
+			}
 
-			certJKS, err := xcert.TransformCertificateFromPEMToJKS(certificate.Certificate, certificate.PrivateKey, jksPassword, jksPassword, jksPassword)
+			jksKeypass := "certimate"
+			if req.JksKeypass != "" {
+				jksKeypass = req.JksKeypass
+			}
+
+			jksStorepass := "certimate"
+			if req.JksStorepass != "" {
+				jksStorepass = req.JksStorepass
+			}
+
+			certJKS, err := xcert.TransformCertificateFromPEMToJKS(certificate.Certificate, certificate.PrivateKey, jksAlias, jksKeypass, jksStorepass)
 			if err != nil {
 				return nil, err
 			}
@@ -170,11 +193,12 @@ func (s *CertificateService) DownloadCertificate(ctx context.Context, req *dtos.
 				}
 			}
 
-			keyWriter, err := zipWriter.Create("jks-password.txt")
+			readmeWriter, err := zipWriter.Create("README.txt")
 			if err != nil {
 				return nil, err
 			} else {
-				_, err = keyWriter.Write([]byte(jksPassword))
+				readme := fmt.Sprintf("[JKS Alias]\n%s\n\n[JKS Key Password]\n%s\n\n[JKS Store Password]\n%s\n", jksAlias, jksKeypass, jksStorepass)
+				_, err = readmeWriter.Write([]byte(readme))
 				if err != nil {
 					return nil, err
 				}
@@ -185,7 +209,7 @@ func (s *CertificateService) DownloadCertificate(ctx context.Context, req *dtos.
 				return nil, err
 			}
 
-			bytes = buf.Bytes()
+			zipBytes = buf.Bytes()
 		}
 
 	default:
@@ -193,8 +217,7 @@ func (s *CertificateService) DownloadCertificate(ctx context.Context, req *dtos.
 	}
 
 	resp := &dtos.CertificateDownloadResp{
-		FileFormat: "zip",
-		FileBytes:  bytes,
+		ZipBytes: zipBytes,
 	}
 	return resp, nil
 }
@@ -217,7 +240,7 @@ func (s *CertificateService) RevokeCertificate(ctx context.Context, req *dtos.Ce
 		return nil, fmt.Errorf("failed to revoke certificate: could not find acme account: %w", err)
 	}
 
-	legoClient, err := certacme.NewACMEClientWithAccount(acmeAccount)
+	acmeClient, err := certacme.NewACMEClientWithAccount(acmeAccount)
 	if err != nil {
 		return nil, fmt.Errorf("failed to revoke certificate: could not initialize acme config: %w", err)
 	}
@@ -225,7 +248,7 @@ func (s *CertificateService) RevokeCertificate(ctx context.Context, req *dtos.Ce
 	revokeReq := &certacme.RevokeCertificateRequest{
 		Certificate: certificate.Certificate,
 	}
-	_, err = legoClient.RevokeCertificate(ctx, revokeReq)
+	_, err = acmeClient.RevokeCertificate(ctx, revokeReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to revoke certificate: %w", err)
 	}
@@ -252,8 +275,7 @@ func (s *CertificateService) cleanupExpiredCertificates(ctx context.Context) err
 
 	persistenceSettings := settings.Content.AsPersistence()
 	if persistenceSettings.CertificatesRetentionMaxDays != 0 {
-		ret, err := s.certificateRepo.DeleteWhere(
-			context.Background(),
+		ret, err := s.certificateRepo.DeleteWithExprs(context.Background(),
 			dbx.NewExp(fmt.Sprintf("validityNotAfter<DATETIME('now', '-%d days')", persistenceSettings.CertificatesRetentionMaxDays)),
 		)
 		if err != nil {

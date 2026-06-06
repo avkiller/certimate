@@ -5,7 +5,6 @@ import (
 	"crypto/md5"
 	"encoding/base64"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -13,8 +12,13 @@ import (
 	"github.com/ucloud/ucloud-sdk-go/ucloud"
 	"github.com/ucloud/ucloud-sdk-go/ucloud/auth"
 
-	"github.com/certimate-go/certimate/pkg/core/deployer"
+	"github.com/certimate-go/certimate/pkg/core"
 	ucloudsdk "github.com/certimate-go/certimate/pkg/sdk3rd/ucloud/uewaf"
+)
+
+type (
+	Provider     = core.Deployer
+	DeployResult = core.DeployerDeployResult
 )
 
 type DeployerConfig struct {
@@ -34,11 +38,11 @@ type Deployer struct {
 	sdkClient *ucloudsdk.UEWAFClient
 }
 
-var _ deployer.Provider = (*Deployer)(nil)
+var _ Provider = (*Deployer)(nil)
 
 func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the deployer provider is nil")
+		return nil, fmt.Errorf("the configuration of the deployer provider is nil")
 	}
 
 	client, err := createSDKClient(config.PrivateKey, config.PublicKey, config.ProjectId)
@@ -61,9 +65,9 @@ func (d *Deployer) SetLogger(logger *slog.Logger) {
 	}
 }
 
-func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*deployer.DeployResult, error) {
+func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*DeployResult, error) {
 	if d.config.Domain == "" {
-		return nil, errors.New("config `domain` is required")
+		return nil, fmt.Errorf("config `domain` is required")
 	}
 
 	// 生成优刻得所需的证书参数
@@ -88,7 +92,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 		return nil, fmt.Errorf("failed to execute sdk request 'uewaf.AddWafDomainCertificateInfo': %w", err)
 	}
 
-	return &deployer.DeployResult{}, nil
+	return &DeployResult{}, nil
 }
 
 func createSDKClient(privateKey, publicKey, projectId string) (*ucloudsdk.UEWAFClient, error) {

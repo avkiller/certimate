@@ -5,7 +5,6 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"log/slog"
 	"regexp"
@@ -13,14 +12,20 @@ import (
 	"time"
 
 	aliopen "github.com/alibabacloud-go/darabonba-openapi/v2/client"
-	alislb "github.com/alibabacloud-go/slb-20140515/v4/client"
 	"github.com/alibabacloud-go/tea/dara"
 	"github.com/alibabacloud-go/tea/tea"
 	"github.com/samber/lo"
 
-	"github.com/certimate-go/certimate/pkg/core/certmgr"
-	"github.com/certimate-go/certimate/pkg/core/certmgr/providers/aliyun-slb/internal"
+	alislb "github.com/certimate-go/certimate/pkg/sdk3rd-trimmed/github.com/alibabacloud-go/slb-20140515/v4/client"
+
+	"github.com/certimate-go/certimate/pkg/core"
 	xcert "github.com/certimate-go/certimate/pkg/utils/cert"
+)
+
+type (
+	Provider      = core.Certmgr
+	UploadResult  = core.CertmgrUploadResult
+	ReplaceResult = core.CertmgrReplaceResult
 )
 
 type CertmgrConfig struct {
@@ -37,14 +42,14 @@ type CertmgrConfig struct {
 type Certmgr struct {
 	config    *CertmgrConfig
 	logger    *slog.Logger
-	sdkClient *internal.SlbClient
+	sdkClient *alislb.Client
 }
 
-var _ certmgr.Provider = (*Certmgr)(nil)
+var _ Provider = (*Certmgr)(nil)
 
 func NewCertmgr(config *CertmgrConfig) (*Certmgr, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the certmgr provider is nil")
+		return nil, fmt.Errorf("the configuration of the certmgr provider is nil")
 	}
 
 	client, err := createSDKClient(config.AccessKeyId, config.AccessKeySecret, config.Region)
@@ -67,7 +72,7 @@ func (c *Certmgr) SetLogger(logger *slog.Logger) {
 	}
 }
 
-func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*certmgr.UploadResult, error) {
+func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*UploadResult, error) {
 	// 解析证书内容
 	certX509, err := xcert.ParseCertificateFromPEM(certPEM)
 	if err != nil {
@@ -109,9 +114,9 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 
 			// 如果以上信息都一致，则视为已存在相同证书，直接返回
 			c.logger.Info("ssl certificate already exists")
-			return &certmgr.UploadResult{
-				CertId:   *certItem.ServerCertificateId,
-				CertName: *certItem.ServerCertificateName,
+			return &UploadResult{
+				CertId:   tea.StringValue(certItem.ServerCertificateId),
+				CertName: tea.StringValue(certItem.ServerCertificateName),
 			}, nil
 		}
 	}
@@ -140,17 +145,17 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 		return nil, fmt.Errorf("failed to execute sdk request 'slb.UploadServerCertificate': %w", err)
 	}
 
-	return &certmgr.UploadResult{
+	return &UploadResult{
 		CertId:   *uploadServerCertificateResp.Body.ServerCertificateId,
 		CertName: certName,
 	}, nil
 }
 
-func (c *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, privkeyPEM string) (*certmgr.OperateResult, error) {
-	return nil, certmgr.ErrUnsupported
+func (c *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, privkeyPEM string) (*ReplaceResult, error) {
+	return nil, core.ErrUnsupported
 }
 
-func createSDKClient(accessKeyId, accessKeySecret, region string) (*internal.SlbClient, error) {
+func createSDKClient(accessKeyId, accessKeySecret, region string) (*alislb.Client, error) {
 	// 接入点一览 https://api.aliyun.com/product/Slb
 	var endpoint string
 	switch region {
@@ -170,7 +175,7 @@ func createSDKClient(accessKeyId, accessKeySecret, region string) (*internal.Slb
 		AccessKeySecret: tea.String(accessKeySecret),
 	}
 
-	client, err := internal.NewSlbClient(config)
+	client, err := alislb.NewClient(config)
 	if err != nil {
 		return nil, err
 	}

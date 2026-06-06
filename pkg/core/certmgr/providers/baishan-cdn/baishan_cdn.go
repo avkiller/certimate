@@ -2,7 +2,6 @@ package baishancdn
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"regexp"
@@ -11,8 +10,14 @@ import (
 
 	"github.com/samber/lo"
 
-	"github.com/certimate-go/certimate/pkg/core/certmgr"
+	"github.com/certimate-go/certimate/pkg/core"
 	baishansdk "github.com/certimate-go/certimate/pkg/sdk3rd/baishan"
+)
+
+type (
+	Provider      = core.Certmgr
+	UploadResult  = core.CertmgrUploadResult
+	ReplaceResult = core.CertmgrReplaceResult
 )
 
 type CertmgrConfig struct {
@@ -26,11 +31,11 @@ type Certmgr struct {
 	sdkClient *baishansdk.Client
 }
 
-var _ certmgr.Provider = (*Certmgr)(nil)
+var _ Provider = (*Certmgr)(nil)
 
 func NewCertmgr(config *CertmgrConfig) (*Certmgr, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the certmgr provider is nil")
+		return nil, fmt.Errorf("the configuration of the certmgr provider is nil")
 	}
 
 	client, err := createSDKClient(config.ApiToken)
@@ -53,7 +58,7 @@ func (d *Certmgr) SetLogger(logger *slog.Logger) {
 	}
 }
 
-func (d *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*certmgr.UploadResult, error) {
+func (d *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*UploadResult, error) {
 	// 生成新证书名（需符合白山云命名规则）
 	certName := fmt.Sprintf("certimate_%d", time.Now().UnixMilli())
 
@@ -66,7 +71,7 @@ func (d *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 		Key:         lo.ToPtr(privkeyPEM),
 	}
 	uploadDomainCertificateResp, err := d.sdkClient.UploadDomainCertificateWithContext(ctx, uploadDomainCertificateReq)
-	d.logger.Debug("sdk request 'baishan.UploadDomainCertificate'", slog.Any("request", uploadDomainCertificateReq), slog.Any("response", uploadDomainCertificateResp))
+	d.logger.Debug("sdk request 'cdn.UploadDomainCertificate'", slog.Any("request", uploadDomainCertificateReq), slog.Any("response", uploadDomainCertificateResp))
 	if err != nil {
 		if uploadDomainCertificateResp != nil {
 			if uploadDomainCertificateResp.GetCode() == 400699 && strings.Contains(uploadDomainCertificateResp.GetMessage(), "this certificate is exists") {
@@ -77,19 +82,19 @@ func (d *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*cert
 		}
 
 		if certId == "" {
-			return nil, fmt.Errorf("failed to execute sdk request 'baishan.SetDomainCertificate': %w", err)
+			return nil, fmt.Errorf("failed to execute sdk request 'cdn.SetDomainCertificate': %w", err)
 		}
 	} else {
 		certId = uploadDomainCertificateResp.Data.CertId.String()
 	}
 
-	return &certmgr.UploadResult{
+	return &UploadResult{
 		CertId:   certId,
 		CertName: certName,
 	}, nil
 }
 
-func (d *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, privkeyPEM string) (*certmgr.OperateResult, error) {
+func (d *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, privkeyPEM string) (*ReplaceResult, error) {
 	// 替换证书
 	// REF: https://portal.baishancloud.com/track/document/downloadPdf/1441
 	uploadDomainCertificateReq := &baishansdk.UploadDomainCertificateRequest{
@@ -99,12 +104,12 @@ func (d *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, pri
 		Key:           lo.ToPtr(privkeyPEM),
 	}
 	uploadDomainCertificateResp, err := d.sdkClient.UploadDomainCertificateWithContext(ctx, uploadDomainCertificateReq)
-	d.logger.Debug("sdk request 'baishan.UploadDomainCertificate'", slog.Any("request", uploadDomainCertificateReq), slog.Any("response", uploadDomainCertificateResp))
+	d.logger.Debug("sdk request 'cdn.UploadDomainCertificate'", slog.Any("request", uploadDomainCertificateReq), slog.Any("response", uploadDomainCertificateResp))
 	if err != nil {
-		return nil, fmt.Errorf("failed to execute sdk request 'baishan.UploadDomainCertificate': %w", err)
+		return nil, fmt.Errorf("failed to execute sdk request 'cdn.UploadDomainCertificate': %w", err)
 	}
 
-	return &certmgr.OperateResult{}, nil
+	return &ReplaceResult{}, nil
 }
 
 func createSDKClient(apiToken string) (*baishansdk.Client, error) {

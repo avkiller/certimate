@@ -2,20 +2,25 @@ package k8ssecret
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
 
 	k8score "k8s.io/api/core/v1"
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
-	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes"
+	k8serrs "k8s.io/apimachinery/pkg/api/errors"
+	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"github.com/certimate-go/certimate/pkg/core/deployer"
+	typedcore "github.com/certimate-go/certimate/pkg/sdk3rd-trimmed/k8s.io/client-go/kubernetes/typed/core/v1"
+
+	"github.com/certimate-go/certimate/pkg/core"
 	xcert "github.com/certimate-go/certimate/pkg/utils/cert"
+)
+
+type (
+	Provider     = core.Deployer
+	DeployResult = core.DeployerDeployResult
 )
 
 type DeployerConfig struct {
@@ -27,10 +32,16 @@ type DeployerConfig struct {
 	SecretName string `json:"secretName"`
 	// Kubernetes Secret 类型。
 	SecretType string `json:"secretType"`
-	// Kubernetes Secret 中用于存放证书的 Key。
-	SecretDataKeyForCrt string `json:"secretDataKeyForCrt,omitempty"`
-	// Kubernetes Secret 中用于存放私钥的 Key。
+	// Kubernetes Secret 中用于存放私钥的键。
 	SecretDataKeyForKey string `json:"secretDataKeyForKey,omitempty"`
+	// Kubernetes Secret 中用于存放证书的键。
+	SecretDataKeyForCrt string `json:"secretDataKeyForCrt,omitempty"`
+	// Kubernetes Secret 中用于存放证书（仅含服务器证书）的键。
+	// 选填。
+	SecretDataKeyForCrtOnlyServer string `json:"secretDataKeyForCrtOnlyServer,omitempty"`
+	// Kubernetes Secret 中用于存放证书（仅含中间证书）的键。
+	// 选填。
+	SecretDataKeyForCrtOnlyIntermedia string `json:"secretDataKeyForCrtOnlyIntermedia,omitempty"`
 	// Kubernetes Secret 注解。
 	SecretAnnotations map[string]string `json:"secretAnnotations,omitempty"`
 	// Kubernetes Secret 标签。
@@ -42,11 +53,11 @@ type Deployer struct {
 	logger *slog.Logger
 }
 
-var _ deployer.Provider = (*Deployer)(nil)
+var _ Provider = (*Deployer)(nil)
 
 func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the deployer provider is nil")
+		return nil, fmt.Errorf("the configuration of the deployer provider is nil")
 	}
 
 	return &Deployer{
@@ -63,35 +74,58 @@ func (d *Deployer) SetLogger(logger *slog.Logger) {
 	}
 }
 
-func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*deployer.DeployResult, error) {
+func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*DeployResult, error) {
 	if d.config.Namespace == "" {
-		return nil, errors.New("config `namespace` is required")
+		return nil, fmt.Errorf("config `namespace` is required")
 	}
 	if d.config.SecretName == "" {
-		return nil, errors.New("config `secretName` is required")
+		return nil, fmt.Errorf("config `secretName` is required")
 	}
 	if d.config.SecretType == "" {
-		return nil, errors.New("config `secretType` is required")
-	}
-	if d.config.SecretDataKeyForCrt == "" {
-		return nil, errors.New("config `secretDataKeyForCrt` is required")
-	}
-	if d.config.SecretDataKeyForKey == "" {
-		return nil, errors.New("config `secretDataKeyForKey` is required")
+		return nil, fmt.Errorf("config `secretType` is required")
 	}
 
+	// 解析证书内容
 	certX509, err := xcert.ParseCertificateFromPEM(certPEM)
 	if err != nil {
 		return nil, err
 	}
 
-	// 连接
+	// 提取服务器证书和中间证书
+	serverCertPEM, intermediaCertPEM, err := xcert.ExtractCertificatesFromPEM(certPEM)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract certs: %w", err)
+	}
+
+	// 连接到 Kubernetes
 	client, err := createK8sClient(d.config.KubeConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create kubernetes client: %w", err)
 	}
 
+	// 获取 Secret 实例
 	var secretPayload *k8score.Secret
+	var secretIsNew bool
+	secretPayload, err = client.Secrets(d.config.Namespace).Get(ctx, d.config.SecretName, meta.GetOptions{})
+	if err != nil {
+		if !k8serrs.IsNotFound(err) {
+			return nil, fmt.Errorf("failed to get kubernetes secret: %w", err)
+		}
+
+		secretPayload = &k8score.Secret{
+			Type: k8score.SecretType(d.config.SecretType),
+			TypeMeta: meta.TypeMeta{
+				Kind:       "Secret",
+				APIVersion: "v1",
+			},
+			ObjectMeta: meta.ObjectMeta{
+				Name: d.config.SecretName,
+			},
+		}
+		secretIsNew = true
+	}
+
+	// 生成 Secret 注解和标签
 	secretAnnotations := map[string]string{
 		"certimate/common-name":       certX509.Subject.CommonName,
 		"certimate/subject-sn":        certX509.Subject.SerialNumber,
@@ -111,39 +145,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 		}
 	}
 
-	// 获取 Secret 实例，如果不存在则创建
-	secretPayload, err = client.CoreV1().Secrets(d.config.Namespace).Get(ctx, d.config.SecretName, k8smeta.GetOptions{})
-	if err != nil {
-		if !k8serrors.IsNotFound(err) {
-			return nil, fmt.Errorf("failed to get kubernetes secret: %w", err)
-		}
-
-		secretPayload = &k8score.Secret{
-			TypeMeta: k8smeta.TypeMeta{
-				Kind:       "Secret",
-				APIVersion: "v1",
-			},
-			ObjectMeta: k8smeta.ObjectMeta{
-				Name:        d.config.SecretName,
-				Annotations: secretAnnotations,
-				Labels:      secretLabels,
-			},
-			Type: k8score.SecretType(d.config.SecretType),
-		}
-		secretPayload.Data = make(map[string][]byte)
-		secretPayload.Data[d.config.SecretDataKeyForCrt] = []byte(certPEM)
-		secretPayload.Data[d.config.SecretDataKeyForKey] = []byte(privkeyPEM)
-
-		secretPayload, err = client.CoreV1().Secrets(d.config.Namespace).Create(ctx, secretPayload, k8smeta.CreateOptions{})
-		d.logger.Debug("kubernetes operate 'Secrets.Create'", slog.String("namespace", d.config.Namespace), slog.Any("secret", secretPayload))
-		if err != nil {
-			return nil, fmt.Errorf("failed to create kubernetes secret: %w", err)
-		} else {
-			return &deployer.DeployResult{}, nil
-		}
-	}
-
-	// 更新 Secret 实例
+	// 赋值 Secret 实例
 	secretPayload.Type = k8score.SecretType(d.config.SecretType)
 	if secretPayload.ObjectMeta.Annotations == nil {
 		secretPayload.ObjectMeta.Annotations = secretAnnotations
@@ -162,18 +164,38 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*dep
 	if secretPayload.Data == nil {
 		secretPayload.Data = make(map[string][]byte)
 	}
-	secretPayload.Data[d.config.SecretDataKeyForCrt] = []byte(certPEM)
-	secretPayload.Data[d.config.SecretDataKeyForKey] = []byte(privkeyPEM)
-	secretPayload, err = client.CoreV1().Secrets(d.config.Namespace).Update(ctx, secretPayload, k8smeta.UpdateOptions{})
-	d.logger.Debug("kubernetes operate 'Secrets.Update'", slog.String("namespace", d.config.Namespace), slog.Any("secret", secretPayload))
-	if err != nil {
-		return nil, fmt.Errorf("failed to update kubernetes secret: %w", err)
+	if d.config.SecretDataKeyForKey != "" {
+		secretPayload.Data[d.config.SecretDataKeyForKey] = []byte(privkeyPEM)
+	}
+	if d.config.SecretDataKeyForCrt != "" {
+		secretPayload.Data[d.config.SecretDataKeyForCrt] = []byte(certPEM)
+	}
+	if d.config.SecretDataKeyForCrtOnlyServer != "" {
+		secretPayload.Data[d.config.SecretDataKeyForCrtOnlyServer] = []byte(serverCertPEM)
+	}
+	if d.config.SecretDataKeyForCrtOnlyIntermedia != "" {
+		secretPayload.Data[d.config.SecretDataKeyForCrtOnlyIntermedia] = []byte(intermediaCertPEM)
 	}
 
-	return &deployer.DeployResult{}, nil
+	// 创建或更新 Secret 实例
+	if secretIsNew {
+		secretPayload, err = client.Secrets(d.config.Namespace).Create(ctx, secretPayload, meta.CreateOptions{})
+		d.logger.Debug("kubernetes operate 'Secrets.Create'", slog.String("namespace", d.config.Namespace), slog.Any("secret", secretPayload))
+		if err != nil {
+			return nil, fmt.Errorf("failed to create kubernetes secret: %w", err)
+		}
+	} else {
+		secretPayload, err = client.Secrets(d.config.Namespace).Update(ctx, secretPayload, meta.UpdateOptions{})
+		d.logger.Debug("kubernetes operate 'Secrets.Update'", slog.String("namespace", d.config.Namespace), slog.Any("secret", secretPayload))
+		if err != nil {
+			return nil, fmt.Errorf("failed to update kubernetes secret: %w", err)
+		}
+	}
+
+	return &DeployResult{}, nil
 }
 
-func createK8sClient(kubeConfig string) (*kubernetes.Clientset, error) {
+func createK8sClient(kubeConfig string) (*typedcore.CoreV1Client, error) {
 	var config *rest.Config
 	var err error
 	if kubeConfig == "" {
@@ -189,7 +211,7 @@ func createK8sClient(kubeConfig string) (*kubernetes.Clientset, error) {
 		return nil, err
 	}
 
-	client, err := kubernetes.NewForConfig(config)
+	client, err := typedcore.NewForConfig(config)
 	if err != nil {
 		return nil, err
 	}

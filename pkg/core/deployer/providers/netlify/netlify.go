@@ -2,22 +2,26 @@ package netlify
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 
-	"github.com/certimate-go/certimate/pkg/core/deployer"
+	"github.com/certimate-go/certimate/pkg/core"
 	netlifysdk "github.com/certimate-go/certimate/pkg/sdk3rd/netlify"
 	xcert "github.com/certimate-go/certimate/pkg/utils/cert"
+)
+
+type (
+	Provider     = core.Deployer
+	DeployResult = core.DeployerDeployResult
 )
 
 type DeployerConfig struct {
 	// netlify API Token。
 	ApiToken string `json:"apiToken"`
-	// 部署资源类型。
-	ResourceType string `json:"resourceType"`
+	// 部署目标。
+	DeployTarget string `json:"deployTarget"`
 	// netlify 网站 ID。
-	// 部署资源类型为 [RESOURCE_TYPE_WEBSITE] 时必填。
+	// 部署目标为 [DEPLOY_TARGET_WEBSITE] 时必填。
 	SiteId string `json:"siteId,omitempty"`
 }
 
@@ -27,11 +31,11 @@ type Deployer struct {
 	sdkClient *netlifysdk.Client
 }
 
-var _ deployer.Provider = (*Deployer)(nil)
+var _ Provider = (*Deployer)(nil)
 
 func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 	if config == nil {
-		return nil, errors.New("the configuration of the deployer provider is nil")
+		return nil, fmt.Errorf("the configuration of the deployer provider is nil")
 	}
 
 	client, err := createSDKClient(config.ApiToken)
@@ -54,24 +58,24 @@ func (d *Deployer) SetLogger(logger *slog.Logger) {
 	}
 }
 
-func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*deployer.DeployResult, error) {
-	// 根据部署资源类型决定部署方式
-	switch d.config.ResourceType {
-	case RESOURCE_TYPE_WEBSITE:
+func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*DeployResult, error) {
+	// 根据部署目标决定业务流程
+	switch d.config.DeployTarget {
+	case DEPLOY_TARGET_WEBSITE:
 		if err := d.deployToWebsite(ctx, certPEM, privkeyPEM); err != nil {
 			return nil, err
 		}
 
 	default:
-		return nil, fmt.Errorf("unsupported resource type '%s'", d.config.ResourceType)
+		return nil, fmt.Errorf("unsupported deploy target '%s'", d.config.DeployTarget)
 	}
 
-	return &deployer.DeployResult{}, nil
+	return &DeployResult{}, nil
 }
 
 func (d *Deployer) deployToWebsite(ctx context.Context, certPEM, privkeyPEM string) error {
 	if d.config.SiteId == "" {
-		return errors.New("config `siteId` is required")
+		return fmt.Errorf("config `siteId` is required")
 	}
 
 	// 提取服务器证书和中间证书
@@ -82,15 +86,15 @@ func (d *Deployer) deployToWebsite(ctx context.Context, certPEM, privkeyPEM stri
 
 	// 上传网站证书
 	// REF: https://open-api.netlify.com/#tag/sniCertificate/operation/provisionSiteTLSCertificate
-	provisionSiteTLSCertificateReq := &netlifysdk.ProvisionSiteTLSCertificateParams{
+	provisionSiteTLSCertificateReq := &netlifysdk.ProvisionSiteTLSCertificateRequest{
 		Certificate:    serverCertPEM,
 		CACertificates: intermediaCertPEM,
 		Key:            privkeyPEM,
 	}
 	provisionSiteTLSCertificateResp, err := d.sdkClient.ProvisionSiteTLSCertificateWithContext(ctx, d.config.SiteId, provisionSiteTLSCertificateReq)
-	d.logger.Debug("sdk request 'netlify.ProvisionSiteTLSCertificate'", slog.String("siteId", d.config.SiteId), slog.Any("request", provisionSiteTLSCertificateReq), slog.Any("response", provisionSiteTLSCertificateResp))
+	d.logger.Debug("sdk request 'ProvisionSiteTLSCertificate'", slog.String("siteId", d.config.SiteId), slog.Any("request", provisionSiteTLSCertificateReq), slog.Any("response", provisionSiteTLSCertificateResp))
 	if err != nil {
-		return fmt.Errorf("failed to execute sdk request 'netlify.ProvisionSiteTLSCertificate': %w", err)
+		return fmt.Errorf("failed to execute sdk request 'ProvisionSiteTLSCertificate': %w", err)
 	}
 
 	return nil

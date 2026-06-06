@@ -1,13 +1,21 @@
 package dtos
 
+import (
+	"github.com/certimate-go/certimate/internal/domain"
+)
+
 type CertificateDownloadReq struct {
-	CertificateId     string `json:"-"`
-	CertificateFormat string `json:"format"`
+	CertificateId string                       `json:"-"`
+	FileFormat    domain.CertificateFormatType `json:"fileFormat"`
+	PfxPassword   string                       `json:"pfxPassword,omitempty"`
+	PfxEncoder    string                       `json:"pfxEncoder,omitempty"`
+	JksAlias      string                       `json:"jksAlias,omitempty"`
+	JksKeypass    string                       `json:"jksKeypass,omitempty"`
+	JksStorepass  string                       `json:"jksStorepass,omitempty"`
 }
 
 type CertificateDownloadResp struct {
-	FileBytes  []byte `json:"fileBytes"`
-	FileFormat string `json:"fileFormat"`
+	ZipBytes []byte `json:"zipBytes"`
 }
 
 type CertificateRevokeReq struct {
