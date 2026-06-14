@@ -223,7 +223,7 @@ func (d *Deployer) getAllDomains(ctx context.Context) ([]string, error) {
 func (d *Deployer) updateDomainCertificate(ctx context.Context, domain string, cloudCertId string) error {
 	// 获取域名证书配置
 	getHttpsServiceManagerResp, err := d.sdkClient.GetHttpsServiceManagerWithContext(ctx, domain)
-	d.logger.Debug("sdk request 'console.GetHttpsServiceManager'", slog.String("request.domain", domain), slog.Any("response", getHttpsServiceManagerResp))
+	d.logger.Debug("sdk request 'console.GetHttpsServiceManager'", slog.String("params.domain", domain), slog.Any("response", getHttpsServiceManagerResp))
 	if err != nil {
 		return fmt.Errorf("failed to execute sdk request 'console.GetHttpsServiceManager': %w", err)
 	}
@@ -261,5 +261,12 @@ func (d *Deployer) updateDomainCertificate(ctx context.Context, domain string, c
 }
 
 func createSDKClient(username, password string) (*upyunsdk.Client, error) {
-	return upyunsdk.NewClient(username, password)
+	client, err := upyunsdk.NewClient(
+		upyunsdk.WithLogins(username, password),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
 }

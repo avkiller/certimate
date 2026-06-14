@@ -19,21 +19,23 @@ import (
 )
 
 type Client struct {
-	accessKey string
-	secretKey string
-
-	client *resty.Client
+	rc *resty.Client
 }
 
-func NewClient(accessKey, secretKey string) (*Client, error) {
-	if accessKey == "" {
+func NewClient(optFns ...OptionsFunc) (*Client, error) {
+	options := &Options{}
+	for _, fn := range optFns {
+		fn(options)
+	}
+
+	if options.AccessKey == "" {
 		return nil, fmt.Errorf("sdkerr: unset accessKey")
 	}
-	if secretKey == "" {
+	if options.SecretKey == "" {
 		return nil, fmt.Errorf("sdkerr: unset secretKey")
 	}
 
-	client := resty.New().
+	restyClient := resty.New().
 		SetBaseURL("https://open.chinanetcenter.com").
 		SetHeader("Accept", "application/json").
 		SetHeader("Content-Type", "application/json").
@@ -111,30 +113,26 @@ func NewClient(accessKey, secretKey string) (*Client, error) {
 			// Step 8: String to sign
 			const SignAlgorithmHeader = "CNC-HMAC-SHA256"
 			stringToSign := fmt.Sprintf("%s\n%s\n%s", SignAlgorithmHeader, timestampString, hashedCanonicalRequestHex)
-			hmac := hmac.New(sha256.New, []byte(secretKey))
+			hmac := hmac.New(sha256.New, []byte(options.SecretKey))
 			hmac.Write([]byte(stringToSign))
 			sign := hmac.Sum(nil)
 			signHex := strings.ToLower(hex.EncodeToString(sign))
 
 			// Step 9: Add headers to request
-			req.Header.Set("X-CNC-AccessKey", accessKey)
+			req.Header.Set("X-CNC-AccessKey", options.AccessKey)
 			req.Header.Set("X-CNC-Timestamp", timestampString)
 			req.Header.Set("X-CNC-Auth-Method", "AKSK")
-			req.Header.Set("Authorization", fmt.Sprintf("%s Credential=%s, SignedHeaders=%s, Signature=%s", SignAlgorithmHeader, accessKey, signedHeaders, signHex))
+			req.Header.Set("Authorization", fmt.Sprintf("%s Credential=%s, SignedHeaders=%s, Signature=%s", SignAlgorithmHeader, options.AccessKey, signedHeaders, signHex))
 			req.Header.Set("Date", reqtime.Format("Mon, 02 Jan 2006 15:04:05 GMT"))
 
 			return nil
 		})
 
-	return &Client{
-		accessKey: accessKey,
-		secretKey: secretKey,
-		client:    client,
-	}, nil
+	return &Client{rc: restyClient}, nil
 }
 
 func (c *Client) SetTimeout(timeout time.Duration) *Client {
-	c.client.SetTimeout(timeout)
+	c.rc.SetTimeout(timeout)
 	return c
 }
 
@@ -146,7 +144,7 @@ func (c *Client) NewRequest(method string, path string) (*resty.Request, error) 
 		return nil, fmt.Errorf("sdkerr: unset path")
 	}
 
-	req := c.client.R()
+	req := c.rc.R()
 	req.Method = method
 	req.URL = path
 	return req, nil

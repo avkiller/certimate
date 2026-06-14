@@ -94,18 +94,22 @@ func (r *CertificateRepository) Save(ctx context.Context, certificate *domain.Ce
 	}
 
 	record.Set("source", certificate.Source.String())
-	record.Set("subjectAltNames", certificate.SubjectAltNames)
-	record.Set("serialNumber", certificate.SerialNumber)
 	record.Set("certificate", certificate.Certificate)
 	record.Set("privateKey", certificate.PrivateKey)
+	record.Set("serialNumber", certificate.SerialNumber)
+	record.Set("subjectName", certificate.SubjectName)
+	record.Set("subjectAltNames", certificate.SubjectAltNames)
 	record.Set("issuerOrg", certificate.IssuerOrg)
+	record.Set("issuerName", certificate.IssuerName)
 	record.Set("issuerCertificate", certificate.IssuerCertificate)
 	record.Set("keyAlgorithm", certificate.KeyAlgorithm.String())
+	record.Set("validationPolicy", certificate.ValidationPolicy.String())
 	record.Set("validityNotBefore", certificate.ValidityNotBefore)
 	record.Set("validityNotAfter", certificate.ValidityNotAfter)
 	record.Set("validityInterval", certificate.ValidityInterval)
-	record.Set("acmeAcctUrl", certificate.ACMEAcctUrl)
-	record.Set("acmeCertUrl", certificate.ACMECertUrl)
+	record.Set("ca", certificate.CA)
+	record.Set("acmeAcctUrl", certificate.ACMEAccountUrl)
+	record.Set("acmeCertUrl", certificate.ACMECertificateUrl)
 	record.Set("isRenewed", certificate.IsRenewed)
 	record.Set("isRevoked", certificate.IsRevoked)
 	record.Set("workflowRef", certificate.WorkflowId)
@@ -155,24 +159,28 @@ func (r *CertificateRepository) castRecordToModel(record *core.Record) (*domain.
 			CreatedAt: record.GetDateTime("created").Time(),
 			UpdatedAt: record.GetDateTime("updated").Time(),
 		},
-		Source:            domain.CertificateSourceType(record.GetString("source")),
-		SubjectAltNames:   record.GetString("subjectAltNames"),
-		SerialNumber:      record.GetString("serialNumber"),
-		Certificate:       record.GetString("certificate"),
-		PrivateKey:        record.GetString("privateKey"),
-		IssuerOrg:         record.GetString("issuerOrg"),
-		IssuerCertificate: record.GetString("issuerCertificate"),
-		KeyAlgorithm:      domain.CertificateKeyAlgorithmType(record.GetString("keyAlgorithm")),
-		ValidityNotBefore: record.GetDateTime("validityNotBefore").Time(),
-		ValidityNotAfter:  record.GetDateTime("validityNotAfter").Time(),
-		ValidityInterval:  int32(record.GetInt("validityInterval")),
-		ACMEAcctUrl:       record.GetString("acmeAcctUrl"),
-		ACMECertUrl:       record.GetString("acmeCertUrl"),
-		IsRenewed:         record.GetBool("isRenewed"),
-		IsRevoked:         record.GetBool("isRevoked"),
-		WorkflowId:        record.GetString("workflowRef"),
-		WorkflowRunId:     record.GetString("workflowRunRef"),
-		WorkflowNodeId:    record.GetString("workflowNodeId"),
+		Source:             domain.CertificateSourceType(record.GetString("source")),
+		Certificate:        record.GetString("certificate"),
+		PrivateKey:         record.GetString("privateKey"),
+		SerialNumber:       record.GetString("serialNumber"),
+		SubjectName:        record.GetString("subjectName"),
+		SubjectAltNames:    record.GetString("subjectAltNames"),
+		IssuerName:         record.GetString("issuerName"),
+		IssuerOrg:          record.GetString("issuerOrg"),
+		IssuerCertificate:  record.GetString("issuerCertificate"),
+		KeyAlgorithm:       domain.CertificateKeyAlgorithmType(record.GetString("keyAlgorithm")),
+		ValidationPolicy:   domain.CertificateValidationPolicyType(record.GetString("validationPolicy")),
+		ValidityNotBefore:  record.GetDateTime("validityNotBefore").Time(),
+		ValidityNotAfter:   record.GetDateTime("validityNotAfter").Time(),
+		ValidityInterval:   int32(record.GetInt("validityInterval")),
+		CA:                 record.GetString("ca"),
+		ACMEAccountUrl:     record.GetString("acmeAcctUrl"),
+		ACMECertificateUrl: record.GetString("acmeCertUrl"),
+		IsRenewed:          record.GetBool("isRenewed"),
+		IsRevoked:          record.GetBool("isRevoked"),
+		WorkflowId:         record.GetString("workflowRef"),
+		WorkflowRunId:      record.GetString("workflowRunRef"),
+		WorkflowNodeId:     record.GetString("workflowNodeId"),
 	}
 	return certificate, nil
 }

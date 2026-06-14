@@ -31,7 +31,7 @@ func (c *Client) WebsiteSSLGet(sslId int64) (*WebsiteSSLGetResponse, error) {
 
 func (c *Client) WebsiteSSLGetWithContext(ctx context.Context, sslId int64) (*WebsiteSSLGetResponse, error) {
 	if sslId == 0 {
-		return nil, fmt.Errorf("sdkerr: unset sslId")
+		return nil, fmt.Errorf("sdkerr: bad request: unset sslId")
 	}
 
 	httpreq, err := c.newRequest(http.MethodGet, fmt.Sprintf("/websites/ssl/%d", sslId))

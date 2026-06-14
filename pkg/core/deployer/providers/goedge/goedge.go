@@ -122,7 +122,10 @@ func (d *Deployer) deployToCertificate(ctx context.Context, certPEM, privkeyPEM 
 }
 
 func createSDKClient(serverUrl, apiRole, accessKeyId, accessKey string, skipTlsVerify bool) (*goedgesdk.Client, error) {
-	client, err := goedgesdk.NewClient(serverUrl, apiRole, accessKeyId, accessKey)
+	client, err := goedgesdk.NewClient(serverUrl,
+		goedgesdk.WithRole(apiRole),
+		goedgesdk.WithAccessKey(accessKeyId, accessKey),
+	)
 	if err != nil {
 		return nil, err
 	}

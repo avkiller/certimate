@@ -93,7 +93,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*Dep
 	return &DeployResult{}, nil
 }
 
-func (d *Deployer) findSiteByName(ctx context.Context, siteName string) (*btwafsdk.SiteRecord, error) {
+func (d *Deployer) findSiteByName(ctx context.Context, siteName string) (*btwafsdk.SiteData, error) {
 	// 查询网站列表
 	getSiteListPage := 1
 	getSiteListPageSize := 100
@@ -151,7 +151,7 @@ func (d *Deployer) updateSiteCertificate(ctx context.Context, siteName string, s
 		SiteId: lo.ToPtr(siteData.SiteId),
 		Type:   lo.ToPtr("openCert"),
 		Server: &btwafsdk.SiteServerInfoMod{
-			ListenSSLPorts: lo.ToPtr([]string{fmt.Sprintf("%d", d.config.SitePort)}),
+			ListenSSLPorts: []*string{lo.ToPtr(fmt.Sprintf("%d", d.config.SitePort))},
 			SSL: &btwafsdk.SiteServerSSLInfo{
 				IsSSL:      lo.ToPtr(int32(1)),
 				FullChain:  lo.ToPtr(certPEM),
@@ -169,7 +169,9 @@ func (d *Deployer) updateSiteCertificate(ctx context.Context, siteName string, s
 }
 
 func createSDKClient(serverUrl, apiKey string, skipTlsVerify bool) (*btwafsdk.Client, error) {
-	client, err := btwafsdk.NewClient(serverUrl, apiKey)
+	client, err := btwafsdk.NewClient(serverUrl,
+		btwafsdk.WithApiKey(apiKey),
+	)
 	if err != nil {
 		return nil, err
 	}

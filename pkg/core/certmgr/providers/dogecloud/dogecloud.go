@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/certimate-go/certimate/pkg/core"
-	dogesdk "github.com/certimate-go/certimate/pkg/sdk3rd/dogecloud"
+	dogecloudsdk "github.com/certimate-go/certimate/pkg/sdk3rd/dogecloud"
 )
 
 type (
@@ -26,7 +26,7 @@ type CertmgrConfig struct {
 type Certmgr struct {
 	config    *CertmgrConfig
 	logger    *slog.Logger
-	sdkClient *dogesdk.Client
+	sdkClient *dogecloudsdk.Client
 }
 
 var _ Provider = (*Certmgr)(nil)
@@ -62,7 +62,7 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*Uplo
 
 	// 上传新证书
 	// REF: https://docs.dogecloud.com/cdn/api-cert-upload
-	uploadSslCertReq := &dogesdk.UploadCdnCertRequest{
+	uploadSslCertReq := &dogecloudsdk.UploadCdnCertRequest{
 		Note:        certName,
 		Certificate: certPEM,
 		PrivateKey:  privkeyPEM,
@@ -83,6 +83,13 @@ func (c *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, pri
 	return nil, core.ErrUnsupported
 }
 
-func createSDKClient(accessKey, secretKey string) (*dogesdk.Client, error) {
-	return dogesdk.NewClient(accessKey, secretKey)
+func createSDKClient(accessKey, secretKey string) (*dogecloudsdk.Client, error) {
+	client, err := dogecloudsdk.NewClient(
+		dogecloudsdk.WithAkSk(accessKey, secretKey),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
 }

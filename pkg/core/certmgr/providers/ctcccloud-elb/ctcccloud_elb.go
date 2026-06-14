@@ -116,5 +116,12 @@ func (c *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, pri
 }
 
 func createSDKClient(accessKeyId, secretAccessKey string) (*ctyunelb.Client, error) {
-	return ctyunelb.NewClient(accessKeyId, secretAccessKey)
+	client, err := ctyunelb.NewClient(
+		ctyunelb.WithAkSk(accessKeyId, secretAccessKey),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
 }

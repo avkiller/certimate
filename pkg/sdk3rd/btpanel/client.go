@@ -19,39 +19,44 @@ import (
 type Client struct {
 	apiKey string
 
-	client *resty.Client
+	rc *resty.Client
 }
 
-func NewClient(serverUrl, apiKey string) (*Client, error) {
+func NewClient(serverUrl string, optFns ...OptionsFunc) (*Client, error) {
+	opts := &Options{}
+	for _, fn := range optFns {
+		fn(opts)
+	}
+
 	if serverUrl == "" {
 		return nil, fmt.Errorf("sdkerr: unset serverUrl")
 	}
 	if _, err := url.Parse(serverUrl); err != nil {
 		return nil, fmt.Errorf("sdkerr: invalid serverUrl: %w", err)
 	}
-	if apiKey == "" {
+	if opts.ApiKey == "" {
 		return nil, fmt.Errorf("sdkerr: unset apiKey")
 	}
 
-	client := resty.New().
+	restyClient := resty.New().
 		SetBaseURL(strings.TrimSuffix(serverUrl, "/")).
 		SetHeader("Accept", "application/json").
 		SetHeader("Content-Type", "application/x-www-form-urlencoded").
 		SetHeader("User-Agent", app.AppUserAgent)
 
 	return &Client{
-		apiKey: apiKey,
-		client: client,
+		apiKey: opts.ApiKey,
+		rc:     restyClient,
 	}, nil
 }
 
 func (c *Client) SetTimeout(timeout time.Duration) *Client {
-	c.client.SetTimeout(timeout)
+	c.rc.SetTimeout(timeout)
 	return c
 }
 
 func (c *Client) SetTLSConfig(config *tls.Config) *Client {
-	c.client.SetTLSClientConfig(config)
+	c.rc.SetTLSClientConfig(config)
 	return c
 }
 
@@ -95,7 +100,7 @@ func (c *Client) newRequest(method string, path string, params any) (*resty.Requ
 	data["request_time"] = fmt.Sprintf("%d", timestamp)
 	data["request_token"] = generateSignature(fmt.Sprintf("%d", timestamp), c.apiKey)
 
-	req := c.client.R()
+	req := c.rc.R()
 	req.Method = method
 	req.URL = path
 	req.SetFormData(data)
@@ -138,7 +143,7 @@ func (c *Client) doRequestWithResult(req *resty.Request, res sdkResponse) (*rest
 		if err := json.Unmarshal(resp.Body(), &res); err != nil {
 			return resp, fmt.Errorf("sdkerr: failed to unmarshal response: %w (resp: %s)", err, resp.String())
 		} else {
-			if tstatus := res.GetStatus(); tstatus != nil && !*tstatus {
+			if rStatus := res.GetStatus(); rStatus != nil && !*rStatus {
 				if res.GetMessage() == nil {
 					return resp, fmt.Errorf("sdkerr: api error: unknown error")
 				} else {

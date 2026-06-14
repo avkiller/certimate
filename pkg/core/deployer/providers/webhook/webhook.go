@@ -87,7 +87,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*Dep
 	}
 
 	// 提取服务器证书和中间证书
-	serverCertPEM, intermediaCertPEM, err := xcert.ExtractCertificatesFromPEM(certPEM)
+	serverCertPEM, issuerCertPEM, err := xcert.ExtractCertificatesFromPEM(certPEM)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract certs: %w", err)
 	}
@@ -165,7 +165,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*Dep
 	replaceJsonValueRecursively(webhookData, "${CERTIMATE_DEPLOYER_SUBJECTALTNAMES}", strings.Join(xcertx509.GetSubjectAltNames(certX509), ";"))
 	replaceJsonValueRecursively(webhookData, "${CERTIMATE_DEPLOYER_CERTIFICATE}", certPEM)
 	replaceJsonValueRecursively(webhookData, "${CERTIMATE_DEPLOYER_CERTIFICATE_SERVER}", serverCertPEM)
-	replaceJsonValueRecursively(webhookData, "${CERTIMATE_DEPLOYER_CERTIFICATE_INTERMEDIA}", intermediaCertPEM)
+	replaceJsonValueRecursively(webhookData, "${CERTIMATE_DEPLOYER_CERTIFICATE_INTERMEDIA}", issuerCertPEM)
 	replaceJsonValueRecursively(webhookData, "${CERTIMATE_DEPLOYER_PRIVATEKEY}", privkeyPEM)
 
 	// 兼容旧版变量
@@ -174,7 +174,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*Dep
 	replaceJsonValueRecursively(webhookData, "${DOMAINS}", strings.Join(certX509.DNSNames, ";"))
 	replaceJsonValueRecursively(webhookData, "${CERTIFICATE}", certPEM)
 	replaceJsonValueRecursively(webhookData, "${SERVER_CERTIFICATE}", serverCertPEM)
-	replaceJsonValueRecursively(webhookData, "${INTERMEDIA_CERTIFICATE}", intermediaCertPEM)
+	replaceJsonValueRecursively(webhookData, "${INTERMEDIA_CERTIFICATE}", issuerCertPEM)
 	replaceJsonValueRecursively(webhookData, "${PRIVATE_KEY}", privkeyPEM)
 
 	// 生成请求

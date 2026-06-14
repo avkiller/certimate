@@ -71,7 +71,7 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*Uplo
 	}
 
 	// 提取服务器证书和中间证书
-	serverCertPEM, intermediaCertPEM, err := xcert.ExtractCertificatesFromPEM(certPEM)
+	serverCertPEM, issuerCertPEM, err := xcert.ExtractCertificatesFromPEM(certPEM)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract certs: %w", err)
 	}
@@ -145,7 +145,7 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*Uplo
 	// REF: https://docs.aws.amazon.com/acm/latest/APIReference/API_ImportCertificate.html
 	importCertificateReq := &awsacm.ImportCertificateInput{
 		Certificate:      ([]byte)(serverCertPEM),
-		CertificateChain: ([]byte)(intermediaCertPEM),
+		CertificateChain: ([]byte)(issuerCertPEM),
 		PrivateKey:       ([]byte)(privkeyPEM),
 	}
 	importCertificateResp, err := c.sdkClient.ImportCertificate(ctx, importCertificateReq)
@@ -164,7 +164,7 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*Uplo
 
 func (c *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, privkeyPEM string) (*ReplaceResult, error) {
 	// 提取服务器证书和中间证书
-	serverCertPEM, intermediaCertPEM, err := xcert.ExtractCertificatesFromPEM(certPEM)
+	serverCertPEM, issuerCertPEM, err := xcert.ExtractCertificatesFromPEM(certPEM)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract certs: %w", err)
 	}
@@ -174,7 +174,7 @@ func (c *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, pri
 	importCertificateReq := &awsacm.ImportCertificateInput{
 		CertificateArn:   aws.String(certIdOrName),
 		Certificate:      ([]byte)(serverCertPEM),
-		CertificateChain: ([]byte)(intermediaCertPEM),
+		CertificateChain: ([]byte)(issuerCertPEM),
 		PrivateKey:       ([]byte)(privkeyPEM),
 	}
 	importCertificateResp, err := c.sdkClient.ImportCertificate(ctx, importCertificateReq)

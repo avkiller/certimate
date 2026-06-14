@@ -19,24 +19,29 @@ import (
 )
 
 type Client struct {
-	client *resty.Client
+	rc *resty.Client
 }
 
-func NewClient(endpoint, accessKeyId, secretAccessKey string) (*Client, error) {
+func NewClient(endpoint string, optFns ...OptionsFunc) (*Client, error) {
+	opts := &Options{}
+	for _, fn := range optFns {
+		fn(opts)
+	}
+
 	if endpoint == "" {
 		return nil, fmt.Errorf("sdkerr: unset endpoint")
 	}
 	if _, err := url.Parse(endpoint); err != nil {
 		return nil, fmt.Errorf("sdkerr: invalid endpoint: %w", err)
 	}
-	if accessKeyId == "" {
+	if opts.AccessKeyId == "" {
 		return nil, fmt.Errorf("sdkerr: unset accessKeyId")
 	}
-	if secretAccessKey == "" {
+	if opts.SecretAccessKey == "" {
 		return nil, fmt.Errorf("sdkerr: unset secretAccessKey")
 	}
 
-	client := resty.New().
+	restyClient := resty.New().
 		SetBaseURL(endpoint).
 		SetHeader("Accept", "application/json").
 		SetHeader("Content-Type", "application/json").
@@ -76,13 +81,13 @@ func NewClient(endpoint, accessKeyId, secretAccessKey string) (*Client, error) {
 			dataToSign := fmt.Sprintf("ctyun-eop-request-id:%s\neop-date:%s\n\n%s\n%s", eopReqId, eopDate, queryStr, payloadHashHex)
 
 			// 生成 ktime
-			hasher := hmac.New(sha256.New, []byte(secretAccessKey))
+			hasher := hmac.New(sha256.New, []byte(opts.SecretAccessKey))
 			hasher.Write([]byte(eopDate))
 			ktime := hasher.Sum(nil)
 
 			// 生成 kak
 			hasher = hmac.New(sha256.New, ktime)
-			hasher.Write([]byte(accessKeyId))
+			hasher.Write([]byte(opts.AccessKeyId))
 			kak := hasher.Sum(nil)
 
 			// 生成 kdate
@@ -99,16 +104,16 @@ func NewClient(endpoint, accessKeyId, secretAccessKey string) (*Client, error) {
 			// 设置请求头
 			req.Header.Set("ctyun-eop-request-id", eopReqId)
 			req.Header.Set("eop-date", eopDate)
-			req.Header.Set("eop-authorization", fmt.Sprintf("%s Headers=ctyun-eop-request-id;eop-date Signature=%s", accessKeyId, signStr))
+			req.Header.Set("eop-authorization", fmt.Sprintf("%s Headers=ctyun-eop-request-id;eop-date Signature=%s", opts.AccessKeyId, signStr))
 
 			return nil
 		})
 
-	return &Client{client}, nil
+	return &Client{rc: restyClient}, nil
 }
 
 func (c *Client) SetTimeout(timeout time.Duration) *Client {
-	c.client.SetTimeout(timeout)
+	c.rc.SetTimeout(timeout)
 	return c
 }
 
@@ -120,7 +125,7 @@ func (c *Client) NewRequest(method string, path string) (*resty.Request, error) 
 		return nil, fmt.Errorf("sdkerr: unset path")
 	}
 
-	req := c.client.R()
+	req := c.rc.R()
 	req.Method = method
 	req.URL = path
 	return req, nil

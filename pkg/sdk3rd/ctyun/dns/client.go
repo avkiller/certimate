@@ -14,8 +14,8 @@ type Client struct {
 	client *openapi.Client
 }
 
-func NewClient(accessKeyId, secretAccessKey string) (*Client, error) {
-	client, err := openapi.NewClient(endpoint, accessKeyId, secretAccessKey)
+func NewClient(optFns ...openapi.OptionsFunc) (*Client, error) {
+	client, err := openapi.NewClient(endpoint, optFns...)
 	if err != nil {
 		return nil, err
 	}
@@ -39,10 +39,10 @@ func (c *Client) doRequest(req *resty.Request) (*resty.Response, error) {
 func (c *Client) doRequestWithResult(req *resty.Request, res sdkResponse) (*resty.Response, error) {
 	resp, err := c.client.DoRequestWithResult(req, res)
 	if err == nil {
-		statusCode := res.GetStatusCode()
-		errorCode := res.GetError()
-		if (statusCode != "" && statusCode != "200") || errorCode != "" {
-			return resp, fmt.Errorf("sdkerr: api error: code='%s', message='%s', errorCode='%s', errorMessage='%s'", statusCode, res.GetMessage(), res.GetMessage(), res.GetErrorMessage())
+		rStatusCode := res.GetStatusCode()
+		rError := res.GetError()
+		if (rStatusCode != "" && rStatusCode != "200") || rError != "" {
+			return resp, fmt.Errorf("sdkerr: api error: code='%s', message='%s', error='%s', errorMessage='%s'", rStatusCode, res.GetMessage(), rError, res.GetErrorMessage())
 		}
 	}
 

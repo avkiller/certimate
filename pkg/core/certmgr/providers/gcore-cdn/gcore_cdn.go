@@ -10,7 +10,7 @@ import (
 	"github.com/G-Core/gcorelabscdn-go/sslcerts"
 
 	"github.com/certimate-go/certimate/pkg/core"
-	gcoresdk "github.com/certimate-go/certimate/pkg/sdk3rd/gcore"
+	xgcore "github.com/certimate-go/certimate/pkg/utils/third-party/gcore"
 )
 
 type (
@@ -89,8 +89,8 @@ func createSDKClient(apiToken string) (*sslcerts.Service, error) {
 	}
 
 	requester := gcore.NewClient(
-		gcoresdk.BASE_URL,
-		gcore.WithSigner(gcoresdk.NewAuthRequestSigner(apiToken)),
+		xgcore.BASE_URL,
+		gcore.WithSigner(xgcore.NewAuthRequestSigner(apiToken)),
 	)
 	service := sslcerts.NewService(requester)
 	return service, nil

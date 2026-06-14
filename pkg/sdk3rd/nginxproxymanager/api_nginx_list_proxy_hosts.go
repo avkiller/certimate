@@ -11,7 +11,7 @@ type NginxListProxyHostsRequest struct {
 	Expand *string `json:"expand,omitempty" url:"expand,omitempty"`
 }
 
-type NginxListProxyHostsResponse = []*ProxyHostRecord
+type NginxListProxyHostsResponse = []*ProxyHost
 
 func (c *Client) NginxListProxyHosts(req *NginxListProxyHostsRequest) (*NginxListProxyHostsResponse, error) {
 	return c.NginxListProxyHostsWithContext(context.Background(), req)

@@ -11,7 +11,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/certimate-go/certimate/pkg/core"
-	wangsusdk "github.com/certimate-go/certimate/pkg/sdk3rd/wangsu/certificate"
+	wangsucertificate "github.com/certimate-go/certimate/pkg/sdk3rd/wangsu/certificate"
 	xcert "github.com/certimate-go/certimate/pkg/utils/cert"
 )
 
@@ -31,7 +31,7 @@ type CertmgrConfig struct {
 type Certmgr struct {
 	config    *CertmgrConfig
 	logger    *slog.Logger
-	sdkClient *wangsusdk.Client
+	sdkClient *wangsucertificate.Client
 }
 
 var _ Provider = (*Certmgr)(nil)
@@ -94,7 +94,7 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*Uplo
 			// 如果以上信息都一致，则视为已存在相同证书，直接返回
 			c.logger.Info("ssl certificate already exists")
 			return &UploadResult{
-				CertId:   certItem.CertificateId,
+				CertId:   certItem.Id,
 				CertName: certItem.Name,
 			}, nil
 		}
@@ -105,7 +105,7 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*Uplo
 
 	// 新增证书
 	// REF: https://www.wangsu.com/document/api-doc/25199?productCode=certificatemanagement
-	createCertificateReq := &wangsusdk.CreateCertificateRequest{
+	createCertificateReq := &wangsucertificate.CreateCertificateRequest{
 		Name:        lo.ToPtr(certName),
 		Certificate: lo.ToPtr(certPEM),
 		PrivateKey:  lo.ToPtr(privkeyPEM),
@@ -137,7 +137,7 @@ func (c *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, pri
 
 	// 修改证书
 	// REF: https://www.wangsu.com/document/api-doc/25568?productCode=certificatemanagement
-	updateCertificateReq := &wangsusdk.UpdateCertificateRequest{
+	updateCertificateReq := &wangsucertificate.UpdateCertificateRequest{
 		Name:        lo.ToPtr(certName),
 		Certificate: lo.ToPtr(certPEM),
 		PrivateKey:  lo.ToPtr(privkeyPEM),
@@ -152,6 +152,13 @@ func (c *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, pri
 	return &ReplaceResult{}, nil
 }
 
-func createSDKClient(accessKeyId, accessKeySecret string) (*wangsusdk.Client, error) {
-	return wangsusdk.NewClient(accessKeyId, accessKeySecret)
+func createSDKClient(accessKeyId, accessKeySecret string) (*wangsucertificate.Client, error) {
+	client, err := wangsucertificate.NewClient(
+		wangsucertificate.WithAkSk(accessKeyId, accessKeySecret),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
 }

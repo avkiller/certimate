@@ -75,7 +75,7 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*Uplo
 	}
 
 	// 提取服务器证书和中间证书
-	serverCertPEM, intermediaCertPEM, err := xcert.ExtractCertificatesFromPEM(certPEM)
+	serverCertPEM, issuerCertPEM, err := xcert.ExtractCertificatesFromPEM(certPEM)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract certs: %w", err)
 	}
@@ -156,7 +156,7 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*Uplo
 		ServerCertificateName: aws.String(certName),
 		Path:                  aws.String(cmp.Or(c.config.CertificatePath, "/")),
 		CertificateBody:       aws.String(serverCertPEM),
-		CertificateChain:      aws.String(intermediaCertPEM),
+		CertificateChain:      aws.String(issuerCertPEM),
 		PrivateKey:            aws.String(privkeyPEM),
 	}
 	uploadServerCertificateResp, err := c.sdkClient.UploadServerCertificate(ctx, uploadServerCertificateReq)

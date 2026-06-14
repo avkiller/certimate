@@ -13,7 +13,7 @@ import (
 	"github.com/alibabacloud-go/tea/tea"
 	"github.com/samber/lo"
 
-	aliapig "github.com/certimate-go/certimate/pkg/sdk3rd-trimmed/github.com/alibabacloud-go/apig-20240327/v6/client"
+	aliapig "github.com/certimate-go/certimate/pkg/sdk3rd-trimmed/github.com/alibabacloud-go/apig-20240327/v7/client"
 	alicloudapi "github.com/certimate-go/certimate/pkg/sdk3rd-trimmed/github.com/alibabacloud-go/cloudapi-20160714/v5/client"
 
 	"github.com/certimate-go/certimate/pkg/core"
@@ -399,7 +399,7 @@ func (d *Deployer) updateCloudNativeDomainCertificate(ctx context.Context, cloud
 	// REF: https://help.aliyun.com/zh/api-gateway/cloud-native-api-gateway/developer-reference/api-apig-2024-03-27-getdomain
 	getDomainReq := &aliapig.GetDomainRequest{}
 	getDomainResp, err := d.sdkClients.CloudNativeAPIGateway.GetDomainWithContext(ctx, tea.String(domainId), getDomainReq, make(map[string]*string), &dara.RuntimeOptions{})
-	d.logger.Debug("sdk request 'apig.GetDomain'", slog.String("domainId", domainId), slog.Any("request", getDomainReq), slog.Any("response", getDomainResp))
+	d.logger.Debug("sdk request 'apig.GetDomain'", slog.String("params.domainId", domainId), slog.Any("request", getDomainReq), slog.Any("response", getDomainResp))
 	if err != nil {
 		return fmt.Errorf("failed to execute sdk request 'apig.GetDomain': %w", err)
 	}
@@ -417,7 +417,7 @@ func (d *Deployer) updateCloudNativeDomainCertificate(ctx context.Context, cloud
 		CertIdentifier:        tea.String(cloudCertId),
 	}
 	updateDomainResp, err := d.sdkClients.CloudNativeAPIGateway.UpdateDomainWithContext(ctx, tea.String(domainId), updateDomainReq, make(map[string]*string), &dara.RuntimeOptions{})
-	d.logger.Debug("sdk request 'apig.UpdateDomain'", slog.String("domainId", domainId), slog.Any("request", updateDomainReq), slog.Any("response", updateDomainResp))
+	d.logger.Debug("sdk request 'apig.UpdateDomain'", slog.String("params.domainId", domainId), slog.Any("request", updateDomainReq), slog.Any("response", updateDomainResp))
 	if err != nil {
 		return fmt.Errorf("failed to execute sdk request 'apig.UpdateDomain': %w", err)
 	}

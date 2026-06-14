@@ -191,5 +191,12 @@ func (d *Deployer) updateListenerCertificate(ctx context.Context, cloudListenerI
 }
 
 func createSDKClient(accessKeyId, secretAccessKey string) (*ctyunelb.Client, error) {
-	return ctyunelb.NewClient(accessKeyId, secretAccessKey)
+	client, err := ctyunelb.NewClient(
+		ctyunelb.WithAkSk(accessKeyId, secretAccessKey),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
 }

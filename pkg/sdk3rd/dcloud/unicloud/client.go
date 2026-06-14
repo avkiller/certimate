@@ -46,17 +46,22 @@ const (
 	uniConsoleSpaceId       = "dc-6nfabcn6ada8d3dd"
 )
 
-func NewClient(username, password string) (*Client, error) {
-	if username == "" {
+func NewClient(optFns ...OptionsFunc) (*Client, error) {
+	opts := &Options{}
+	for _, fn := range optFns {
+		fn(opts)
+	}
+
+	if opts.Username == "" {
 		return nil, fmt.Errorf("sdkerr: unset username")
 	}
-	if password == "" {
+	if opts.Password == "" {
 		return nil, fmt.Errorf("sdkerr: unset password")
 	}
 
 	client := &Client{
-		username: username,
-		password: password,
+		username: opts.Username,
+		password: opts.Password,
 	}
 	client.serverlessClient = resty.New().
 		SetHeader("Accept", "application/json").
@@ -194,7 +199,7 @@ func (c *Client) invokeServerlessWithResult(endpoint, clientSecret, appId, space
 
 	if err := json.Unmarshal(resp.Body(), &result); err != nil {
 		return fmt.Errorf("unicloud api error: failed to unmarshal response: %w", err)
-	} else if success := result.GetSuccess(); !success {
+	} else if rSuccess := result.GetSuccess(); !rSuccess {
 		return fmt.Errorf("unicloud api error: code='%s', message='%s'", result.GetErrorCode(), result.GetErrorMessage())
 	}
 
@@ -242,8 +247,8 @@ func (c *Client) sendRequestWithResult(method string, path string, params interf
 
 	if err := json.Unmarshal(resp.Body(), &result); err != nil {
 		return fmt.Errorf("unicloud api error: failed to unmarshal response: %w", err)
-	} else if retcode := result.GetReturnCode(); retcode != 0 {
-		return fmt.Errorf("unicloud api error: ret='%d', desc='%s'", retcode, result.GetReturnDesc())
+	} else if rReturnCode := result.GetReturnCode(); rReturnCode != 0 {
+		return fmt.Errorf("unicloud api error: ret='%d', desc='%s'", rReturnCode, result.GetReturnDesc())
 	}
 
 	return nil

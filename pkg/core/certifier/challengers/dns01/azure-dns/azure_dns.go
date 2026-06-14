@@ -7,7 +7,7 @@ import (
 	"github.com/go-acme/lego/v5/providers/dns/azuredns"
 
 	"github.com/certimate-go/certimate/pkg/core"
-	azenv "github.com/certimate-go/certimate/pkg/sdk3rd/azure/env"
+	xazure "github.com/certimate-go/certimate/pkg/utils/third-party/azure"
 )
 
 type ChallengerConfig struct {
@@ -34,7 +34,7 @@ func NewChallenger(config *ChallengerConfig) (core.ACMEChallenger, error) {
 	providerConfig.SubscriptionID = config.SubscriptionId
 	providerConfig.ResourceGroup = config.ResourceGroupName
 	if config.CloudName != "" {
-		env, err := azenv.GetCloudEnvConfiguration(config.CloudName)
+		env, err := xazure.GetCloudEnvConfiguration(config.CloudName)
 		if err != nil {
 			return nil, err
 		}

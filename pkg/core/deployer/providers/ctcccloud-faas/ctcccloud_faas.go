@@ -73,7 +73,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*Dep
 
 	// 获取自定义域名配置
 	// REF: https://eop.ctyun.cn/ebp/ctapiDocument/search?sid=53&api=16002&data=42&isNormal=1&vid=40
-	var faasCustomDomain *ctyunfaas.CustomDomainRecord
+	var faasCustomDomain *ctyunfaas.CustomDomain
 	getCustomDomainReq := &ctyunfaas.GetCustomDomainRequest{
 		RegionId:   lo.ToPtr(d.config.RegionId),
 		DomainName: lo.ToPtr(d.config.Domain),
@@ -124,5 +124,12 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*Dep
 }
 
 func createSDKClient(accessKeyId, secretAccessKey string) (*ctyunfaas.Client, error) {
-	return ctyunfaas.NewClient(accessKeyId, secretAccessKey)
+	client, err := ctyunfaas.NewClient(
+		ctyunfaas.WithAkSk(accessKeyId, secretAccessKey),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
 }

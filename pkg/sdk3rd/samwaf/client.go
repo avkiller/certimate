@@ -14,37 +14,42 @@ import (
 )
 
 type Client struct {
-	client *resty.Client
+	rc *resty.Client
 }
 
-func NewClient(serverUrl, apiKey string) (*Client, error) {
+func NewClient(serverUrl string, optFns ...OptionsFunc) (*Client, error) {
+	options := &Options{}
+	for _, fn := range optFns {
+		fn(options)
+	}
+
 	if serverUrl == "" {
 		return nil, fmt.Errorf("sdkerr: unset serverUrl")
 	}
 	if _, err := url.Parse(serverUrl); err != nil {
 		return nil, fmt.Errorf("sdkerr: invalid serverUrl: %w", err)
 	}
-	if apiKey == "" {
+	if options.ApiKey == "" {
 		return nil, fmt.Errorf("sdkerr: unset apiKey")
 	}
 
-	client := resty.New().
+	restyClient := resty.New().
 		SetBaseURL(strings.TrimRight(serverUrl, "/")+"/api/v1").
 		SetHeader("Accept", "application/json").
 		SetHeader("Content-Type", "application/json").
 		SetHeader("User-Agent", app.AppUserAgent).
-		SetHeader("X-API-Key", apiKey)
+		SetHeader("X-API-Key", options.ApiKey)
 
-	return &Client{client}, nil
+	return &Client{rc: restyClient}, nil
 }
 
 func (c *Client) SetTimeout(timeout time.Duration) *Client {
-	c.client.SetTimeout(timeout)
+	c.rc.SetTimeout(timeout)
 	return c
 }
 
 func (c *Client) SetTLSConfig(config *tls.Config) *Client {
-	c.client.SetTLSClientConfig(config)
+	c.rc.SetTLSClientConfig(config)
 	return c
 }
 
@@ -56,7 +61,7 @@ func (c *Client) newRequest(method string, path string) (*resty.Request, error) 
 		return nil, fmt.Errorf("sdkerr: unset path")
 	}
 
-	req := c.client.R()
+	req := c.rc.R()
 	req.Method = method
 	req.URL = path
 	return req, nil

@@ -45,7 +45,7 @@ func (c *Client) WebsiteGet(websiteId int64) (*WebsiteGetResponse, error) {
 
 func (c *Client) WebsiteGetWithContext(ctx context.Context, websiteId int64) (*WebsiteGetResponse, error) {
 	if websiteId == 0 {
-		return nil, fmt.Errorf("sdkerr: unset websiteId")
+		return nil, fmt.Errorf("sdkerr: bad request: unset websiteId")
 	}
 
 	httpreq, err := c.newRequest(http.MethodGet, fmt.Sprintf("/websites/%d", websiteId))

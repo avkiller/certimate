@@ -17,28 +17,33 @@ import (
 )
 
 type Client struct {
-	client *resty.Client
+	rc *resty.Client
 }
 
-func NewClient(serverUrl, apiKey string) (*Client, error) {
+func NewClient(serverUrl string, optFns ...OptionsFunc) (*Client, error) {
+	opts := &Options{}
+	for _, fn := range optFns {
+		fn(opts)
+	}
+
 	if serverUrl == "" {
 		return nil, fmt.Errorf("sdkerr: unset serverUrl")
 	}
 	if _, err := url.Parse(serverUrl); err != nil {
 		return nil, fmt.Errorf("sdkerr: invalid serverUrl: %w", err)
 	}
-	if apiKey == "" {
+	if opts.ApiKey == "" {
 		return nil, fmt.Errorf("sdkerr: unset apiKey")
 	}
 
-	client := resty.New().
+	restyClient := resty.New().
 		SetBaseURL(strings.TrimSuffix(serverUrl, "/")+"/api").
 		SetHeader("Accept", "application/json").
 		SetHeader("Content-Type", "application/json").
 		SetHeader("User-Agent", app.AppUserAgent).
 		SetPreRequestHook(func(c *resty.Client, req *http.Request) error {
 			timestamp := fmt.Sprintf("%d", time.Now().Unix())
-			keyMd5 := md5.Sum([]byte(apiKey))
+			keyMd5 := md5.Sum([]byte(opts.ApiKey))
 			keyMd5Hex := strings.ToLower(hex.EncodeToString(keyMd5[:]))
 			signMd5 := md5.Sum([]byte(timestamp + keyMd5Hex))
 			signMd5Hex := strings.ToLower(hex.EncodeToString(signMd5[:]))
@@ -48,16 +53,16 @@ func NewClient(serverUrl, apiKey string) (*Client, error) {
 			return nil
 		})
 
-	return &Client{client}, nil
+	return &Client{rc: restyClient}, nil
 }
 
 func (c *Client) SetTimeout(timeout time.Duration) *Client {
-	c.client.SetTimeout(timeout)
+	c.rc.SetTimeout(timeout)
 	return c
 }
 
 func (c *Client) SetTLSConfig(config *tls.Config) *Client {
-	c.client.SetTLSClientConfig(config)
+	c.rc.SetTLSClientConfig(config)
 	return c
 }
 
@@ -69,7 +74,7 @@ func (c *Client) newRequest(method string, path string) (*resty.Request, error) 
 		return nil, fmt.Errorf("sdkerr: unset path")
 	}
 
-	req := c.client.R()
+	req := c.rc.R()
 	req.Method = method
 	req.URL = path
 	return req, nil
@@ -110,8 +115,8 @@ func (c *Client) doRequestWithResult(req *resty.Request, res sdkResponse) (*rest
 		if err := json.Unmarshal(resp.Body(), &res); err != nil {
 			return resp, fmt.Errorf("sdkerr: failed to unmarshal response: %w (resp: %s)", err, resp.String())
 		} else {
-			if code := res.GetCode(); code != 0 {
-				return resp, fmt.Errorf("sdkerr: api error: code='%d'", code)
+			if rCode := res.GetCode(); rCode != 0 {
+				return resp, fmt.Errorf("sdkerr: api error: code='%d'", rCode)
 			}
 		}
 	}

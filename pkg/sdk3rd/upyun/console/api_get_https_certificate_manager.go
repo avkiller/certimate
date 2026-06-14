@@ -31,7 +31,7 @@ func (c *Client) GetHttpsCertificateManager(certificateId string) (*GetHttpsCert
 
 func (c *Client) GetHttpsCertificateManagerWithContext(ctx context.Context, certificateId string) (*GetHttpsCertificateManagerResponse, error) {
 	if certificateId == "" {
-		return nil, fmt.Errorf("sdkerr: unset certificateId")
+		return nil, fmt.Errorf("sdkerr: bad request: unset certificateId")
 	}
 
 	if err := c.ensureCookieExists(); err != nil {

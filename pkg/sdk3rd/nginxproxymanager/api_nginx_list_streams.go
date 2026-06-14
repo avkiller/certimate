@@ -11,7 +11,7 @@ type NginxListStreamsRequest struct {
 	Expand *string `json:"expand,omitempty" url:"expand,omitempty"`
 }
 
-type NginxListStreamsResponse = []*StreamHostRecord
+type NginxListStreamsResponse = []*StreamHost
 
 func (c *Client) NginxListStreams(req *NginxListStreamsRequest) (*NginxListStreamsResponse, error) {
 	return c.NginxListStreamsWithContext(context.Background(), req)

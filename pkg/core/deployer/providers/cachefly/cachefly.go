@@ -71,5 +71,12 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*Dep
 }
 
 func createSDKClient(apiToken string) (*cacheflysdk.Client, error) {
-	return cacheflysdk.NewClient(apiToken)
+	client, err := cacheflysdk.NewClient(
+		cacheflysdk.WithApiToken(apiToken),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
 }

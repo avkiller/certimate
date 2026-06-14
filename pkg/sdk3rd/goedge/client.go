@@ -24,35 +24,40 @@ type Client struct {
 	accessTokenExp time.Time
 	accessTokenMtx sync.Mutex
 
-	client *resty.Client
+	rc *resty.Client
 }
 
-func NewClient(serverUrl, apiRole, accessKeyId, accessKey string) (*Client, error) {
+func NewClient(serverUrl string, optFns ...OptionsFunc) (*Client, error) {
+	opts := &Options{}
+	for _, fn := range optFns {
+		fn(opts)
+	}
+
 	if serverUrl == "" {
 		return nil, fmt.Errorf("sdkerr: unset serverUrl")
 	}
 	if _, err := url.Parse(serverUrl); err != nil {
 		return nil, fmt.Errorf("sdkerr: invalid serverUrl: %w", err)
 	}
-	if apiRole == "" {
+	if opts.Role == "" {
 		return nil, fmt.Errorf("sdkerr: unset apiRole")
 	}
-	if apiRole != "user" && apiRole != "admin" {
+	if opts.Role != "user" && opts.Role != "admin" {
 		return nil, fmt.Errorf("sdkerr: invalid apiRole")
 	}
-	if accessKeyId == "" {
+	if opts.AccessKeyId == "" {
 		return nil, fmt.Errorf("sdkerr: unset accessKeyId")
 	}
-	if accessKey == "" {
+	if opts.AccessKey == "" {
 		return nil, fmt.Errorf("sdkerr: unset accessKey")
 	}
 
 	client := &Client{
-		apiRole:     apiRole,
-		accessKeyId: accessKeyId,
-		accessKey:   accessKey,
+		apiRole:     opts.Role,
+		accessKeyId: opts.AccessKeyId,
+		accessKey:   opts.AccessKey,
 	}
-	client.client = resty.New().
+	client.rc = resty.New().
 		SetBaseURL(strings.TrimSuffix(serverUrl, "/")).
 		SetHeader("Accept", "application/json").
 		SetHeader("Content-Type", "application/json").
@@ -69,12 +74,12 @@ func NewClient(serverUrl, apiRole, accessKeyId, accessKey string) (*Client, erro
 }
 
 func (c *Client) SetTimeout(timeout time.Duration) *Client {
-	c.client.SetTimeout(timeout)
+	c.rc.SetTimeout(timeout)
 	return c
 }
 
 func (c *Client) SetTLSConfig(config *tls.Config) *Client {
-	c.client.SetTLSClientConfig(config)
+	c.rc.SetTLSClientConfig(config)
 	return c
 }
 
@@ -86,7 +91,7 @@ func (c *Client) newRequest(method string, path string) (*resty.Request, error) 
 		return nil, fmt.Errorf("sdkerr: unset path")
 	}
 
-	req := c.client.R()
+	req := c.rc.R()
 	req.Method = method
 	req.URL = path
 	return req, nil
@@ -127,8 +132,8 @@ func (c *Client) doRequestWithResult(req *resty.Request, res sdkResponse) (*rest
 		if err := json.Unmarshal(resp.Body(), &res); err != nil {
 			return resp, fmt.Errorf("sdkerr: failed to unmarshal response: %w (resp: %s)", err, resp.String())
 		} else {
-			if tcode := res.GetCode(); tcode != 200 {
-				return resp, fmt.Errorf("sdkerr: code='%d', message='%s'", tcode, res.GetMessage())
+			if rCode := res.GetCode(); rCode != 200 {
+				return resp, fmt.Errorf("sdkerr: code='%d', message='%s'", rCode, res.GetMessage())
 			}
 		}
 	}
@@ -165,8 +170,8 @@ func (c *Client) ensureAccessTokenExists() error {
 	result := &getAPIAccessTokenResponse{}
 	if _, err := c.doRequestWithResult(httpreq, result); err != nil {
 		return err
-	} else if code := result.GetCode(); code != 200 {
-		return fmt.Errorf("sdkerr: failed to get goedge access token: code='%d', message='%s'", code, result.GetMessage())
+	} else if rCode := result.GetCode(); rCode != 200 {
+		return fmt.Errorf("sdkerr: failed to get goedge access token: code='%d', message='%s'", rCode, result.GetMessage())
 	} else {
 		c.accessToken = result.Data.Token
 		c.accessTokenExp = time.Unix(result.Data.ExpiresAt, 0)
