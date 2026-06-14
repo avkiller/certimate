@@ -96,7 +96,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*Dep
 		Domains: []string{d.config.Domain},
 	}
 	rcdnInstanceSslBindResp, err := d.sdkClient.RcdnInstanceSslBindWithContext(ctx, d.config.InstanceId, rcdnInstanceSslBindReq)
-	d.logger.Debug("sdk request 'rcdn.InstanceSslBind'", slog.Int64("instanceId", d.config.InstanceId), slog.Any("request", rcdnInstanceSslBindReq), slog.Any("response", rcdnInstanceSslBindResp))
+	d.logger.Debug("sdk request 'rcdn.InstanceSslBind'", slog.Int64("params.instanceId", d.config.InstanceId), slog.Any("request", rcdnInstanceSslBindReq), slog.Any("response", rcdnInstanceSslBindResp))
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute sdk request 'rcdn.InstanceSslBind': %w", err)
 	}
@@ -105,5 +105,12 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*Dep
 }
 
 func createSDKClient(apiKey string) (*rainyunsdk.Client, error) {
-	return rainyunsdk.NewClient(apiKey)
+	client, err := rainyunsdk.NewClient(
+		rainyunsdk.WithApiKey(apiKey),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
 }

@@ -241,5 +241,12 @@ func (d *Deployer) updateDomainCertificate(ctx context.Context, domain string, c
 }
 
 func createSDKClient(accessKeyId, secretAccessKey string) (*ctyunicdn.Client, error) {
-	return ctyunicdn.NewClient(accessKeyId, secretAccessKey)
+	client, err := ctyunicdn.NewClient(
+		ctyunicdn.WithAkSk(accessKeyId, secretAccessKey),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
 }

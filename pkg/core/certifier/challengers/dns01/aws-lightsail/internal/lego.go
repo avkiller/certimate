@@ -48,6 +48,8 @@ func NewDefaultConfig() *Config {
 	}
 }
 
+// 这里有意不使用 lego 提供的 lightsail 实现，
+// 因为它只支持单个域，无法签发多域名证书。
 type DNSProvider struct {
 	client *lightsail.Client
 	config *Config

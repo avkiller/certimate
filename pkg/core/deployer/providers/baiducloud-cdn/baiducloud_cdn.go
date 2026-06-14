@@ -161,7 +161,7 @@ func (d *Deployer) getAllDomains(ctx context.Context) ([]string, error) {
 		}
 
 		listDomainsRespDomains, listDomainsNextMarker, err := d.sdkClient.ListDomains(listDomainsMarker)
-		d.logger.Debug("sdk request 'cdn.ListDomains'", slog.String("request.marker", listDomainsMarker), slog.Any("response.domains", listDomainsRespDomains))
+		d.logger.Debug("sdk request 'cdn.ListDomains'", slog.String("params.marker", listDomainsMarker), slog.Any("response.domains", listDomainsRespDomains))
 		if err != nil {
 			return nil, fmt.Errorf("failed to execute sdk request 'cdn.ListDomains': %w", err)
 		}
@@ -190,7 +190,7 @@ func (d *Deployer) updateDomainCertificate(ctx context.Context, domain string, c
 		},
 		"ON",
 	)
-	d.logger.Debug("sdk request 'cdn.PutCert'", slog.String("request.domain", domain), slog.Any("response", putCertResp))
+	d.logger.Debug("sdk request 'cdn.PutCert'", slog.String("params.domain", domain), slog.Any("response", putCertResp))
 	if err != nil {
 		return fmt.Errorf("failed to execute sdk request 'cdn.PutCert': %w", err)
 	}

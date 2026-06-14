@@ -33,7 +33,7 @@ func (c *Client) DnsCreateRecord(domainId string, req *DnsCreateRecordRequest) (
 
 func (c *Client) DnsCreateRecordWithContext(ctx context.Context, domainId string, req *DnsCreateRecordRequest) (*DnsCreateRecordResponse, error) {
 	if domainId == "" {
-		return nil, fmt.Errorf("sdkerr: unset domainId")
+		return nil, fmt.Errorf("sdkerr: bad request: unset domainId")
 	}
 
 	if err := c.ensureAccessTokenExists(); err != nil {

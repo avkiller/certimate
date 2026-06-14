@@ -11,7 +11,7 @@ type NginxUpdateProxyHostRequest struct {
 }
 
 type NginxUpdateProxyHostResponse struct {
-	ProxyHostRecord
+	ProxyHost
 }
 
 func (c *Client) NginxUpdateProxyHost(hostId int64, req *NginxUpdateProxyHostRequest) (*NginxUpdateProxyHostResponse, error) {
@@ -20,7 +20,7 @@ func (c *Client) NginxUpdateProxyHost(hostId int64, req *NginxUpdateProxyHostReq
 
 func (c *Client) NginxUpdateProxyHostWithContext(ctx context.Context, hostId int64, req *NginxUpdateProxyHostRequest) (*NginxUpdateProxyHostResponse, error) {
 	if hostId == 0 {
-		return nil, fmt.Errorf("sdkerr: unset hostId")
+		return nil, fmt.Errorf("sdkerr: bad request: unset hostId")
 	}
 
 	if err := c.ensureJwtTokenExists(); err != nil {

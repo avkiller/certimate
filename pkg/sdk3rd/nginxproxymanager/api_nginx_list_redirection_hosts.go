@@ -11,7 +11,7 @@ type NginxListRedirectionHostsRequest struct {
 	Expand *string `json:"expand,omitempty" url:"expand,omitempty"`
 }
 
-type NginxListRedirectionHostsResponse = []*RedirectionHostRecord
+type NginxListRedirectionHostsResponse = []*RedirectionHost
 
 func (c *Client) NginxListRedirectionHosts(req *NginxListRedirectionHostsRequest) (*NginxListRedirectionHostsResponse, error) {
 	return c.NginxListRedirectionHostsWithContext(context.Background(), req)

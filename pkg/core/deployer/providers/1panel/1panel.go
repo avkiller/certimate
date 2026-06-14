@@ -232,7 +232,7 @@ func (d *Deployer) getMatchedWebsiteIdsByCertificate(ctx context.Context, certPE
 					}
 
 					websiteGetResp, err := sdkClient.WebsiteGetWithContext(ctx, websiteItem.ID)
-					d.logger.Debug("sdk request 'WebsiteGet'", slog.Int64("websiteId", websiteItem.ID), slog.Any("response", websiteGetResp))
+					d.logger.Debug("sdk request 'WebsiteGet'", slog.Int64("params.websiteId", websiteItem.ID), slog.Any("response", websiteGetResp))
 					if err != nil {
 						return nil, fmt.Errorf("failed to execute sdk request 'WebsiteGet': %w", err)
 					}
@@ -286,7 +286,7 @@ func (d *Deployer) getMatchedWebsiteIdsByCertificate(ctx context.Context, certPE
 					}
 
 					websiteGetResp, err := sdkClient.WebsiteGetWithContext(ctx, websiteItem.ID)
-					d.logger.Debug("sdk request 'WebsiteGet'", slog.Int64("websiteId", websiteItem.ID), slog.Any("response", websiteGetResp))
+					d.logger.Debug("sdk request 'WebsiteGet'", slog.Int64("params.websiteId", websiteItem.ID), slog.Any("response", websiteGetResp))
 					if err != nil {
 						return nil, fmt.Errorf("failed to execute sdk request 'WebsiteGet': %w", err)
 					}
@@ -324,7 +324,7 @@ func (d *Deployer) updateWebsiteCertificate(ctx context.Context, websiteId int64
 		{
 			// 获取网站 HTTPS 配置
 			websiteHttpsGetResp, err := sdkClient.WebsiteHttpsGetWithContext(ctx, websiteId)
-			d.logger.Debug("sdk request 'WebsiteHttpsGet'", slog.Int64("websiteId", websiteId), slog.Any("response", websiteHttpsGetResp))
+			d.logger.Debug("sdk request 'WebsiteHttpsGet'", slog.Int64("params.websiteId", websiteId), slog.Any("response", websiteHttpsGetResp))
 			if err != nil {
 				return fmt.Errorf("failed to execute sdk request 'WebsiteHttpsGet': %w", err)
 			} else {
@@ -348,7 +348,7 @@ func (d *Deployer) updateWebsiteCertificate(ctx context.Context, websiteId int64
 				websiteHttpsPostReq.HttpConfig = "HTTPToHTTPS"
 			}
 			websiteHttpsPostResp, err := sdkClient.WebsiteHttpsPostWithContext(ctx, websiteId, websiteHttpsPostReq)
-			d.logger.Debug("sdk request 'WebsiteHttpsPost'", slog.Int64("websiteId", websiteId), slog.Any("request", websiteHttpsPostReq), slog.Any("response", websiteHttpsPostResp))
+			d.logger.Debug("sdk request 'WebsiteHttpsPost'", slog.Int64("params.websiteId", websiteId), slog.Any("request", websiteHttpsPostReq), slog.Any("response", websiteHttpsPostResp))
 			if err != nil {
 				return fmt.Errorf("failed to execute sdk request 'WebsiteHttpsPost': %w", err)
 			}
@@ -358,7 +358,7 @@ func (d *Deployer) updateWebsiteCertificate(ctx context.Context, websiteId int64
 		{
 			// 获取网站 HTTPS 配置
 			websiteHttpsGetResp, err := sdkClient.WebsiteHttpsGetWithContext(ctx, websiteId)
-			d.logger.Debug("sdk request 'WebsiteHttpsGet'", slog.Int64("websiteId", websiteId), slog.Any("response", websiteHttpsGetResp))
+			d.logger.Debug("sdk request 'WebsiteHttpsGet'", slog.Int64("params.websiteId", websiteId), slog.Any("response", websiteHttpsGetResp))
 			if err != nil {
 				return fmt.Errorf("failed to execute sdk request 'WebsiteHttpsGet': %w", err)
 			} else {
@@ -383,7 +383,7 @@ func (d *Deployer) updateWebsiteCertificate(ctx context.Context, websiteId int64
 				websiteHttpsPostReq.HttpConfig = "HTTPToHTTPS"
 			}
 			websiteHttpsPostResp, err := sdkClient.WebsiteHttpsPostWithContext(ctx, websiteId, websiteHttpsPostReq)
-			d.logger.Debug("sdk request 'WebsiteHttpsPost'", slog.Int64("websiteId", websiteId), slog.Any("request", websiteHttpsPostReq), slog.Any("response", websiteHttpsPostResp))
+			d.logger.Debug("sdk request 'WebsiteHttpsPost'", slog.Int64("params.websiteId", websiteId), slog.Any("request", websiteHttpsPostReq), slog.Any("response", websiteHttpsPostResp))
 			if err != nil {
 				return fmt.Errorf("failed to execute sdk request 'WebsiteHttpsPost': %w", err)
 			}
@@ -403,7 +403,9 @@ const (
 
 func createSDKClient(serverUrl, apiVersion, apiKey string, skipTlsVerify bool, nodeName string) (any, error) {
 	if apiVersion == sdkVersionV1 {
-		client, err := onepanelsdk.NewClient(serverUrl, apiKey)
+		client, err := onepanelsdk.NewClient(serverUrl,
+			onepanelsdk.WithApiKey(apiKey),
+		)
 		if err != nil {
 			return nil, err
 		}
@@ -414,14 +416,10 @@ func createSDKClient(serverUrl, apiVersion, apiKey string, skipTlsVerify bool, n
 
 		return client, nil
 	} else if apiVersion == sdkVersionV2 {
-		var client *onepanelsdk2.Client
-		var err error
-
-		if nodeName == "" {
-			client, err = onepanelsdk2.NewClient(serverUrl, apiKey)
-		} else {
-			client, err = onepanelsdk2.NewClientWithNode(serverUrl, apiKey, nodeName)
-		}
+		client, err := onepanelsdk2.NewClient(serverUrl,
+			onepanelsdk2.WithApiKey(apiKey),
+			onepanelsdk2.WithNode(nodeName),
+		)
 		if err != nil {
 			return nil, err
 		}

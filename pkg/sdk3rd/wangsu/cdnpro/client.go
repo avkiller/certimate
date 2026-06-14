@@ -12,8 +12,8 @@ type Client struct {
 	client *openapi.Client
 }
 
-func NewClient(accessKey, secretKey string) (*Client, error) {
-	client, err := openapi.NewClient(accessKey, secretKey)
+func NewClient(optFns ...openapi.OptionsFunc) (*Client, error) {
+	client, err := openapi.NewClient(optFns...)
 	if err != nil {
 		return nil, err
 	}

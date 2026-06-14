@@ -85,7 +85,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*Dep
 
 	// 绑定空间域名证书
 	bindBucketCertResp, err := d.sdkClient.BindBucketCert(ctx, d.config.Domain, upres.CertId)
-	d.logger.Debug("sdk request 'kodo.BindCert'", slog.String("request.domain", d.config.Domain), slog.String("request.certId", upres.CertId), slog.Any("response", bindBucketCertResp))
+	d.logger.Debug("sdk request 'kodo.BindCert'", slog.String("params.domain", d.config.Domain), slog.String("params.certId", upres.CertId), slog.Any("response", bindBucketCertResp))
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute sdk request 'kodo.BindCert': %w", err)
 	}

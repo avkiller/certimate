@@ -62,7 +62,7 @@ func (s *CertificateService) DownloadCertificate(ctx context.Context, req *dtos.
 	switch req.FileFormat {
 	case "", domain.CertificateFormatTypePEM:
 		{
-			serverCertPEM, intermediaCertPEM, err := xcert.ExtractCertificatesFromPEM(certificate.Certificate)
+			serverCertPEM, issuerCertPEM, err := xcert.ExtractCertificatesFromPEM(certificate.Certificate)
 			if err != nil {
 				return nil, fmt.Errorf("failed to extract certs: %w", err)
 			}
@@ -101,7 +101,7 @@ func (s *CertificateService) DownloadCertificate(ctx context.Context, req *dtos.
 			if err != nil {
 				return nil, err
 			} else {
-				_, err = intermediaCertWriter.Write([]byte(intermediaCertPEM))
+				_, err = intermediaCertWriter.Write([]byte(issuerCertPEM))
 				if err != nil {
 					return nil, err
 				}
@@ -228,14 +228,14 @@ func (s *CertificateService) RevokeCertificate(ctx context.Context, req *dtos.Ce
 		return nil, err
 	}
 
-	if certificate.ACMEAcctUrl == "" || certificate.ACMECertUrl == "" {
+	if certificate.ACMEAccountUrl == "" || certificate.ACMECertificateUrl == "" {
 		return nil, fmt.Errorf("could not revoke a certificate which is not issued in Certimate")
 	}
 	if certificate.IsRevoked {
 		return nil, fmt.Errorf("could not revoke a certificate which is already revoked")
 	}
 
-	acmeAccount, err := s.acmeAccountRepo.GetByAcctUrl(ctx, certificate.ACMEAcctUrl)
+	acmeAccount, err := s.acmeAccountRepo.GetByCAAndAcctUrl(ctx, certificate.CA, certificate.ACMEAccountUrl)
 	if err != nil {
 		return nil, fmt.Errorf("failed to revoke certificate: could not find acme account: %w", err)
 	}

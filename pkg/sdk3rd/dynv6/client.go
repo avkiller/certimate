@@ -11,26 +11,31 @@ import (
 )
 
 type Client struct {
-	client *resty.Client
+	rc *resty.Client
 }
 
-func NewClient(httpToken string) (*Client, error) {
-	if httpToken == "" {
+func NewClient(optFns ...OptionsFunc) (*Client, error) {
+	opts := &Options{}
+	for _, fn := range optFns {
+		fn(opts)
+	}
+
+	if opts.HttpToken == "" {
 		return nil, fmt.Errorf("sdkerr: unset httpToken")
 	}
 
-	client := resty.New().
+	restyClient := resty.New().
 		SetBaseURL("https://dynv6.com/api/v2").
 		SetHeader("Accept", "application/json").
-		SetHeader("Authorization", "Bearer "+httpToken).
+		SetHeader("Authorization", "Bearer "+opts.HttpToken).
 		SetHeader("Content-Type", "application/json").
 		SetHeader("User-Agent", app.AppUserAgent)
 
-	return &Client{client}, nil
+	return &Client{rc: restyClient}, nil
 }
 
 func (c *Client) SetTimeout(timeout time.Duration) *Client {
-	c.client.SetTimeout(timeout)
+	c.rc.SetTimeout(timeout)
 	return c
 }
 
@@ -42,7 +47,7 @@ func (c *Client) newRequest(method string, path string) (*resty.Request, error) 
 		return nil, fmt.Errorf("sdkerr: unset path")
 	}
 
-	req := c.client.R()
+	req := c.rc.R()
 	req.Method = method
 	req.URL = path
 	return req, nil

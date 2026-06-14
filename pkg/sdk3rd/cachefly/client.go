@@ -11,26 +11,31 @@ import (
 )
 
 type Client struct {
-	client *resty.Client
+	rc *resty.Client
 }
 
-func NewClient(apiToken string) (*Client, error) {
-	if apiToken == "" {
+func NewClient(optFns ...OptionsFunc) (*Client, error) {
+	opts := &Options{}
+	for _, fn := range optFns {
+		fn(opts)
+	}
+
+	if opts.ApiToken == "" {
 		return nil, fmt.Errorf("sdkerr: unset apiToken")
 	}
 
-	client := resty.New().
+	restyClient := resty.New().
 		SetBaseURL("https://api.cachefly.com/api/2.5").
 		SetHeader("Accept", "application/json").
 		SetHeader("Content-Type", "application/json").
 		SetHeader("User-Agent", app.AppUserAgent).
-		SetHeader("X-CF-Authorization", "Bearer "+apiToken)
+		SetHeader("X-CF-Authorization", "Bearer "+opts.ApiToken)
 
-	return &Client{client}, nil
+	return &Client{rc: restyClient}, nil
 }
 
 func (c *Client) SetTimeout(timeout time.Duration) *Client {
-	c.client.SetTimeout(timeout)
+	c.rc.SetTimeout(timeout)
 	return c
 }
 
@@ -42,7 +47,7 @@ func (c *Client) newRequest(method string, path string) (*resty.Request, error) 
 		return nil, fmt.Errorf("sdkerr: unset path")
 	}
 
-	req := c.client.R()
+	req := c.rc.R()
 	req.Method = method
 	req.URL = path
 	return req, nil

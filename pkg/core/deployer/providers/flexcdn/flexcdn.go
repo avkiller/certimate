@@ -122,7 +122,10 @@ func (d *Deployer) deployToCertificate(ctx context.Context, certPEM, privkeyPEM 
 }
 
 func createSDKClient(serverUrl, apiRole, accessKeyId, accessKey string, skipTlsVerify bool) (*flexcdnsdk.Client, error) {
-	client, err := flexcdnsdk.NewClient(serverUrl, apiRole, accessKeyId, accessKey)
+	client, err := flexcdnsdk.NewClient(serverUrl,
+		flexcdnsdk.WithRole(apiRole),
+		flexcdnsdk.WithAccessKey(accessKeyId, accessKey),
+	)
 	if err != nil {
 		return nil, err
 	}

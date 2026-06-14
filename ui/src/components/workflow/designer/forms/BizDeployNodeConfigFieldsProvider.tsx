@@ -81,6 +81,7 @@ import BizDeployNodeConfigFieldsProviderKsyunCDN from "./BizDeployNodeConfigFiel
 import BizDeployNodeConfigFieldsProviderKsyunSLB from "./BizDeployNodeConfigFieldsProviderKsyunSLB";
 import BizDeployNodeConfigFieldsProviderKubernetesSecret from "./BizDeployNodeConfigFieldsProviderKubernetesSecret";
 import BizDeployNodeConfigFieldsProviderLeCDN from "./BizDeployNodeConfigFieldsProviderLeCDN";
+import BizDeployNodeConfigFieldsProviderLinodeLOS from "./BizDeployNodeConfigFieldsProviderLinodeLOS";
 import BizDeployNodeConfigFieldsProviderLocal from "./BizDeployNodeConfigFieldsProviderLocal";
 import BizDeployNodeConfigFieldsProviderMohuaMVH from "./BizDeployNodeConfigFieldsProviderMohuaMVH";
 import BizDeployNodeConfigFieldsProviderNetlify from "./BizDeployNodeConfigFieldsProviderNetlify";
@@ -103,11 +104,13 @@ import BizDeployNodeConfigFieldsProviderTencentCloudCOS from "./BizDeployNodeCon
 import BizDeployNodeConfigFieldsProviderTencentCloudCSS from "./BizDeployNodeConfigFieldsProviderTencentCloudCSS";
 import BizDeployNodeConfigFieldsProviderTencentCloudECDN from "./BizDeployNodeConfigFieldsProviderTencentCloudECDN";
 import BizDeployNodeConfigFieldsProviderTencentCloudEO from "./BizDeployNodeConfigFieldsProviderTencentCloudEO";
+import BizDeployNodeConfigFieldsProviderTencentCloudGA2 from "./BizDeployNodeConfigFieldsProviderTencentCloudGA2";
 import BizDeployNodeConfigFieldsProviderTencentCloudGAAP from "./BizDeployNodeConfigFieldsProviderTencentCloudGAAP";
 import BizDeployNodeConfigFieldsProviderTencentCloudSCF from "./BizDeployNodeConfigFieldsProviderTencentCloudSCF";
 import BizDeployNodeConfigFieldsProviderTencentCloudSSL from "./BizDeployNodeConfigFieldsProviderTencentCloudSSL";
 import BizDeployNodeConfigFieldsProviderTencentCloudSSLDeploy from "./BizDeployNodeConfigFieldsProviderTencentCloudSSLDeploy";
 import BizDeployNodeConfigFieldsProviderTencentCloudSSLUpdate from "./BizDeployNodeConfigFieldsProviderTencentCloudSSLUpdate";
+import BizDeployNodeConfigFieldsProviderTencentCloudTSE from "./BizDeployNodeConfigFieldsProviderTencentCloudTSE";
 import BizDeployNodeConfigFieldsProviderTencentCloudVOD from "./BizDeployNodeConfigFieldsProviderTencentCloudVOD";
 import BizDeployNodeConfigFieldsProviderTencentCloudWAF from "./BizDeployNodeConfigFieldsProviderTencentCloudWAF";
 import BizDeployNodeConfigFieldsProviderUCloudUALB from "./BizDeployNodeConfigFieldsProviderUCloudUALB";
@@ -221,6 +224,7 @@ const providerComponentMap: Partial<Record<DeploymentProviderType, React.Compone
   [DEPLOYMENT_PROVIDERS.KSYUN_CDN]: BizDeployNodeConfigFieldsProviderKsyunCDN,
   [DEPLOYMENT_PROVIDERS.KSYUN_SLB]: BizDeployNodeConfigFieldsProviderKsyunSLB,
   [DEPLOYMENT_PROVIDERS.LECDN]: BizDeployNodeConfigFieldsProviderLeCDN,
+  [DEPLOYMENT_PROVIDERS.LINODE_LOS]: BizDeployNodeConfigFieldsProviderLinodeLOS,
   [DEPLOYMENT_PROVIDERS.LOCAL]: BizDeployNodeConfigFieldsProviderLocal,
   [DEPLOYMENT_PROVIDERS.MOHUA_MVH]: BizDeployNodeConfigFieldsProviderMohuaMVH,
   [DEPLOYMENT_PROVIDERS.NETLIFY]: BizDeployNodeConfigFieldsProviderNetlify,
@@ -244,10 +248,12 @@ const providerComponentMap: Partial<Record<DeploymentProviderType, React.Compone
   [DEPLOYMENT_PROVIDERS.TENCENTCLOUD_ECDN]: BizDeployNodeConfigFieldsProviderTencentCloudECDN,
   [DEPLOYMENT_PROVIDERS.TENCENTCLOUD_EO]: BizDeployNodeConfigFieldsProviderTencentCloudEO,
   [DEPLOYMENT_PROVIDERS.TENCENTCLOUD_GAAP]: BizDeployNodeConfigFieldsProviderTencentCloudGAAP,
+  [DEPLOYMENT_PROVIDERS.TENCENTCLOUD_GA2]: BizDeployNodeConfigFieldsProviderTencentCloudGA2,
   [DEPLOYMENT_PROVIDERS.TENCENTCLOUD_SCF]: BizDeployNodeConfigFieldsProviderTencentCloudSCF,
   [DEPLOYMENT_PROVIDERS.TENCENTCLOUD_SSL]: BizDeployNodeConfigFieldsProviderTencentCloudSSL,
   [DEPLOYMENT_PROVIDERS.TENCENTCLOUD_SSL_DEPLOY]: BizDeployNodeConfigFieldsProviderTencentCloudSSLDeploy,
   [DEPLOYMENT_PROVIDERS.TENCENTCLOUD_SSL_UPDATE]: BizDeployNodeConfigFieldsProviderTencentCloudSSLUpdate,
+  [DEPLOYMENT_PROVIDERS.TENCENTCLOUD_TSE]: BizDeployNodeConfigFieldsProviderTencentCloudTSE,
   [DEPLOYMENT_PROVIDERS.TENCENTCLOUD_VOD]: BizDeployNodeConfigFieldsProviderTencentCloudVOD,
   [DEPLOYMENT_PROVIDERS.TENCENTCLOUD_WAF]: BizDeployNodeConfigFieldsProviderTencentCloudWAF,
   [DEPLOYMENT_PROVIDERS.UCLOUD_UALB]: BizDeployNodeConfigFieldsProviderUCloudUALB,

@@ -13,8 +13,8 @@ type Client struct {
 	client *openapi.Client
 }
 
-func NewClient(accessKey, secretKey string) (*Client, error) {
-	client, err := openapi.NewClient(accessKey, secretKey)
+func NewClient(optFns ...openapi.OptionsFunc) (*Client, error) {
+	client, err := openapi.NewClient(optFns...)
 	if err != nil {
 		return nil, err
 	}
@@ -38,8 +38,8 @@ func (c *Client) doRequest(req *resty.Request) (*resty.Response, error) {
 func (c *Client) doRequestWithResult(req *resty.Request, res sdkResponse) (*resty.Response, error) {
 	resp, err := c.client.DoRequestWithResult(req, res)
 	if err == nil {
-		if tcode := res.GetCode(); tcode != "" && tcode != "0" {
-			return resp, fmt.Errorf("sdkerr: api error: code='%s', message='%s'", tcode, res.GetMessage())
+		if rCode := res.GetCode(); rCode != "" && rCode != "0" {
+			return resp, fmt.Errorf("sdkerr: api error: code='%s', message='%s'", rCode, res.GetMessage())
 		}
 	}
 

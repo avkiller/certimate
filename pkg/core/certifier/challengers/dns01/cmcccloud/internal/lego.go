@@ -155,6 +155,10 @@ func (d *DNSProvider) CleanUp(ctx context.Context, domain, token, keyAuth string
 		return fmt.Errorf("cmccecloud: failed to delete record, unexpected response state: '%s', errcode: '%s', errmsg: '%s'", response.State, response.ErrorCode, response.ErrorMessage)
 	}
 
+	d.recordIDsMu.Lock()
+	delete(d.recordIDs, token)
+	d.recordIDsMu.Unlock()
+
 	return nil
 }
 

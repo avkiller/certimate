@@ -20,24 +20,29 @@ import (
 )
 
 type Client struct {
-	client *resty.Client
+	rc *resty.Client
 }
 
-func NewClient(serverUrl string, accessTokenId int64, accessToken string) (*Client, error) {
+func NewClient(serverUrl string, optFns ...OptionsFunc) (*Client, error) {
+	options := &Options{}
+	for _, fn := range optFns {
+		fn(options)
+	}
+
 	if serverUrl == "" {
 		return nil, fmt.Errorf("sdkerr: unset serverUrl")
 	}
 	if _, err := url.Parse(serverUrl); err != nil {
 		return nil, fmt.Errorf("sdkerr: invalid serverUrl: %w", err)
 	}
-	if accessTokenId == 0 {
+	if options.AccessTokenId == 0 {
 		return nil, fmt.Errorf("sdkerr: unset accessTokenId")
 	}
-	if accessToken == "" {
+	if options.AccessToken == "" {
 		return nil, fmt.Errorf("sdkerr: unset accessToken")
 	}
 
-	client := resty.New().
+	restyClient := resty.New().
 		SetBaseURL(strings.TrimSuffix(serverUrl, "/")+"/api").
 		SetHeader("Accept", "application/json").
 		SetHeader("Content-Type", "application/json").
@@ -75,22 +80,22 @@ func NewClient(serverUrl string, accessTokenId int64, accessToken string) (*Clie
 				"HMAC-SHA256",
 				timestamp,
 				sumSha256(canonicalRequest))
-			signature := sumHmacSha256(stringToSign, accessToken)
-			req.Header.Set("Authorization", fmt.Sprintf("HMAC-SHA256 Credential=%d, Signature=%s", accessTokenId, signature))
+			signature := sumHmacSha256(stringToSign, options.AccessToken)
+			req.Header.Set("Authorization", fmt.Sprintf("HMAC-SHA256 Credential=%d, Signature=%s", options.AccessTokenId, signature))
 
 			return nil
 		})
 
-	return &Client{client}, nil
+	return &Client{rc: restyClient}, nil
 }
 
 func (c *Client) SetTimeout(timeout time.Duration) *Client {
-	c.client.SetTimeout(timeout)
+	c.rc.SetTimeout(timeout)
 	return c
 }
 
 func (c *Client) SetTLSConfig(config *tls.Config) *Client {
-	c.client.SetTLSClientConfig(config)
+	c.rc.SetTLSClientConfig(config)
 	return c
 }
 
@@ -102,7 +107,7 @@ func (c *Client) newRequest(method string, path string) (*resty.Request, error) 
 		return nil, fmt.Errorf("sdkerr: unset path")
 	}
 
-	req := c.client.R()
+	req := c.rc.R()
 	req.Method = method
 	req.URL = path
 	return req, nil
@@ -143,8 +148,8 @@ func (c *Client) doRequestWithResult(req *resty.Request, res sdkResponse) (*rest
 		if err := json.Unmarshal(resp.Body(), &res); err != nil {
 			return resp, fmt.Errorf("sdkerr: failed to unmarshal response: %w (resp: %s)", err, resp.String())
 		} else {
-			if tmessage := res.GetMessage(); tmessage != "success" {
-				return resp, fmt.Errorf("sdkerr: message='%s'", tmessage)
+			if rMessage := res.GetMessage(); rMessage != "success" {
+				return resp, fmt.Errorf("sdkerr: message='%s'", rMessage)
 			}
 		}
 	}

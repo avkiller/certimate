@@ -70,7 +70,7 @@ func (c *Client) Login(req *LoginRequest) (*LoginResponse, error) {
 
 	result := &LoginResponse{}
 	if _, err := c.doRequestWithResult(httpreq, result); err != nil {
-		if result != nil && result.GetErrorCode() > 0 {
+		if result.GetErrorCode() > 0 {
 			errcode := result.GetErrorCode()
 			errdesc := getAuthErrorDescription(errcode)
 			return result, fmt.Errorf("sdkerr: code='%d', desc='%s'", errcode, errdesc)

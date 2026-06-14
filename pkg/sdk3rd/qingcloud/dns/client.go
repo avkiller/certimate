@@ -16,18 +16,23 @@ import (
 )
 
 type Client struct {
-	client *resty.Client
+	rc *resty.Client
 }
 
-func NewClient(accessKeyId, secretAccessKey string) (*Client, error) {
-	if accessKeyId == "" {
+func NewClient(optFns ...OptionsFunc) (*Client, error) {
+	options := &Options{}
+	for _, fn := range optFns {
+		fn(options)
+	}
+
+	if options.AccessKeyId == "" {
 		return nil, fmt.Errorf("sdkerr: unset accessKeyId")
 	}
-	if secretAccessKey == "" {
+	if options.SecretAccessKey == "" {
 		return nil, fmt.Errorf("sdkerr: unset secretAccessKey")
 	}
 
-	client := resty.New().
+	restyClient := resty.New().
 		SetBaseURL("http://api.routewize.com").
 		SetHeader("Accept", "application/json").
 		SetHeader("Content-Type", "application/json").
@@ -54,22 +59,22 @@ func NewClient(accessKeyId, secretAccessKey string) (*Client, error) {
 			stringToSign := verb + "\n" +
 				date + "\n" +
 				canonicalizedResource
-			h := hmac.New(sha256.New, []byte(secretAccessKey))
+			h := hmac.New(sha256.New, []byte(options.SecretAccessKey))
 			h.Write([]byte(stringToSign))
 			sign := base64.StdEncoding.EncodeToString(h.Sum(nil))
 
 			// 设置请求头
 			req.Header.Set("Date", date)
-			req.Header.Set("Authorization", fmt.Sprintf("QC-HMAC-SHA256 %s:%s", accessKeyId, sign))
+			req.Header.Set("Authorization", fmt.Sprintf("QC-HMAC-SHA256 %s:%s", options.AccessKeyId, sign))
 
 			return nil
 		})
 
-	return &Client{client}, nil
+	return &Client{rc: restyClient}, nil
 }
 
 func (c *Client) SetTimeout(timeout time.Duration) *Client {
-	c.client.SetTimeout(timeout)
+	c.rc.SetTimeout(timeout)
 	return c
 }
 
@@ -81,7 +86,7 @@ func (c *Client) newRequest(method string, path string) (*resty.Request, error) 
 		return nil, fmt.Errorf("sdkerr: unset path")
 	}
 
-	req := c.client.R()
+	req := c.rc.R()
 	req.Method = method
 	req.URL = path
 	return req, nil
@@ -122,8 +127,8 @@ func (c *Client) doRequestWithResult(req *resty.Request, res sdkResponse) (*rest
 		if err := json.Unmarshal(resp.Body(), &res); err != nil {
 			return resp, fmt.Errorf("sdkerr: failed to unmarshal response: %w (resp: %s)", err, resp.String())
 		} else {
-			if tcode := res.GetCode(); tcode != 0 {
-				return resp, fmt.Errorf("sdkerr: code='%d', message='%s'", tcode, res.GetMessage())
+			if rCode := res.GetCode(); rCode != 0 {
+				return resp, fmt.Errorf("sdkerr: code='%d', message='%s'", rCode, res.GetMessage())
 			}
 		}
 	}

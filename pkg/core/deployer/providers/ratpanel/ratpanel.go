@@ -158,7 +158,9 @@ func (d *Deployer) updateSiteCertificate(ctx context.Context, siteName string, c
 }
 
 func createSDKClient(serverUrl string, accessTokenId int64, accessToken string, skipTlsVerify bool) (*ratpanelsdk.Client, error) {
-	client, err := ratpanelsdk.NewClient(serverUrl, accessTokenId, accessToken)
+	client, err := ratpanelsdk.NewClient(serverUrl,
+		ratpanelsdk.WithAccessToken(accessTokenId, accessToken),
+	)
 	if err != nil {
 		return nil, err
 	}

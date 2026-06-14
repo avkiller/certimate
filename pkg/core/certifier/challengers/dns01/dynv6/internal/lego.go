@@ -72,7 +72,9 @@ func NewDNSProviderConfig(config *Config) (*DNSProvider, error) {
 		return nil, fmt.Errorf("dynv6: the configuration of the DNS provider is nil")
 	}
 
-	client, err := dynv6sdk.NewClient(config.HTTPToken)
+	client, err := dynv6sdk.NewClient(
+		dynv6sdk.WithHttpToken(config.HTTPToken),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("dynv6: %w", err)
 	} else {
@@ -153,6 +155,14 @@ func (d *DNSProvider) CleanUp(ctx context.Context, domain, token, keyAuth string
 	if _, err := d.client.DeleteRecord(zoneId, recordId); err != nil {
 		return fmt.Errorf("dynv6: error when delete record: %w", err)
 	}
+
+	d.zoneIDsMu.Lock()
+	delete(d.zoneIDs, authZone)
+	d.zoneIDsMu.Unlock()
+
+	d.recordIDsMu.Lock()
+	delete(d.recordIDs, token)
+	d.recordIDsMu.Unlock()
 
 	return nil
 }

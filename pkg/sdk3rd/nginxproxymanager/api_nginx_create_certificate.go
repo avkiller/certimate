@@ -11,7 +11,7 @@ type NginxCreateCertificateRequest struct {
 }
 
 type NginxCreateCertificateResponse struct {
-	CertificateRecord
+	Certificate
 }
 
 func (c *Client) NginxCreateCertificate(req *NginxCreateCertificateRequest) (*NginxCreateCertificateResponse, error) {

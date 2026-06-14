@@ -44,6 +44,7 @@ func main() {
 	})
 
 	pb.RootCmd.AddCommand(cmd.NewInternalCommand(pb))
+	pb.RootCmd.AddCommand(cmd.NewVersionCommand(pb))
 	pb.RootCmd.AddCommand(cmd.NewWinscCommand(pb))
 
 	switch os.Args[1] {

@@ -2,11 +2,11 @@ package vod
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/url"
 	"strconv"
 
-	"github.com/pkg/errors"
 	"github.com/volcengine/volc-sdk-golang/service/vod/models/request"
 	"github.com/volcengine/volc-sdk-golang/service/vod/models/response"
 	"google.golang.org/protobuf/encoding/protojson"

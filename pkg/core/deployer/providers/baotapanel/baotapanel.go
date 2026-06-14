@@ -11,7 +11,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/certimate-go/certimate/pkg/core"
-	btsdk "github.com/certimate-go/certimate/pkg/sdk3rd/btpanel"
+	btpanelsdk "github.com/certimate-go/certimate/pkg/sdk3rd/btpanel"
 	xwait "github.com/certimate-go/certimate/pkg/utils/wait"
 )
 
@@ -36,7 +36,7 @@ type DeployerConfig struct {
 type Deployer struct {
 	config    *DeployerConfig
 	logger    *slog.Logger
-	sdkClient *btsdk.Client
+	sdkClient *btpanelsdk.Client
 }
 
 var _ Provider = (*Deployer)(nil)
@@ -77,7 +77,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*Dep
 	case "any":
 		{
 			// 上传证书
-			sslCertSaveCertReq := &btsdk.SSLCertSaveCertRequest{
+			sslCertSaveCertReq := &btpanelsdk.SSLCertSaveCertRequest{
 				Certificate: certPEM,
 				PrivateKey:  privkeyPEM,
 			}
@@ -88,9 +88,9 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*Dep
 			}
 
 			// 设置站点证书
-			sslSetBatchCertToSiteReq := &btsdk.SSLSetBatchCertToSiteRequest{
-				BatchInfo: lo.Map(d.config.SiteNames, func(siteName string, _ int) *btsdk.SSLSetBatchCertToSiteRequestBatchInfo {
-					return &btsdk.SSLSetBatchCertToSiteRequestBatchInfo{
+			sslSetBatchCertToSiteReq := &btpanelsdk.SSLSetBatchCertToSiteRequest{
+				BatchInfo: lo.Map(d.config.SiteNames, func(siteName string, _ int) *btpanelsdk.SSLSetBatchCertToSiteRequestBatchInfo {
+					return &btpanelsdk.SSLSetBatchCertToSiteRequestBatchInfo{
 						SiteName: siteName,
 						SSLHash:  sslCertSaveCertResp.SSLHash,
 					}
@@ -139,7 +139,7 @@ func (d *Deployer) updateSiteCertificate(ctx context.Context, siteType, siteName
 	case "proxy":
 		{
 			// 设置代理 SSL 证书
-			modProxyComSetSSLReq := &btsdk.ModProxyComSetSSLRequest{
+			modProxyComSetSSLReq := &btpanelsdk.ModProxyComSetSSLRequest{
 				SiteName:    siteName,
 				Certificate: certPEM,
 				PrivateKey:  privkeyPEM,
@@ -154,7 +154,7 @@ func (d *Deployer) updateSiteCertificate(ctx context.Context, siteType, siteName
 	default:
 		{
 			// 设置站点 SSL 证书
-			siteSetSSLReq := &btsdk.SiteSetSSLRequest{
+			siteSetSSLReq := &btpanelsdk.SiteSetSSLRequest{
 				Type:        "0",
 				SiteName:    siteName,
 				Certificate: certPEM,
@@ -171,8 +171,10 @@ func (d *Deployer) updateSiteCertificate(ctx context.Context, siteType, siteName
 	return nil
 }
 
-func createSDKClient(serverUrl, apiKey string, skipTlsVerify bool) (*btsdk.Client, error) {
-	client, err := btsdk.NewClient(serverUrl, apiKey)
+func createSDKClient(serverUrl, apiKey string, skipTlsVerify bool) (*btpanelsdk.Client, error) {
+	client, err := btpanelsdk.NewClient(serverUrl,
+		btpanelsdk.WithApiKey(apiKey),
+	)
 	if err != nil {
 		return nil, err
 	}

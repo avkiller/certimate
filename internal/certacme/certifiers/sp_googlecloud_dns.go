@@ -17,6 +17,7 @@ func init() {
 		}
 
 		provider, err := chlgimpl.NewChallenger(&chlgimpl.ChallengerConfig{
+			ProjectId:             credentials.ProjectId,
 			ServiceAccountKey:     credentials.ServiceAccountKey,
 			DnsPropagationTimeout: options.DnsPropagationTimeout,
 			DnsTTL:                options.DnsTTL,

@@ -18,8 +18,8 @@ type DnsGetDomainsListRequest struct {
 type DnsGetDomainsListResponse struct {
 	sdkResponseBase
 
-	Domains    []*DnsDomainRecord `json:"domains,omitempty"`
-	TotalCount int                `json:"total_count,omitempty"`
+	Domains    []*Domain `json:"domains,omitempty"`
+	TotalCount int       `json:"total_count,omitempty"`
 }
 
 func (c *Client) DnsGetDomainsList(req *DnsGetDomainsListRequest) (*DnsGetDomainsListResponse, error) {

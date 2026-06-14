@@ -101,7 +101,9 @@ func (d *Deployer) deployToCertificate(ctx context.Context, certPEM, privkeyPEM 
 }
 
 func createSDKClient(serverUrl, apiToken string, skipTlsVerify bool) (*safelinesdk.Client, error) {
-	client, err := safelinesdk.NewClient(serverUrl, apiToken)
+	client, err := safelinesdk.NewClient(serverUrl,
+		safelinesdk.WithApiToken(apiToken),
+	)
 	if err != nil {
 		return nil, err
 	}

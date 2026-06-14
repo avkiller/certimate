@@ -120,7 +120,7 @@ func (d *Deployer) deployToLoadbalancer(ctx context.Context, cloudCertId string)
 	// 查询 BLB 实例详情
 	// REF: https://cloud.baidu.com/doc/BLB/s/6jwvxnyhi#describeloadbalancerdetail%E6%9F%A5%E8%AF%A2blb%E5%AE%9E%E4%BE%8B%E8%AF%A6%E6%83%85
 	describeLoadBalancerDetailResp, err := d.sdkClient.DescribeLoadBalancerDetail(d.config.LoadbalancerId)
-	d.logger.Debug("sdk request 'appblb.DescribeLoadBalancerAttribute'", slog.String("blbId", d.config.LoadbalancerId), slog.Any("response", describeLoadBalancerDetailResp))
+	d.logger.Debug("sdk request 'appblb.DescribeLoadBalancerAttribute'", slog.String("params.blbId", d.config.LoadbalancerId), slog.Any("response", describeLoadBalancerDetailResp))
 	if err != nil {
 		return fmt.Errorf("failed to execute sdk request 'appblb.DescribeLoadBalancerDetail': %w", err)
 	}
@@ -188,7 +188,7 @@ func (d *Deployer) deployToListener(ctx context.Context, cloudCertId string) err
 		ListenerPort: uint16(d.config.ListenerPort),
 	}
 	describeAppAllListenersResp, err := d.sdkClient.DescribeAppAllListeners(d.config.LoadbalancerId, describeAppAllListenersRequest)
-	d.logger.Debug("sdk request 'appblb.DescribeAppAllListeners'", slog.String("blbId", d.config.LoadbalancerId), slog.Any("request", describeAppAllListenersRequest), slog.Any("response", describeAppAllListenersResp))
+	d.logger.Debug("sdk request 'appblb.DescribeAppAllListeners'", slog.String("params.blbId", d.config.LoadbalancerId), slog.Any("request", describeAppAllListenersRequest), slog.Any("response", describeAppAllListenersResp))
 	if err != nil {
 		return fmt.Errorf("failed to execute sdk request 'appblb.DescribeAppAllListeners': %w", err)
 	}
@@ -256,7 +256,7 @@ func (d *Deployer) updateHttpsListenerCertificate(ctx context.Context, cloudLoad
 		MaxKeys:      1,
 	}
 	describeAppHTTPSListenersResp, err := d.sdkClient.DescribeAppHTTPSListeners(cloudLoadbalancerId, describeAppHTTPSListenersReq)
-	d.logger.Debug("sdk request 'appblb.DescribeAppHTTPSListeners'", slog.String("blbId", cloudLoadbalancerId), slog.Any("request", describeAppHTTPSListenersReq), slog.Any("response", describeAppHTTPSListenersResp))
+	d.logger.Debug("sdk request 'appblb.DescribeAppHTTPSListeners'", slog.String("params.blbId", cloudLoadbalancerId), slog.Any("request", describeAppHTTPSListenersReq), slog.Any("response", describeAppHTTPSListenersResp))
 	if err != nil {
 		return fmt.Errorf("failed to execute sdk request 'appblb.DescribeAppHTTPSListeners': %w", err)
 	} else if len(describeAppHTTPSListenersResp.ListenerList) == 0 {

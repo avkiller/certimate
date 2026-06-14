@@ -11,7 +11,7 @@ import (
 
 	"github.com/certimate-go/certimate/pkg/core"
 	cmgrimpl "github.com/certimate-go/certimate/pkg/core/certmgr/providers/dogecloud"
-	dogesdk "github.com/certimate-go/certimate/pkg/sdk3rd/dogecloud"
+	dogecloudsdk "github.com/certimate-go/certimate/pkg/sdk3rd/dogecloud"
 	xcerthostname "github.com/certimate-go/certimate/pkg/utils/cert/hostname"
 )
 
@@ -35,7 +35,7 @@ type DeployerConfig struct {
 type Deployer struct {
 	config     *DeployerConfig
 	logger     *slog.Logger
-	sdkClient  *dogesdk.Client
+	sdkClient  *dogecloudsdk.Client
 	sdkCertmgr core.Certmgr
 }
 
@@ -172,7 +172,7 @@ func (d *Deployer) getAllDomains(ctx context.Context) ([]string, error) {
 func (d *Deployer) updateDomainCertificate(ctx context.Context, domain string, cloudCertId int64) error {
 	// 绑定证书
 	// REF: https://docs.dogecloud.com/cdn/api-cert-bind
-	bindCdnCertReq := &dogesdk.BindCdnCertRequest{
+	bindCdnCertReq := &dogecloudsdk.BindCdnCertRequest{
 		CertId: cloudCertId,
 		Domain: domain,
 	}
@@ -185,6 +185,13 @@ func (d *Deployer) updateDomainCertificate(ctx context.Context, domain string, c
 	return nil
 }
 
-func createSDKClient(accessKey, secretKey string) (*dogesdk.Client, error) {
-	return dogesdk.NewClient(accessKey, secretKey)
+func createSDKClient(accessKey, secretKey string) (*dogecloudsdk.Client, error) {
+	client, err := dogecloudsdk.NewClient(
+		dogecloudsdk.WithAkSk(accessKey, secretKey),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
 }

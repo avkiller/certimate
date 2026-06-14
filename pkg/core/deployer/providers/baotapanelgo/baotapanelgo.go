@@ -14,7 +14,7 @@ import (
 	"github.com/samber/lo"
 
 	"github.com/certimate-go/certimate/pkg/core"
-	btsdk "github.com/certimate-go/certimate/pkg/sdk3rd/btpanelgo"
+	btpanelgosdk "github.com/certimate-go/certimate/pkg/sdk3rd/btpanelgo"
 	xcert "github.com/certimate-go/certimate/pkg/utils/cert"
 	xwait "github.com/certimate-go/certimate/pkg/utils/wait"
 )
@@ -40,7 +40,7 @@ type DeployerConfig struct {
 type Deployer struct {
 	config    *DeployerConfig
 	logger    *slog.Logger
-	sdkClient *btsdk.Client
+	sdkClient *btpanelgosdk.Client
 }
 
 var _ Provider = (*Deployer)(nil)
@@ -107,7 +107,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*Dep
 	return &DeployResult{}, nil
 }
 
-func (d *Deployer) findSiteByName(ctx context.Context, siteType, siteName string) (*btsdk.SiteData, error) {
+func (d *Deployer) findSiteByName(ctx context.Context, siteType, siteName string) (*btpanelgosdk.SiteData, error) {
 	if siteType == "" || lo.Contains(btProjectTypesInIIS, siteType) {
 		// 查询网站列表
 		datalistGetDataListPage := 1
@@ -119,7 +119,7 @@ func (d *Deployer) findSiteByName(ctx context.Context, siteType, siteName string
 			default:
 			}
 
-			datalistGetDataListReq := &btsdk.DatalistGetDataListRequest{
+			datalistGetDataListReq := &btpanelgosdk.DatalistGetDataListRequest{
 				Table:        lo.ToPtr("sites"),
 				SearchString: lo.ToPtr(siteName),
 				Page:         lo.ToPtr(int32(datalistGetDataListPage)),
@@ -154,7 +154,7 @@ func (d *Deployer) findSiteByName(ctx context.Context, siteType, siteName string
 			default:
 			}
 
-			siteGetProjectListReq := &btsdk.SiteGetProjectListRequest{
+			siteGetProjectListReq := &btpanelgosdk.SiteGetProjectListRequest{
 				SearchType:   lo.ToPtr(siteType),
 				SearchString: lo.ToPtr(siteName),
 				Page:         lo.ToPtr(int32(siteGetProjectListPage)),
@@ -185,7 +185,7 @@ func (d *Deployer) findSiteByName(ctx context.Context, siteType, siteName string
 
 func (d *Deployer) updateSiteCertificate(ctx context.Context, siteType, siteName string, certPEM, privkeyPEM string) error {
 	// 获取面板配置
-	panelGetConfigReq := &btsdk.PanelGetConfigRequest{}
+	panelGetConfigReq := &btpanelgosdk.PanelGetConfigRequest{}
 	panelGetConfigResp, err := d.sdkClient.PanelGetConfigWithContext(ctx, panelGetConfigReq)
 	d.logger.Debug("sdk request 'panel.GetConfig'", slog.Any("request", panelGetConfigReq), slog.Any("response", panelGetConfigResp))
 	if err != nil {
@@ -213,7 +213,7 @@ func (d *Deployer) updateSiteCertificate(ctx context.Context, siteType, siteName
 		certPFXHashHex := hex.EncodeToString(certPFXHash[:])
 		certPFXPath := panelGetConfigResp.Paths.Soft + "/temp/ssl/certimate"
 		certPFXFileName := fmt.Sprintf("%s.pfx", certPFXHashHex)
-		filesUploadReq := &btsdk.FilesUploadRequest{
+		filesUploadReq := &btpanelgosdk.FilesUploadRequest{
 			Path:  lo.ToPtr(certPFXPath),
 			Name:  lo.ToPtr(certPFXFileName),
 			Start: lo.ToPtr(int32(0)),
@@ -228,7 +228,7 @@ func (d *Deployer) updateSiteCertificate(ctx context.Context, siteType, siteName
 		}
 
 		// 服务器为 IIS，设置网站 SSL
-		siteSetSitePFXSSLReq := &btsdk.SiteSetSitePFXSSLRequest{
+		siteSetSitePFXSSLReq := &btpanelgosdk.SiteSetSitePFXSSLRequest{
 			SiteId:   lo.ToPtr(siteData.Id),
 			PFX:      lo.ToPtr(fmt.Sprintf("%s/%s", certPFXPath, certPFXFileName)),
 			Password: lo.ToPtr(certPFXPassword),
@@ -240,7 +240,7 @@ func (d *Deployer) updateSiteCertificate(ctx context.Context, siteType, siteName
 		}
 	} else {
 		// 服务器非 IIS，设置网站 SSL
-		siteSetSiteSSLReq := &btsdk.SiteSetSiteSSLRequest{
+		siteSetSiteSSLReq := &btpanelgosdk.SiteSetSiteSSLRequest{
 			SiteId: lo.ToPtr(siteData.Id),
 			Status: lo.ToPtr(true),
 			Key:    lo.ToPtr(privkeyPEM),
@@ -256,8 +256,10 @@ func (d *Deployer) updateSiteCertificate(ctx context.Context, siteType, siteName
 	return nil
 }
 
-func createSDKClient(serverUrl, apiKey string, skipTlsVerify bool) (*btsdk.Client, error) {
-	client, err := btsdk.NewClient(serverUrl, apiKey)
+func createSDKClient(serverUrl, apiKey string, skipTlsVerify bool) (*btpanelgosdk.Client, error) {
+	client, err := btpanelgosdk.NewClient(serverUrl,
+		btpanelgosdk.WithApiKey(apiKey),
+	)
 	if err != nil {
 		return nil, err
 	}

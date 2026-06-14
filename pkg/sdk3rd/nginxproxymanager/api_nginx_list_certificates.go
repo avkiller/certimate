@@ -11,7 +11,7 @@ type NginxListCertificatesRequest struct {
 	Expand *string `json:"expand,omitempty" url:"expand,omitempty"`
 }
 
-type NginxListCertificatesResponse = []*CertificateRecord
+type NginxListCertificatesResponse = []*Certificate
 
 func (c *Client) NginxListCertificates(req *NginxListCertificatesRequest) (*NginxListCertificatesResponse, error) {
 	return c.NginxListCertificatesWithContext(context.Background(), req)

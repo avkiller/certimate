@@ -72,7 +72,7 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*Uplo
 	}
 
 	// 提取服务器证书和中间证书
-	serverCertPEM, intermediaCertPEM, err := xcert.ExtractCertificatesFromPEM(certPEM)
+	serverCertPEM, issuerCertPEM, err := xcert.ExtractCertificatesFromPEM(certPEM)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract certs: %w", err)
 	}
@@ -85,7 +85,7 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*Uplo
 	uploadCertificateReq := &ctyuncms.UploadCertificateRequest{
 		Name:               lo.ToPtr(certName),
 		Certificate:        lo.ToPtr(serverCertPEM),
-		CertificateChain:   lo.ToPtr(intermediaCertPEM),
+		CertificateChain:   lo.ToPtr(issuerCertPEM),
 		PrivateKey:         lo.ToPtr(privkeyPEM),
 		EncryptionStandard: lo.ToPtr("INTERNATIONAL"),
 	}
@@ -195,5 +195,12 @@ func (c *Certmgr) tryGetResultIfCertExists(ctx context.Context, certPEM string) 
 }
 
 func createSDKClient(accessKeyId, secretAccessKey string) (*ctyuncms.Client, error) {
-	return ctyuncms.NewClient(accessKeyId, secretAccessKey)
+	client, err := ctyuncms.NewClient(
+		ctyuncms.WithAkSk(accessKeyId, secretAccessKey),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
 }

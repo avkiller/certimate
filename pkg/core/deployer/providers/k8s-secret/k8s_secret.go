@@ -92,7 +92,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*Dep
 	}
 
 	// 提取服务器证书和中间证书
-	serverCertPEM, intermediaCertPEM, err := xcert.ExtractCertificatesFromPEM(certPEM)
+	serverCertPEM, issuerCertPEM, err := xcert.ExtractCertificatesFromPEM(certPEM)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract certs: %w", err)
 	}
@@ -174,7 +174,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*Dep
 		secretPayload.Data[d.config.SecretDataKeyForCrtOnlyServer] = []byte(serverCertPEM)
 	}
 	if d.config.SecretDataKeyForCrtOnlyIntermedia != "" {
-		secretPayload.Data[d.config.SecretDataKeyForCrtOnlyIntermedia] = []byte(intermediaCertPEM)
+		secretPayload.Data[d.config.SecretDataKeyForCrtOnlyIntermedia] = []byte(issuerCertPEM)
 	}
 
 	// 创建或更新 Secret 实例

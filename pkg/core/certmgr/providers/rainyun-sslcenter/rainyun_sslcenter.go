@@ -102,7 +102,7 @@ func (c *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, pri
 		Key:  privkeyPEM,
 	}
 	sslCenterUpdateResp, err := c.sdkClient.SslCenterUpdateWithContext(ctx, certId, sslCenterUpdateReq)
-	c.logger.Debug("sdk request 'sslcenter.Update'", slog.Int64("certId", certId), slog.Any("request", sslCenterUpdateReq), slog.Any("response", sslCenterUpdateResp))
+	c.logger.Debug("sdk request 'sslcenter.Update'", slog.Int64("params.certId", certId), slog.Any("request", sslCenterUpdateReq), slog.Any("response", sslCenterUpdateResp))
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute sdk request 'sslcenter.Update': %w", err)
 	}
@@ -184,5 +184,12 @@ func (c *Certmgr) tryGetResultIfCertExists(ctx context.Context, certPEM string) 
 }
 
 func createSDKClient(apiKey string) (*rainyunsdk.Client, error) {
-	return rainyunsdk.NewClient(apiKey)
+	client, err := rainyunsdk.NewClient(
+		rainyunsdk.WithApiKey(apiKey),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
 }

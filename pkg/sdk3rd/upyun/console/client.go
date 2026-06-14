@@ -19,22 +19,27 @@ type Client struct {
 	loginCookie    string
 	loginCookieMtx sync.Mutex
 
-	client *resty.Client
+	rc *resty.Client
 }
 
-func NewClient(username, password string) (*Client, error) {
-	if username == "" {
+func NewClient(optFns ...OptionsFunc) (*Client, error) {
+	options := &Options{}
+	for _, fn := range optFns {
+		fn(options)
+	}
+
+	if options.Username == "" {
 		return nil, fmt.Errorf("sdkerr: unset username")
 	}
-	if password == "" {
+	if options.Password == "" {
 		return nil, fmt.Errorf("sdkerr: unset password")
 	}
 
 	client := &Client{
-		username: username,
-		password: password,
+		username: options.Username,
+		password: options.Password,
 	}
-	client.client = resty.New().
+	client.rc = resty.New().
 		SetBaseURL("https://console.upyun.com").
 		SetHeader("Accept", "application/json").
 		SetHeader("Content-Type", "application/json").
@@ -51,7 +56,7 @@ func NewClient(username, password string) (*Client, error) {
 }
 
 func (c *Client) SetTimeout(timeout time.Duration) *Client {
-	c.client.SetTimeout(timeout)
+	c.rc.SetTimeout(timeout)
 	return c
 }
 
@@ -63,7 +68,7 @@ func (c *Client) newRequest(method string, path string) (*resty.Request, error) 
 		return nil, fmt.Errorf("sdkerr: unset path")
 	}
 
-	req := c.client.R()
+	req := c.rc.R()
 	req.Method = method
 	req.URL = path
 	return req, nil
