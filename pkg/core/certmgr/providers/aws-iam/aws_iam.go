@@ -3,6 +3,7 @@ package awsiam
 import (
 	"cmp"
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -11,6 +12,8 @@ import (
 	awscfg "github.com/aws/aws-sdk-go-v2/config"
 	awscred "github.com/aws/aws-sdk-go-v2/credentials"
 	awsiam "github.com/aws/aws-sdk-go-v2/service/iam"
+	"github.com/aws/smithy-go"
+	"github.com/samber/lo"
 
 	"github.com/certimate-go/certimate/pkg/core"
 	xcert "github.com/certimate-go/certimate/pkg/utils/cert"
@@ -92,11 +95,9 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*Uplo
 		}
 
 		listServerCertificatesReq := &awsiam.ListServerCertificatesInput{
-			Marker:   listServerCertificatesMarker,
-			MaxItems: aws.Int32(1000),
-		}
-		if c.config.CertificatePath != "" {
-			listServerCertificatesReq.PathPrefix = aws.String(c.config.CertificatePath)
+			PathPrefix: lo.EmptyableToPtr(c.config.CertificatePath),
+			Marker:     listServerCertificatesMarker,
+			MaxItems:   aws.Int32(1000),
 		}
 		listServerCertificatesResp, err := c.sdkClient.ListServerCertificates(ctx, listServerCertificatesReq)
 		c.logger.Debug("sdk request 'iam.ListServerCertificates'", slog.Any("request", listServerCertificatesReq), slog.Any("response", listServerCertificatesResp))
@@ -111,7 +112,7 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*Uplo
 			}
 
 			// 对比证书有效期
-			if certItem.Expiration == nil || !certItem.Expiration.Equal(certX509.NotAfter) {
+			if certItem.Expiration == nil || !certX509.NotAfter.Equal(*certItem.Expiration) {
 				continue
 			}
 
@@ -121,6 +122,13 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*Uplo
 			}
 			getServerCertificateResp, err := c.sdkClient.GetServerCertificate(ctx, getServerCertificateReq)
 			if err != nil {
+				var sdkErr smithy.APIError
+				if errors.As(err, &sdkErr) {
+					if sdkErrCode := sdkErr.ErrorCode(); sdkErrCode == "InvalidArnException" || sdkErrCode == "ResourceNotFoundException" {
+						continue
+					}
+				}
+
 				return nil, fmt.Errorf("failed to execute sdk request 'iam.GetServerCertificate': %w", err)
 			} else {
 				if !xcert.EqualCertificatesFromPEM(certPEM, aws.ToString(getServerCertificateResp.ServerCertificate.CertificateBody)) {

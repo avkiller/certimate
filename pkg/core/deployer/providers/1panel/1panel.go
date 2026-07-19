@@ -1,9 +1,9 @@
 package onepanel
 
 import (
+	"cmp"
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"log/slog"
 	"strconv"
@@ -14,6 +14,7 @@ import (
 	onepanelsdk "github.com/certimate-go/certimate/pkg/sdk3rd/1panel"
 	onepanelsdk2 "github.com/certimate-go/certimate/pkg/sdk3rd/1panel/v2"
 	xcerthostname "github.com/certimate-go/certimate/pkg/utils/cert/hostname"
+	xloop "github.com/certimate-go/certimate/pkg/utils/loop"
 	xwait "github.com/certimate-go/certimate/pkg/utils/wait"
 )
 
@@ -151,29 +152,23 @@ func (d *Deployer) deployToWebsite(ctx context.Context, certPEM, privkeyPEM stri
 		return fmt.Errorf("unsupported website match pattern: '%s'", d.config.WebsiteMatchPattern)
 	}
 
-	// 遍历更新网站证书
+	// 批量更新网站证书
 	if len(websiteIds) == 0 {
 		d.logger.Info("no websites to deploy")
 	} else {
 		d.logger.Info("found websites to deploy", slog.Any("websiteIds", websiteIds))
-		var errs []error
 
-		websiteSSLId, _ := strconv.ParseInt(upres.CertId, 10, 64)
-		for i, websiteId := range websiteIds {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			default:
-				if err := d.updateWebsiteCertificate(ctx, websiteId, websiteSSLId); err != nil {
-					errs = append(errs, err)
-				} else if i < len(websiteIds)-1 {
-					xwait.DelayWithContext(ctx, 5*time.Second)
+		if err := xloop.ForRangeAllWithContext(ctx, websiteIds, func(ctx context.Context, websiteId int64, i int) error {
+			if i > 0 {
+				if err := xwait.DelayWithContext(ctx, 3*time.Second); err != nil {
+					return err
 				}
 			}
-		}
 
-		if len(errs) > 0 {
-			return errors.Join(errs...)
+			certId, _ := strconv.ParseInt(upres.CertId, 10, 64)
+			return d.updateWebsiteCertificate(ctx, websiteId, certId)
+		}); err != nil {
+			return err
 		}
 	}
 
@@ -339,13 +334,10 @@ func (d *Deployer) updateWebsiteCertificate(ctx context.Context, websiteId int64
 				Type:         "existed",
 				WebsiteSSLID: websiteSSLId,
 				Enable:       true,
-				HttpConfig:   websiteHttpsGetResp.Data.HttpConfig,
+				HttpConfig:   cmp.Or(websiteHttpsGetResp.Data.HttpConfig, "HTTPToHTTPS"),
 				SSLProtocol:  websiteHttpsGetResp.Data.SSLProtocol,
 				Algorithm:    websiteHttpsGetResp.Data.Algorithm,
 				Hsts:         websiteHttpsGetResp.Data.Hsts,
-			}
-			if websiteHttpsPostReq.HttpConfig == "" {
-				websiteHttpsPostReq.HttpConfig = "HTTPToHTTPS"
 			}
 			websiteHttpsPostResp, err := sdkClient.WebsiteHttpsPostWithContext(ctx, websiteId, websiteHttpsPostReq)
 			d.logger.Debug("sdk request 'WebsiteHttpsPost'", slog.Int64("params.websiteId", websiteId), slog.Any("request", websiteHttpsPostReq), slog.Any("response", websiteHttpsPostResp))
@@ -373,14 +365,11 @@ func (d *Deployer) updateWebsiteCertificate(ctx context.Context, websiteId int64
 				Type:         "existed",
 				WebsiteSSLID: websiteSSLId,
 				Enable:       true,
-				HttpConfig:   websiteHttpsGetResp.Data.HttpConfig,
+				HttpConfig:   cmp.Or(websiteHttpsGetResp.Data.HttpConfig, "HTTPToHTTPS"),
 				SSLProtocol:  websiteHttpsGetResp.Data.SSLProtocol,
 				Algorithm:    websiteHttpsGetResp.Data.Algorithm,
 				Hsts:         websiteHttpsGetResp.Data.Hsts,
 				Http3:        websiteHttpsGetResp.Data.Http3,
-			}
-			if websiteHttpsPostReq.HttpConfig == "" {
-				websiteHttpsPostReq.HttpConfig = "HTTPToHTTPS"
 			}
 			websiteHttpsPostResp, err := sdkClient.WebsiteHttpsPostWithContext(ctx, websiteId, websiteHttpsPostReq)
 			d.logger.Debug("sdk request 'WebsiteHttpsPost'", slog.Int64("params.websiteId", websiteId), slog.Any("request", websiteHttpsPostReq), slog.Any("response", websiteHttpsPostResp))

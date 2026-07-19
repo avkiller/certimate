@@ -1,3 +1,5 @@
+// A simple SDK client for Kong.
+// API documentation: https://developer.konghq.com/api/
 package kong
 
 import (
@@ -29,23 +31,23 @@ func NewClient(serverUrl string, optFns ...OptionsFunc) (*Client, error) {
 	if _, err := url.Parse(serverUrl); err != nil {
 		return nil, fmt.Errorf("sdkerr: invalid serverUrl: %w", err)
 	}
-	if opts.ApiToken == "" {
-		return nil, fmt.Errorf("sdkerr: unset apiToken")
-	}
 
 	baseUrl := strings.TrimSuffix(serverUrl, "/")
 	if opts.Workspace != "" {
 		baseUrl += fmt.Sprintf("/%s", url.PathEscape(opts.Workspace))
 	}
 
-	restyClient := resty.New().
+	httper := resty.New().
 		SetBaseURL(baseUrl).
 		SetHeader("Accept", "application/json").
 		SetHeader("Content-Type", "application/json").
-		SetHeader("User-Agent", app.AppUserAgent).
-		SetHeader("Kong-Admin-Token", opts.ApiToken)
+		SetHeader("User-Agent", app.AppUserAgent)
 
-	return &Client{rc: restyClient}, nil
+	if opts.ApiToken != "" {
+		httper = httper.SetHeader("Kong-Admin-Token", opts.ApiToken)
+	}
+
+	return &Client{rc: httper}, nil
 }
 
 func (c *Client) SetTimeout(timeout time.Duration) *Client {
@@ -90,7 +92,7 @@ func (c *Client) doRequest(req *resty.Request) (*resty.Response, error) {
 	return resp, nil
 }
 
-func (c *Client) doRequestWithResult(req *resty.Request, res interface{}) (*resty.Response, error) {
+func (c *Client) doRequestWithResult(req *resty.Request, res any) (*resty.Response, error) {
 	if req == nil {
 		return nil, fmt.Errorf("sdkerr: nil request")
 	}

@@ -42,7 +42,7 @@ An open-source and free self-hosted SSL certificates ACME tool, automates the fu
 - Supports DNS-01 challenge and HTTP-01 challenge both.
 - Supports various certificate formats such as PEM, PFX, JKS.
 - Supports more than 70+ domain registrars (e.g., AWS, Cloudflare, GoDaddy, Alibaba Cloud, Tencent Cloud, etc. [Check out full providers](https://docs.certimate.me/en-US/docs/reference/providers#supported-dns-providers)).
-- Supports more than 140+ deployment destinations (e.g., Kubernetes, CDN, WAF, load balancers, etc. [Check out full providers](https://docs.certimate.me/en-US/docs/reference/providers#supported-hosting-providers)).
+- Supports more than 150+ deployment destinations (e.g., Kubernetes, CDN, WAF, load balancers, etc. [Check out full providers](https://docs.certimate.me/en-US/docs/reference/providers#supported-hosting-providers)).
 - Supports multiple notification channels including email, Discord, Slack, Telegram, DingTalk, Feishu, WeCom, and more.
 - Supports multiple ACME CAs including Let's Encrypt, Actalis, Google Trust Services, SSL.com, ZeroSSL, and more.
 - More features waiting to be discovered.
@@ -130,6 +130,14 @@ This repository is available under the [MIT License](https://opensource.org/lice
 
 ## ⭐ Star History
 
-Star Certificate on GitHub and be instantly notified of new releases.
+Star Certificate on GitHub and be instantly notified of new releases!
 
-[![Stargazers over time](https://starchart.cc/certimate-go/certimate.svg?variant=adaptive)](https://starchart.cc/certimate-go/certimate)
+## Star History
+
+<a href="https://www.star-history.com/?repos=certimate-go%2Fcertimate&type=date&legend=bottom-right">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=certimate-go/certimate&type=date&theme=dark&legend=bottom-right&sealed_token=AgSJWuhVJZ3c0ObBtRjr082YXnvEJdtzvse3YxJGfkUtB4nEs9RrHwwf2u41HTSOt-pU-h4lfJXzTAvRMNwKlvdEPY_BoV935TmriioBUABY69Offs4Ze9_f5mv2QP5yD5m3e5tv-HkNrHnkVVzJ2uDmJQkt6ta9Mg90DogAf4FK1mva-dd3DqZVkbw1" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=certimate-go/certimate&type=date&legend=bottom-right&sealed_token=AgSJWuhVJZ3c0ObBtRjr082YXnvEJdtzvse3YxJGfkUtB4nEs9RrHwwf2u41HTSOt-pU-h4lfJXzTAvRMNwKlvdEPY_BoV935TmriioBUABY69Offs4Ze9_f5mv2QP5yD5m3e5tv-HkNrHnkVVzJ2uDmJQkt6ta9Mg90DogAf4FK1mva-dd3DqZVkbw1" />
+   <img alt="Stargazers over time" src="https://api.star-history.com/chart?repos=certimate-go/certimate&type=date&legend=bottom-right&sealed_token=AgSJWuhVJZ3c0ObBtRjr082YXnvEJdtzvse3YxJGfkUtB4nEs9RrHwwf2u41HTSOt-pU-h4lfJXzTAvRMNwKlvdEPY_BoV935TmriioBUABY69Offs4Ze9_f5mv2QP5yD5m3e5tv-HkNrHnkVVzJ2uDmJQkt6ta9Mg90DogAf4FK1mva-dd3DqZVkbw1" />
+ </picture>
+</a>

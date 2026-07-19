@@ -93,13 +93,15 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*Uplo
 				continue
 			}
 
-			// 对比证书多域名
+			// 对比证书备用名称
 			if !slices.Equal(certX509.DNSNames, sslItem.DnsNames) {
 				continue
 			}
 
 			// 对比证书有效期
-			if certX509.NotBefore.Unix() != sslItem.NotBefore || certX509.NotAfter.Unix() != sslItem.NotAfter {
+			if certX509.NotBefore.Unix() != sslItem.NotBefore {
+				continue
+			} else if certX509.NotAfter.Unix() != sslItem.NotAfter {
 				continue
 			}
 
@@ -118,7 +120,6 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*Uplo
 					continue
 				}
 			default:
-				// 未知算法，跳过
 				continue
 			}
 

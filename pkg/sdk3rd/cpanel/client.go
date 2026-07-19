@@ -1,3 +1,5 @@
+// A simple SDK client for cPanel.
+// API documentation: https://api.docs.cpanel.net/
 package cpanel
 
 import (
@@ -36,13 +38,13 @@ func NewClient(serverUrl string, optFns ...OptionsFunc) (*Client, error) {
 		return nil, fmt.Errorf("sdkerr: unset apiToken")
 	}
 
-	restyClient := resty.New().
+	httper := resty.New().
 		SetBaseURL(strings.TrimSuffix(serverUrl, "/")+"/execute").
 		SetHeader("Accept", "application/json").
 		SetHeader("Authorization", "cpanel "+opts.Username+":"+opts.ApiToken).
 		SetHeader("User-Agent", app.AppUserAgent)
 
-	return &Client{rc: restyClient}, nil
+	return &Client{rc: httper}, nil
 }
 
 func (c *Client) SetTimeout(timeout time.Duration) *Client {
@@ -105,7 +107,7 @@ func (c *Client) doRequestWithResult(req *resty.Request, res sdkResponse) (*rest
 			return resp, fmt.Errorf("sdkerr: failed to unmarshal response: %w (resp: %s)", err, resp.String())
 		} else {
 			if rStatus := res.GetStatus(); rStatus == 0 {
-				return resp, fmt.Errorf("sdkerr: status='%d', messages='%s', warnings='%s', errors='%s'", rStatus, strings.Join(res.GetMessages(), ", "), strings.Join(res.GetWarnings(), ", "), strings.Join(res.GetErrors(), ", "))
+				return resp, fmt.Errorf("sdkerr: api error: status='%d', messages='%s', warnings='%s', errors='%s'", rStatus, strings.Join(res.GetMessages(), ", "), strings.Join(res.GetWarnings(), ", "), strings.Join(res.GetErrors(), ", "))
 			}
 		}
 	}

@@ -72,6 +72,8 @@ func (d *Deployer) SetLogger(logger *slog.Logger) {
 	} else {
 		d.logger = logger
 	}
+
+	d.sdkCertmgr.SetLogger(logger)
 }
 
 func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*DeployResult, error) {
@@ -92,9 +94,8 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*Dep
 				return nil, fmt.Errorf("config `domains` is required")
 			}
 
-			// "*.example.com" → ".example.com"，适配网宿云 CDN 要求的泛域名格式
 			domains = lo.Map(d.config.Domains, func(domain string, _ int) string {
-				return strings.TrimPrefix(domain, "*")
+				return normalizeDomain(domain)
 			})
 		}
 
@@ -104,9 +105,9 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*Dep
 
 	// 批量修改域名证书配置
 	// REF: https://www.wangsu.com/document/api-doc/37447
-	certId, _ := strconv.ParseInt(upres.CertId, 10, 64)
+	certIdAsInt, _ := strconv.ParseInt(upres.CertId, 10, 64)
 	batchUpdateCertificateConfigReq := &wangsucdn.BatchUpdateCertificateConfigRequest{
-		CertificateId: certId,
+		CertificateId: certIdAsInt,
 		DomainNames:   domains,
 	}
 	batchUpdateCertificateConfigResp, err := d.sdkClient.BatchUpdateCertificateConfigWithContext(ctx, batchUpdateCertificateConfigReq)
@@ -127,4 +128,12 @@ func createSDKClient(accessKeyId, accessKeySecret string) (*wangsucdn.Client, er
 	}
 
 	return client, nil
+}
+
+func normalizeDomain(domain string) string {
+	// "*.example.com" → ".example.com"，适配网宿云 CDN 的泛域名参数要求
+	if strings.HasPrefix(domain, "*.") {
+		return strings.TrimPrefix(domain, "*")
+	}
+	return domain
 }

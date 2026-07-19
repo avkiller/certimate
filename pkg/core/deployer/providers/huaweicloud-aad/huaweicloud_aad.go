@@ -2,7 +2,6 @@ package huaweicloudaad
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -18,6 +17,7 @@ import (
 
 	"github.com/certimate-go/certimate/pkg/core"
 	xcerthostname "github.com/certimate-go/certimate/pkg/utils/cert/hostname"
+	xloop "github.com/certimate-go/certimate/pkg/utils/loop"
 )
 
 type (
@@ -32,6 +32,8 @@ type DeployerConfig struct {
 	SecretAccessKey string `json:"secretAccessKey"`
 	// 华为云企业项目 ID。
 	EnterpriseProjectId string `json:"enterpriseProjectId,omitempty"`
+	// 华为云区域。
+	Region string `json:"region"`
 	// DDoS 高防实例 ID。
 	InstanceId string `json:"instanceId"`
 	// 域名匹配模式。
@@ -59,7 +61,7 @@ func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 		return nil, fmt.Errorf("the configuration of the deployer provider is nil")
 	}
 
-	clients, err := createSDKClients(config.AccessKeyId, config.SecretAccessKey)
+	clients, err := createSDKClients(config.AccessKeyId, config.SecretAccessKey, config.Region)
 	if err != nil {
 		return nil, fmt.Errorf("could not create client: %w", err)
 	}
@@ -97,8 +99,9 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*Dep
 			if err != nil {
 				return nil, err
 			}
+
 			domains := lo.Filter(domainCandidates, func(domainItem *hwaadmodelv2.InstanceDomainItem, _ int) bool {
-				return lo.FromPtr(domainItem.DomainName) == d.config.Domain
+				return d.config.Domain == lo.FromPtr(domainItem.DomainName)
 			})
 			if len(domains) == 0 {
 				return nil, fmt.Errorf("could not find domain")
@@ -155,26 +158,16 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*Dep
 		return nil, fmt.Errorf("unsupported domain match pattern: '%s'", d.config.DomainMatchPattern)
 	}
 
-	// 遍历更新域名证书
+	// 批量更新域名证书
 	if len(domainIds) == 0 {
 		d.logger.Info("no aad domains to deploy")
 	} else {
 		d.logger.Info("found aad domains to deploy", slog.Any("domainIds", domainIds))
-		var errs []error
 
-		for _, domainId := range domainIds {
-			select {
-			case <-ctx.Done():
-				return nil, ctx.Err()
-			default:
-				if err := d.updateDomainCertificate(ctx, domainId, certPEM, privkeyPEM); err != nil {
-					errs = append(errs, err)
-				}
-			}
-		}
-
-		if len(errs) > 0 {
-			return nil, errors.Join(errs...)
+		if err := xloop.ForRangeAllWithContext(ctx, domainIds, func(ctx context.Context, domainId string, _ int) error {
+			return d.updateDomainCertificate(ctx, domainId, certPEM, privkeyPEM)
+		}); err != nil {
+			return nil, err
 		}
 	}
 
@@ -250,12 +243,14 @@ func (d *Deployer) updateDomainCertificate(ctx context.Context, cloudDomainId st
 	return nil
 }
 
-func createSDKClients(accessKeyId, secretAccessKey string) (*wSDKClients, error) {
+func createSDKClients(accessKeyId, secretAccessKey, region string) (*wSDKClients, error) {
 	wsdk := &wSDKClients{}
 
-	{
-		region := "cn-north-4" // AAD 服务默认区域：华北北京四
+	if region == "" {
+		region = "cn-north-4" // AAD 服务默认区域：华北北京四
+	}
 
+	{
 		auth, err := global.NewCredentialsBuilder().
 			WithAk(accessKeyId).
 			WithSk(secretAccessKey).
@@ -282,8 +277,6 @@ func createSDKClients(accessKeyId, secretAccessKey string) (*wSDKClients, error)
 	}
 
 	{
-		region := "cn-north-4" // AAD 服务默认区域：华北北京四
-
 		auth, err := global.NewCredentialsBuilder().
 			WithAk(accessKeyId).
 			WithSk(secretAccessKey).
