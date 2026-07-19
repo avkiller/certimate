@@ -1,3 +1,5 @@
+// A simple SDK client for SamWAF.
+// API documentation: https://doc.samwaf.com/api/
 package samwaf
 
 import (
@@ -33,14 +35,14 @@ func NewClient(serverUrl string, optFns ...OptionsFunc) (*Client, error) {
 		return nil, fmt.Errorf("sdkerr: unset apiKey")
 	}
 
-	restyClient := resty.New().
+	httper := resty.New().
 		SetBaseURL(strings.TrimRight(serverUrl, "/")+"/api/v1").
 		SetHeader("Accept", "application/json").
 		SetHeader("Content-Type", "application/json").
 		SetHeader("User-Agent", app.AppUserAgent).
 		SetHeader("X-API-Key", options.ApiKey)
 
-	return &Client{rc: restyClient}, nil
+	return &Client{rc: httper}, nil
 }
 
 func (c *Client) SetTimeout(timeout time.Duration) *Client {
@@ -102,7 +104,7 @@ func (c *Client) doRequestWithResult(req *resty.Request, res sdkResponse) (*rest
 		var errRes *sdkResponseBase
 		if err := json.Unmarshal(resp.Body(), &errRes); err == nil {
 			if tcode := errRes.GetCode(); tcode != 0 {
-				return resp, fmt.Errorf("sdkerr: code='%d', msg='%s'", tcode, errRes.GetMsg())
+				return resp, fmt.Errorf("sdkerr: api error: code='%d', msg='%s'", tcode, errRes.GetMsg())
 			}
 		}
 

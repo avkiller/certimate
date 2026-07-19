@@ -17,6 +17,7 @@ import (
 	"github.com/certimate-go/certimate/pkg/core"
 	cmgrimpl "github.com/certimate-go/certimate/pkg/core/certmgr/providers/tencentcloud-ssl"
 	xcert "github.com/certimate-go/certimate/pkg/utils/cert"
+	xtencentcloud "github.com/certimate-go/certimate/pkg/utils/third-party/tencentcloud"
 )
 
 type (
@@ -71,9 +72,7 @@ func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 		SecretId:  config.SecretId,
 		SecretKey: config.SecretKey,
 		ProjectId: config.ProjectId,
-		Endpoint: lo.
-			If(strings.HasSuffix(config.Endpoint, "intl.tencentcloudapi.com"), "ssl.intl.tencentcloudapi.com"). // 国际站使用独立的接口端点
-			Else(""),
+		Endpoint:  lo.Ternary(xtencentcloud.IsIntlAPIEndpoint(config.Endpoint), "ssl.intl.tencentcloudapi.com", ""),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("could not create certmgr: %w", err)
@@ -160,7 +159,7 @@ func (d *Deployer) updateListenerCertificate(ctx context.Context, cloudAccelerat
 	if err != nil {
 		return fmt.Errorf("failed to execute sdk request 'ga2.DescribeListeners': %w", err)
 	} else if len(describeListenersResp.Response.ListenerSet) == 0 {
-		return fmt.Errorf("could not find listener '%s'", cloudListenerId)
+		return fmt.Errorf("could not find ga2 listener '%s'", cloudListenerId)
 	}
 
 	// 获取证书信息，避免重复绑定
@@ -176,16 +175,16 @@ func (d *Deployer) updateListenerCertificate(ctx context.Context, cloudAccelerat
 		describeCertificateResp, err := d.sdkClients.SSL.DescribeCertificateWithContext(ctx, describeCertificateReq)
 		d.logger.Debug("sdk request 'ssl.DescribeCertificate'", slog.Any("request", describeCertificateReq), slog.Any("response", describeCertificateResp))
 		if err != nil {
-			if sdkerr, ok := err.(*tcerrors.TencentCloudSDKError); ok {
-				if sdkerr.Code == "FailedOperation.CertificateNotFound" {
+			if sdkErr, ok := err.(*tcerrors.TencentCloudSDKError); ok {
+				if sdkErrCode := sdkErr.Code; sdkErrCode == "FailedOperation.CertificateNotFound" {
 					continue
 				}
 			}
 
 			return fmt.Errorf("failed to execute sdk request 'ssl.DescribeCertificate': %w", err)
 		} else {
-			certSANDiff, _ := lo.Difference(lo.FromSlicePtr(describeCertificateResp.Response.SubjectAltName), cloudCertSANs)
-			if len(certSANDiff) == 0 { // 同域名证书需要删除
+			certSANMatched := lo.ElementsMatch(lo.FromSlicePtr(describeCertificateResp.Response.SubjectAltName), cloudCertSANs)
+			if certSANMatched { // 同域名证书需要删除
 				continue
 			}
 

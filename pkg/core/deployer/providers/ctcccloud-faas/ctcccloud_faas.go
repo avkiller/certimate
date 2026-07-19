@@ -86,10 +86,11 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*Dep
 	} else {
 		faasCustomDomain = getCustomDomainResp.ReturnObj
 
-		// 已部署过此域名，跳过
+		// 已部署过，直接返回
 		if faasCustomDomain.CertConfig != nil &&
 			faasCustomDomain.CertConfig.Certificate == certPEM &&
 			faasCustomDomain.CertConfig.PrivateKey == privkeyPEM {
+			d.logger.Info("no need to deploy faas custom domain certificate")
 			return &DeployResult{}, nil
 		}
 	}

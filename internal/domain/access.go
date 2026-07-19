@@ -1,6 +1,8 @@
 package domain
 
-import "time"
+import (
+	"time"
+)
 
 const CollectionNameAccess = "access"
 
@@ -398,6 +400,13 @@ type AccessConfigForLiteSSL struct {
 	AccessConfigForACMEExternalAccountBinding
 }
 
+type AccessConfigForMatrix struct {
+	ServerUrl   string `json:"serverUrl"`
+	UserId      string `json:"userId"`
+	AccessToken string `json:"accessToken"`
+	RoomId      string `json:"roomId,omitempty"`
+}
+
 type AccessConfigForMattermost struct {
 	ServerUrl string `json:"serverUrl"`
 	Username  string `json:"username"`
@@ -445,6 +454,15 @@ type AccessConfigForNginxProxyManager struct {
 
 type AccessConfigForNS1 struct {
 	ApiKey string `json:"apiKey"`
+}
+
+type AccessConfigForOracleCloud struct {
+	AuthMethod           string `json:"authMethod"`
+	PrivateKey           string `json:"privateKey,omitempty"`
+	PrivateKeyPassphrase string `json:"privateKeyPassphrase,omitempty"`
+	PublicKeyFingerprint string `json:"publicKeyFingerprint,omitempty"`
+	TenancyOcid          string `json:"tenancyOcid,omitempty"`
+	UserOcid             string `json:"userOcid,omitempty"`
 }
 
 type AccessConfigForOVHcloud struct {
@@ -504,11 +522,14 @@ type AccessConfigForRegru struct {
 }
 
 type AccessConfigForRFC2136 struct {
-	Host          string `json:"host"`
-	Port          int32  `json:"port"`
-	TsigAlgorithm string `json:"tsigAlgorithm,omitempty"`
-	TsigKey       string `json:"tsigKey,omitempty"`
-	TsigSecret    string `json:"tsigSecret,omitempty"`
+	Host            string `json:"host"`
+	Port            int32  `json:"port"`
+	TsigAlgorithm   string `json:"tsigAlgorithm,omitempty"`
+	TsigKey         string `json:"tsigKey,omitempty"`
+	TsigSecret      string `json:"tsigSecret,omitempty"`
+	TsigGssRealm    string `json:"tsigGssRealm,omitempty"`
+	TsigGssUsername string `json:"tsigGssUsername,omitempty"`
+	TsigGssPassword string `json:"tsigGssPassword,omitempty"`
 }
 
 type AccessConfigForRuCenter struct {
@@ -537,6 +558,11 @@ type AccessConfigForSamWAF struct {
 	ServerUrl                string `json:"serverUrl"`
 	ApiKey                   string `json:"apiKey"`
 	AllowInsecureConnections bool   `json:"allowInsecureConnections,omitempty"`
+}
+
+type AccessConfigForSimplyCom struct {
+	AccountNumber string `json:"accountNumber"`
+	ApiKey        string `json:"apiKey"`
 }
 
 type AccessConfigForSlackBot struct {

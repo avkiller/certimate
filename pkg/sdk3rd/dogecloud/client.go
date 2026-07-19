@@ -1,12 +1,10 @@
+// A simple SDK client for DogeCloud.
+// API documentation: https://docs.dogecloud.com/
 package dogecloud
 
 import (
-	"crypto/hmac"
-	"crypto/sha1"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"time"
 
@@ -32,46 +30,24 @@ func NewClient(optFns ...OptionsFunc) (*Client, error) {
 		return nil, fmt.Errorf("sdkerr: unset secretKey")
 	}
 
-	restyClient := resty.New().
+	signer := &signer{
+		accessKey: opts.AccessKey,
+		secretKey: opts.SecretKey,
+	}
+	httper := resty.New().
 		SetBaseURL("https://api.dogecloud.com").
 		SetHeader("Accept", "application/json").
 		SetHeader("Content-Type", "application/json").
 		SetHeader("User-Agent", app.AppUserAgent).
 		SetPreRequestHook(func(ctx *resty.Client, req *http.Request) error {
-			requestUrl := req.URL.Path
-			requestQuery := req.URL.Query().Encode()
-			if requestQuery != "" {
-				requestUrl += "?" + requestQuery
+			if err := signer.Sign(req); err != nil {
+				return fmt.Errorf("sdkerr: sign error: %w", err)
 			}
-
-			payload := ""
-			if req.Body != nil {
-				reader, err := req.GetBody()
-				if err != nil {
-					return err
-				}
-
-				defer reader.Close()
-
-				payloadb, err := io.ReadAll(reader)
-				if err != nil {
-					return err
-				}
-
-				payload = string(payloadb)
-			}
-
-			stringToSign := fmt.Sprintf("%s\n%s", requestUrl, payload)
-			mac := hmac.New(sha1.New, []byte(opts.SecretKey))
-			mac.Write([]byte(stringToSign))
-			sign := hex.EncodeToString(mac.Sum(nil))
-
-			req.Header.Set("Authorization", fmt.Sprintf("TOKEN %s:%s", opts.AccessKey, sign))
 
 			return nil
 		})
 
-	return &Client{restyClient}, nil
+	return &Client{httper}, nil
 }
 
 func (c *Client) SetTimeout(timeout time.Duration) *Client {
@@ -129,7 +105,7 @@ func (c *Client) doRequestWithResult(req *resty.Request, res sdkResponse) (*rest
 			return resp, fmt.Errorf("sdkerr: failed to unmarshal response: %w (resp: %s)", err, resp.String())
 		} else {
 			if rCode := res.GetCode(); rCode != 0 && rCode != 200 {
-				return resp, fmt.Errorf("sdkerr: code='%d', msg='%s'", rCode, res.GetMessage())
+				return resp, fmt.Errorf("sdkerr: api error: code='%d', msg='%s'", rCode, res.GetMessage())
 			}
 		}
 	}

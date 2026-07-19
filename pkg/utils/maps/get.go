@@ -2,6 +2,7 @@ package maps
 
 import (
 	"strconv"
+	"strings"
 )
 
 // 以字符串形式从字典中获取指定键的值。
@@ -34,6 +35,43 @@ func GetOrDefaultString(dict map[string]any, key string, defaultValue string) st
 		if result, ok := value.(string); ok {
 			if result != "" {
 				return result
+			}
+		}
+	}
+
+	return defaultValue
+}
+
+// 以字符串形式从字典中获取指定键的值，并按指定分隔符拆分。
+//
+// 入参：
+//   - dict: 字典。
+//   - key: 键。
+//
+// 出参：
+//   - 字典中键对应的值。如果指定键不存在、或者值的类型不是字符串，则返回空字符串切片。
+func GetStringsBySplit(dict map[string]any, key string, sep string) []string {
+	return GetOrDefaultStringsBySplit(dict, key, sep, make([]string, 0))
+}
+
+// 以字符串形式从字典中获取指定键的值，并按指定分隔符拆分。
+//
+// 入参：
+//   - dict: 字典。
+//   - key: 键。
+//   - defaultValue: 默认值。
+//
+// 出参：
+//   - 字典中键对应的值。如果指定键不存在、值的类型不是字符串、或者值为零值，则返回默认值。
+func GetOrDefaultStringsBySplit(dict map[string]any, key string, sep string, defaultValue []string) []string {
+	if dict == nil {
+		return defaultValue
+	}
+
+	if value, ok := dict[key]; ok {
+		if str, ok := value.(string); ok {
+			if str != "" {
+				return strings.Split(str, sep)
 			}
 		}
 	}

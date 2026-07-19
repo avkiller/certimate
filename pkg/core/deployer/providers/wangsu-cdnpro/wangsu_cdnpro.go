@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"regexp"
 	"strconv"
 	"time"
@@ -179,9 +180,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*Dep
 				Version:       lo.ToPtr(wangsuCertVer),
 			},
 		},
-	}
-	if d.config.WebhookId != "" {
-		createDeploymentTaskReq.Webhook = lo.ToPtr(d.config.WebhookId)
+		Webhook: lo.EmptyableToPtr(d.config.WebhookId),
 	}
 	createDeploymentTaskResp, err := d.sdkClient.CreateDeploymentTaskWithContext(ctx, createDeploymentTaskReq)
 	d.logger.Debug("sdk request 'cdnpro.CreateCertificate'", slog.Any("request", createDeploymentTaskReq), slog.Any("response", createDeploymentTaskResp))
@@ -204,12 +203,12 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*Dep
 		}
 
 		if getDeploymentTaskDetailResp.Status == "failed" {
-			return false, fmt.Errorf("unexpected wangsu deployment task status")
+			return false, fmt.Errorf("unexpected deployment task status")
 		} else if getDeploymentTaskDetailResp.Status == "succeeded" || getDeploymentTaskDetailResp.FinishTime != "" {
 			return true, nil
 		}
 
-		d.logger.Info(fmt.Sprintf("waiting for wangsu deployment task completion (current status: %s) ...", getDeploymentTaskDetailResp.Status))
+		d.logger.Info(fmt.Sprintf("waiting for deployment task completion (current status: %s) ...", getDeploymentTaskDetailResp.Status))
 		return false, nil
 	}, 10*time.Second); err != nil {
 		return nil, err
@@ -231,7 +230,7 @@ func createSDKClient(accessKeyId, accessKeySecret string) (*wangsucdnpro.Client,
 
 func encryptPrivateKey(privkeyPEM string, apiKey string, timestamp int64) (string, error) {
 	date := time.Unix(timestamp, 0).UTC()
-	dateStr := date.Format("Mon, 02 Jan 2006 15:04:05 GMT")
+	dateStr := date.Format(http.TimeFormat)
 
 	h := hmac.New(sha256.New, []byte(apiKey))
 	h.Write([]byte(dateStr))

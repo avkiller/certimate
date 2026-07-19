@@ -3,7 +3,6 @@ package nginxproxymanager
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"log/slog"
 	"strconv"
@@ -15,6 +14,7 @@ import (
 	cmgrimpl "github.com/certimate-go/certimate/pkg/core/certmgr/providers/nginxproxymanager"
 	npmsdk "github.com/certimate-go/certimate/pkg/sdk3rd/nginxproxymanager"
 	xcert "github.com/certimate-go/certimate/pkg/utils/cert"
+	xloop "github.com/certimate-go/certimate/pkg/utils/loop"
 	xwait "github.com/certimate-go/certimate/pkg/utils/wait"
 )
 
@@ -138,6 +138,12 @@ func (d *Deployer) deployToHost(ctx context.Context, certPEM, privkeyPEM string)
 		d.logger.Info("ssl certificate uploaded", slog.Any("result", upres))
 	}
 
+	// 获取全部可部署的主机列表
+	hostsByType, err := d.getAllHosts(ctx, d.config.HostType)
+	if err != nil {
+		return err
+	}
+
 	// 获取待部署的主机列表
 	var hostIds []int64
 	switch d.config.HostMatchPattern {
@@ -152,11 +158,7 @@ func (d *Deployer) deployToHost(ctx context.Context, certPEM, privkeyPEM string)
 
 	case HOST_MATCH_PATTERN_CERTSAN:
 		{
-			hostCandidates, err := d.getAllHosts(ctx, d.config.HostType)
-			if err != nil {
-				return err
-			}
-
+			hostCandidates := hostsByType
 			hostIds = lo.Map(
 				lo.Filter(hostCandidates, func(hostItem *npmsdk.Host, _ int) bool {
 					return len(hostItem.DomainNames) > 0 &&
@@ -171,47 +173,42 @@ func (d *Deployer) deployToHost(ctx context.Context, certPEM, privkeyPEM string)
 			if len(hostIds) == 0 {
 				return fmt.Errorf("could not find any hosts matched by certificate")
 			}
-
-			// 跳过已部署过的主机
-			hostIds = lo.Filter(hostIds, func(hostId int64, _ int) bool {
-				hostInfo, _ := lo.Find(hostCandidates, func(hostItem *npmsdk.Host) bool {
-					return hostId == hostItem.Id
-				})
-				if hostInfo != nil {
-					return strconv.FormatInt(hostInfo.CertificateId, 10) != upres.CertId
-				}
-
-				return true
-			})
 		}
 
 	default:
 		return fmt.Errorf("unsupported host match pattern: '%s'", d.config.HostMatchPattern)
 	}
 
-	// 遍历更新主机证书
+	// 批量更新主机证书
 	if len(hostIds) == 0 {
 		d.logger.Info("no hosts to deploy")
 	} else {
 		d.logger.Info("found hosts to deploy", slog.Any("hostIds", hostIds))
-		var errs []error
 
-		certId, _ := strconv.ParseInt(upres.CertId, 10, 64)
-		for i, hostId := range hostIds {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			default:
-				if err := d.updateHostCertificate(ctx, d.config.HostType, hostId, certId); err != nil {
-					errs = append(errs, err)
-				} else if i < len(hostIds)-1 {
-					xwait.DelayWithContext(ctx, 5*time.Second)
+		// 跳过已部署过的主机
+		hostIds = lo.Filter(hostIds, func(hostId int64, _ int) bool {
+			hostInfo, _ := lo.Find(hostsByType, func(hostItem *npmsdk.Host) bool {
+				return hostId == hostItem.Id
+			})
+			if hostInfo != nil {
+				certId, _ := strconv.ParseInt(upres.CertId, 10, 64)
+				return hostInfo.CertificateId != certId
+			}
+
+			return true
+		})
+
+		if err := xloop.ForRangeAllWithContext(ctx, hostIds, func(ctx context.Context, hostId int64, i int) error {
+			if i > 0 {
+				if err := xwait.DelayWithContext(ctx, 3*time.Second); err != nil {
+					return err
 				}
 			}
-		}
 
-		if len(errs) > 0 {
-			return errors.Join(errs...)
+			certId, _ := strconv.ParseInt(upres.CertId, 10, 64)
+			return d.updateHostCertificate(ctx, d.config.HostType, hostId, certId)
+		}); err != nil {
+			return err
 		}
 	}
 

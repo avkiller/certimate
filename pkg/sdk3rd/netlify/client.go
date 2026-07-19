@@ -1,3 +1,5 @@
+// A simple SDK client for Netlify.
+// API documentation: https://open-api.netlify.com/
 package netlify
 
 import (
@@ -24,14 +26,14 @@ func NewClient(optFns ...OptionsFunc) (*Client, error) {
 		return nil, fmt.Errorf("sdkerr: unset apiToken")
 	}
 
-	restyClient := resty.New().
+	httper := resty.New().
 		SetBaseURL("https://api.netlify.com/api/v1").
 		SetHeader("Accept", "application/json").
 		SetHeader("Authorization", "Bearer "+opts.ApiToken).
 		SetHeader("Content-Type", "application/json").
 		SetHeader("User-Agent", app.AppUserAgent)
 
-	return &Client{rc: restyClient}, nil
+	return &Client{rc: httper}, nil
 }
 
 func (c *Client) SetTimeout(timeout time.Duration) *Client {
@@ -89,7 +91,7 @@ func (c *Client) doRequestWithResult(req *resty.Request, res sdkResponse) (*rest
 			return resp, fmt.Errorf("sdkerr: failed to unmarshal response: %w (resp: %s)", err, resp.String())
 		} else {
 			if rCode := res.GetCode(); rCode != 0 {
-				return resp, fmt.Errorf("sdkerr: code='%d', message='%s'", rCode, res.GetMessage())
+				return resp, fmt.Errorf("sdkerr: api error: code='%d', message='%s'", rCode, res.GetMessage())
 			}
 		}
 	}

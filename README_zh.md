@@ -42,7 +42,7 @@
 - 支持 DNS-01（即基于域名解析验证）、HTTP-01（即基于文件验证）两种质询方式。
 - 支持 PEM、PFX、JKS 等多种格式输出证书。
 - 支持 70+ 域名托管商（如阿里云、腾讯云、AWS、Cloudflare、GoDaddy 等，[点此查看完整清单](https://docs.certimate.me/zh-CN/docs/reference/providers#supported-dns-providers)）。
-- 支持 140+ 部署目标（如 Kubernetes、CDN、WAF、负载均衡等，[点此查看完整清单](https://docs.certimate.me/zh-CN/docs/reference/providers#supported-hosting-providers)）。
+- 支持 150+ 部署目标（如 Kubernetes、CDN、WAF、负载均衡等，[点此查看完整清单](https://docs.certimate.me/zh-CN/docs/reference/providers#supported-hosting-providers)）。
 - 支持邮件、钉钉、飞书、企业微信、Discord、Slack、Telegram 等多种通知渠道。
 - 支持 Let's Encrypt、Actalis、Google Trust Services、SSL.com、ZeroSSL 等多种 ACME 证书颁发机构。
 - 更多特性等待探索。
@@ -132,6 +132,12 @@ Certimate 遵循 [MIT License](https://opensource.org/licenses/MIT) 开源协议
 
 ## ⭐ 星标趋势
 
-在 GitHub 上为 Certimate 添加 Star 星标关注，即可第一时间获取新版本发布通知。
+在 GitHub 上为 Certimate 添加 Star 星标关注，即可第一时间获取新版本发布通知！
 
-[![Stargazers over time](https://starchart.cc/certimate-go/certimate.svg?variant=adaptive)](https://starchart.cc/certimate-go/certimate)
+<a href="https://www.star-history.com/?repos=certimate-go%2Fcertimate&type=date&legend=bottom-right">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=certimate-go/certimate&type=date&theme=dark&legend=bottom-right&sealed_token=AgSJWuhVJZ3c0ObBtRjr082YXnvEJdtzvse3YxJGfkUtB4nEs9RrHwwf2u41HTSOt-pU-h4lfJXzTAvRMNwKlvdEPY_BoV935TmriioBUABY69Offs4Ze9_f5mv2QP5yD5m3e5tv-HkNrHnkVVzJ2uDmJQkt6ta9Mg90DogAf4FK1mva-dd3DqZVkbw1" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=certimate-go/certimate&type=date&legend=bottom-right&sealed_token=AgSJWuhVJZ3c0ObBtRjr082YXnvEJdtzvse3YxJGfkUtB4nEs9RrHwwf2u41HTSOt-pU-h4lfJXzTAvRMNwKlvdEPY_BoV935TmriioBUABY69Offs4Ze9_f5mv2QP5yD5m3e5tv-HkNrHnkVVzJ2uDmJQkt6ta9Mg90DogAf4FK1mva-dd3DqZVkbw1" />
+   <img alt="Stargazers over time" src="https://api.star-history.com/chart?repos=certimate-go/certimate&type=date&legend=bottom-right&sealed_token=AgSJWuhVJZ3c0ObBtRjr082YXnvEJdtzvse3YxJGfkUtB4nEs9RrHwwf2u41HTSOt-pU-h4lfJXzTAvRMNwKlvdEPY_BoV935TmriioBUABY69Offs4Ze9_f5mv2QP5yD5m3e5tv-HkNrHnkVVzJ2uDmJQkt6ta9Mg90DogAf4FK1mva-dd3DqZVkbw1" />
+ </picture>
+</a>

@@ -154,25 +154,25 @@ func (c *Certmgr) tryGetResultIfCertExists(ctx context.Context, certPEM string) 
 			break
 		}
 
+		fingerprintSha1 := sha1.Sum(certX509.Raw)
+		fingerprintSha1Hex := hex.EncodeToString(fingerprintSha1[:])
 		for _, certItem := range getCertificateListResp.ReturnObj.List {
-			// 对比证书名称
+			// 对比证书备用名称
 			if !strings.EqualFold(strings.Join(certX509.DNSNames, ","), certItem.DomainName) {
 				continue
 			}
 
 			// 对比证书有效期
+			newCertNotBefore := certX509.NotBefore
+			newCertNotAfter := certX509.NotAfter
 			oldCertNotBefore, _ := time.Parse("2006-01-02T15:04:05Z", certItem.IssueTime)
 			oldCertNotAfter, _ := time.Parse("2006-01-02T15:04:05Z", certItem.ExpireTime)
-			if !certX509.NotBefore.Equal(oldCertNotBefore) {
-				continue
-			} else if !certX509.NotAfter.Equal(oldCertNotAfter) {
+			if !newCertNotBefore.Equal(oldCertNotBefore) || !newCertNotAfter.Equal(oldCertNotAfter) {
 				continue
 			}
 
 			// 对比证书指纹
-			fingerprint := sha1.Sum(certX509.Raw)
-			fingerprintHex := hex.EncodeToString(fingerprint[:])
-			if !strings.EqualFold(fingerprintHex, certItem.Fingerprint) {
+			if !strings.EqualFold(fingerprintSha1Hex, certItem.Fingerprint) {
 				continue
 			}
 

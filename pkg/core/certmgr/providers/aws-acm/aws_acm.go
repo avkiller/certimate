@@ -2,6 +2,7 @@ package awsacm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	awscfg "github.com/aws/aws-sdk-go-v2/config"
 	awscred "github.com/aws/aws-sdk-go-v2/credentials"
 	awsacm "github.com/aws/aws-sdk-go-v2/service/acm"
+	"github.com/aws/smithy-go"
 
 	"github.com/certimate-go/certimate/pkg/core"
 	xcert "github.com/certimate-go/certimate/pkg/utils/cert"
@@ -98,16 +100,15 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*Uplo
 		}
 
 		for _, certItem := range listCertificatesResp.CertificateSummaryList {
-			// 对比证书有效期
-			if certItem.NotBefore == nil || !certItem.NotBefore.Equal(certX509.NotBefore) {
-				continue
-			}
-			if certItem.NotAfter == nil || !certItem.NotAfter.Equal(certX509.NotAfter) {
+			// 对比证书备用名称
+			if !strings.EqualFold(strings.Join(certX509.DNSNames, ","), strings.Join(certItem.SubjectAlternativeNameSummaries, ",")) {
 				continue
 			}
 
-			// 对比证书多域名
-			if !strings.EqualFold(strings.Join(certX509.DNSNames, ","), strings.Join(certItem.SubjectAlternativeNameSummaries, ",")) {
+			// 对比证书有效期
+			if certItem.NotBefore == nil || !certX509.NotBefore.Equal(*certItem.NotBefore) {
+				continue
+			} else if certItem.NotAfter == nil || !certX509.NotAfter.Equal(*certItem.NotAfter) {
 				continue
 			}
 
@@ -117,6 +118,13 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*Uplo
 			}
 			getCertificateResp, err := c.sdkClient.GetCertificate(ctx, getCertificateReq)
 			if err != nil {
+				var sdkErr smithy.APIError
+				if errors.As(err, &sdkErr) {
+					if sdkErrCode := sdkErr.ErrorCode(); sdkErrCode == "NoSuchEntity" {
+						continue
+					}
+				}
+
 				return nil, fmt.Errorf("failed to execute sdk request 'acm.GetCertificate': %w", err)
 			} else {
 				if !xcert.EqualCertificatesFromPEM(certPEM, aws.ToString(getCertificateResp.Certificate)) {

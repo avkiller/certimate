@@ -2,7 +2,6 @@ package qiniucdn
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -14,6 +13,7 @@ import (
 	cmgrimpl "github.com/certimate-go/certimate/pkg/core/certmgr/providers/qiniu-sslcert"
 	qiniusdk "github.com/certimate-go/certimate/pkg/sdk3rd/qiniu"
 	xcerthostname "github.com/certimate-go/certimate/pkg/utils/cert/hostname"
+	xloop "github.com/certimate-go/certimate/pkg/utils/loop"
 )
 
 type (
@@ -89,12 +89,11 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*Dep
 	switch d.config.DomainMatchPattern {
 	case "", DOMAIN_MATCH_PATTERN_EXACT:
 		{
-			if d.config.Domain == "" {
+			domain := normalizeDomain(d.config.Domain)
+			if domain == "" {
 				return nil, fmt.Errorf("config `domain` is required")
 			}
 
-			// "*.example.com" → ".example.com"，适配七牛云 CDN 要求的泛域名格式
-			domain := strings.TrimPrefix(d.config.Domain, "*")
 			domains = []string{domain}
 		}
 
@@ -140,26 +139,16 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*Dep
 		return nil, fmt.Errorf("unsupported domain match pattern: '%s'", d.config.DomainMatchPattern)
 	}
 
-	// 遍历更新域名证书
+	// 批量更新域名证书
 	if len(domains) == 0 {
 		d.logger.Info("no cdn domains to deploy")
 	} else {
 		d.logger.Info("found cdn domains to deploy", slog.Any("domains", domains))
-		var errs []error
 
-		for _, domain := range domains {
-			select {
-			case <-ctx.Done():
-				return nil, ctx.Err()
-			default:
-				if err := d.updateDomainCertificate(ctx, domain, upres.CertId); err != nil {
-					errs = append(errs, err)
-				}
-			}
-		}
-
-		if len(errs) > 0 {
-			return nil, errors.Join(errs...)
+		if err := xloop.ForRangeAllWithContext(ctx, domains, func(ctx context.Context, domain string, _ int) error {
+			return d.updateDomainCertificate(ctx, domain, upres.CertId)
+		}); err != nil {
+			return nil, err
 		}
 	}
 
@@ -231,4 +220,12 @@ func (d *Deployer) updateDomainCertificate(ctx context.Context, domain string, c
 	}
 
 	return nil
+}
+
+func normalizeDomain(domain string) string {
+	// "*.example.com" → ".example.com"，适配七牛云 CDN 的泛域名参数要求
+	if strings.HasPrefix(domain, "*.") {
+		return strings.TrimPrefix(domain, "*")
+	}
+	return domain
 }

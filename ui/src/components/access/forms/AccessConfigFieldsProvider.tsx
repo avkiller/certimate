@@ -73,6 +73,7 @@ import AccessConfigFieldsProviderLarkBot from "./AccessConfigFieldsProviderLarkB
 import AccessConfigFieldsProviderLeCDN from "./AccessConfigFieldsProviderLeCDN";
 import AccessConfigFieldsProviderLinode from "./AccessConfigFieldsProviderLinode";
 import AccessConfigFieldsProviderLiteSSL from "./AccessConfigFieldsProviderLiteSSL";
+import AccessConfigFieldsProviderMatrix from "./AccessConfigFieldsProviderMatrix";
 import AccessConfigFieldsProviderMattermost from "./AccessConfigFieldsProviderMattermost";
 import AccessConfigFieldsProviderMohua from "./AccessConfigFieldsProviderMohua";
 import AccessConfigFieldsProviderNamecheap from "./AccessConfigFieldsProviderNamecheap";
@@ -82,6 +83,7 @@ import AccessConfigFieldsProviderNetcup from "./AccessConfigFieldsProviderNetcup
 import AccessConfigFieldsProviderNetlify from "./AccessConfigFieldsProviderNetlify";
 import AccessConfigFieldsProviderNginxProxyManager from "./AccessConfigFieldsProviderNginxProxyManager";
 import AccessConfigFieldsProviderNS1 from "./AccessConfigFieldsProviderNS1";
+import AccessConfigFieldsProviderOracleCloud from "./AccessConfigFieldsProviderOracleCloud";
 import AccessConfigFieldsProviderOVHcloud from "./AccessConfigFieldsProviderOVHcloud";
 import AccessConfigFieldsProviderPorkbun from "./AccessConfigFieldsProviderPorkbun";
 import AccessConfigFieldsProviderPowerDNS from "./AccessConfigFieldsProviderPowerDNS";
@@ -97,6 +99,7 @@ import AccessConfigFieldsProviderS3 from "./AccessConfigFieldsProviderS3";
 import AccessConfigFieldsProviderSafeLine from "./AccessConfigFieldsProviderSafeLine";
 import AccessConfigFieldsProviderSamWAF from "./AccessConfigFieldsProviderSamWAF";
 import AccessConfigFieldsProviderSectigo from "./AccessConfigFieldsProviderSectigo";
+import AccessConfigFieldsProviderSimplyCom from "./AccessConfigFieldsProviderSimplyCom";
 import AccessConfigFieldsProviderSlackBot from "./AccessConfigFieldsProviderSlackBot";
 import AccessConfigFieldsProviderSpaceship from "./AccessConfigFieldsProviderSpaceship";
 import AccessConfigFieldsProviderSSH from "./AccessConfigFieldsProviderSSH";
@@ -196,6 +199,7 @@ const providerComponentMap: Partial<Record<AccessProviderType, React.ComponentTy
   [ACCESS_PROVIDERS.INFOMANIAK]: AccessConfigFieldsProviderInfomaniak,
   [ACCESS_PROVIDERS.LINODE]: AccessConfigFieldsProviderLinode,
   [ACCESS_PROVIDERS.LITESSL]: AccessConfigFieldsProviderLiteSSL,
+  [ACCESS_PROVIDERS.MATRIX]: AccessConfigFieldsProviderMatrix,
   [ACCESS_PROVIDERS.MATTERMOST]: AccessConfigFieldsProviderMattermost,
   [ACCESS_PROVIDERS.MOHUA]: AccessConfigFieldsProviderMohua,
   [ACCESS_PROVIDERS.NAMECHEAP]: AccessConfigFieldsProviderNamecheap,
@@ -205,6 +209,7 @@ const providerComponentMap: Partial<Record<AccessProviderType, React.ComponentTy
   [ACCESS_PROVIDERS.NETLIFY]: AccessConfigFieldsProviderNetlify,
   [ACCESS_PROVIDERS.NGINXPROXYMANAGER]: AccessConfigFieldsProviderNginxProxyManager,
   [ACCESS_PROVIDERS.NS1]: AccessConfigFieldsProviderNS1,
+  [ACCESS_PROVIDERS.ORACLECLOUD]: AccessConfigFieldsProviderOracleCloud,
   [ACCESS_PROVIDERS.OVHCLOUD]: AccessConfigFieldsProviderOVHcloud,
   [ACCESS_PROVIDERS.PORKBUN]: AccessConfigFieldsProviderPorkbun,
   [ACCESS_PROVIDERS.POWERDNS]: AccessConfigFieldsProviderPowerDNS,
@@ -220,6 +225,7 @@ const providerComponentMap: Partial<Record<AccessProviderType, React.ComponentTy
   [ACCESS_PROVIDERS.SAFELINE]: AccessConfigFieldsProviderSafeLine,
   [ACCESS_PROVIDERS.SAMWAF]: AccessConfigFieldsProviderSamWAF,
   [ACCESS_PROVIDERS.SECTIGO]: AccessConfigFieldsProviderSectigo,
+  [ACCESS_PROVIDERS.SIMPLYCOM]: AccessConfigFieldsProviderSimplyCom,
   [ACCESS_PROVIDERS.SLACKBOT]: AccessConfigFieldsProviderSlackBot,
   [ACCESS_PROVIDERS.SPACESHIP]: AccessConfigFieldsProviderSpaceship,
   [ACCESS_PROVIDERS.SSLCOM]: AccessConfigFieldsProviderSSLCom,
