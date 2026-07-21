@@ -1,4 +1,4 @@
-package tester
+package testing
 
 import (
 	"context"

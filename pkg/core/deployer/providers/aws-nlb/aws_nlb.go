@@ -221,14 +221,14 @@ func (d *Deployer) updateListenerSniCertificate(ctx context.Context, cloudListen
 }
 
 func createSDKClient(accessKeyId, secretAccessKey, region string) (*elasticloadbalancingv2.Client, error) {
-	cfg, err := awscfg.LoadDefaultConfig(context.Background())
+	cfg, err := awscfg.LoadDefaultConfig(context.Background(),
+		awscfg.WithCredentialsProvider(awscred.NewStaticCredentialsProvider(accessKeyId, secretAccessKey, "")),
+		awscfg.WithRegion(region),
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	client := elasticloadbalancingv2.NewFromConfig(cfg, func(o *elasticloadbalancingv2.Options) {
-		o.Region = region
-		o.Credentials = aws.NewCredentialsCache(awscred.NewStaticCredentialsProvider(accessKeyId, secretAccessKey, ""))
-	})
+	client := elasticloadbalancingv2.NewFromConfig(cfg)
 	return client, nil
 }

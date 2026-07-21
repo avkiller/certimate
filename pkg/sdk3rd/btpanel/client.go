@@ -106,6 +106,10 @@ func (c *Client) newRequest(method string, path string, params any) (*resty.Requ
 	req.Method = method
 	req.URL = path
 	req.SetFormData(paramsMap)
+
+	// WARN:
+	//   DO NOT CALL `req.SetBody` or `req.SetFormData` AGAIN! USE `newRequest` INSTEAD.
+	//   DO NOT CALL `req.SetResult` or `req.SetError` AGAIN! USE `doRequestWithResult` INSTEAD.
 	return req, nil
 }
 
@@ -113,10 +117,6 @@ func (c *Client) doRequest(req *resty.Request) (*resty.Response, error) {
 	if req == nil {
 		return nil, fmt.Errorf("sdkerr: nil request")
 	}
-
-	// WARN:
-	//   PLEASE DO NOT USE `req.SetBody` or `req.SetFormData` HERE! USE `newRequest` INSTEAD.
-	//   PLEASE DO NOT USE `req.SetResult` or `req.SetError` HERE! USE `doRequestWithResult` INSTEAD.
 
 	resp, err := req.Send()
 	if err != nil {

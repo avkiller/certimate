@@ -5,6 +5,7 @@ package teomakers
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -41,26 +42,29 @@ func (c *Client) SetTimeout(timeout time.Duration) *Client {
 	return c
 }
 
-func (c *Client) newRequest(method string, path string, action string, params sdkRequest) (*resty.Request, error) {
-	if method == "" {
-		return nil, fmt.Errorf("sdkerr: unset method")
-	}
-	if path == "" {
-		return nil, fmt.Errorf("sdkerr: unset path")
-	}
-	if action == "" {
+func (c *Client) newRequest(params any, teoAction string) (*resty.Request, error) {
+	if teoAction == "" {
 		return nil, fmt.Errorf("sdkerr: unset action")
 	}
 
-	req := c.rc.R()
-	req.Method = method
-	req.URL = path
-
+	paramsMap := map[string]any{}
+	paramsMap["Action"] = teoAction
 	if params != nil {
-		params.SetAction(action)
-		req.SetBody(params)
+		jsonb, _ := json.Marshal(params)
+		json.Unmarshal(jsonb, &paramsMap)
+		if paramsMap["Action"] != teoAction {
+			return nil, fmt.Errorf("sdkerr: bad request: action mismatch: expected '%s', got '%s'", teoAction, paramsMap["Action"])
+		}
 	}
 
+	req := c.rc.R()
+	req.Method = http.MethodPost
+	req.URL = "/"
+	req.SetBody(paramsMap)
+
+	// WARN:
+	//   DO NOT CALL `req.SetBody` or `req.SetFormData` AGAIN! USE `newRequest` INSTEAD.
+	//   DO NOT CALL `req.SetResult` or `req.SetError` AGAIN! USE `doRequestWithResult` INSTEAD.
 	return req, nil
 }
 
@@ -68,9 +72,6 @@ func (c *Client) doRequest(req *resty.Request) (*resty.Response, error) {
 	if req == nil {
 		return nil, fmt.Errorf("sdkerr: nil request")
 	}
-
-	// WARN:
-	//   PLEASE DO NOT USE `req.SetResult` or `req.SetError` HERE! USE `doRequestWithResult` INSTEAD.
 
 	resp, err := req.Send()
 	if err != nil {

@@ -3,8 +3,8 @@ package huaweicloudelb_test
 import (
 	"testing"
 
-	"github.com/certimate-go/certimate/pkg/core/deployer/internal/tester"
 	impl "github.com/certimate-go/certimate/pkg/core/deployer/providers/huaweicloud-elb"
+	tester "github.com/certimate-go/certimate/pkg/core/deployer/testing"
 )
 
 var (

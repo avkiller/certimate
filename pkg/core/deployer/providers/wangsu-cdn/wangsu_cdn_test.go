@@ -3,8 +3,8 @@ package wangsucdn_test
 import (
 	"testing"
 
-	"github.com/certimate-go/certimate/pkg/core/deployer/internal/tester"
 	impl "github.com/certimate-go/certimate/pkg/core/deployer/providers/wangsu-cdn"
+	tester "github.com/certimate-go/certimate/pkg/core/deployer/testing"
 )
 
 var (

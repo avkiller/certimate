@@ -3,8 +3,8 @@ package baotawaf_test
 import (
 	"testing"
 
-	"github.com/certimate-go/certimate/pkg/core/deployer/internal/tester"
 	impl "github.com/certimate-go/certimate/pkg/core/deployer/providers/baotawaf"
+	tester "github.com/certimate-go/certimate/pkg/core/deployer/testing"
 )
 
 var (

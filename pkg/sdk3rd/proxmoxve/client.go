@@ -69,6 +69,9 @@ func (c *Client) newRequest(method string, path string) (*resty.Request, error) 
 	req := c.rc.R()
 	req.Method = method
 	req.URL = path
+
+	// WARN:
+	//   DO NOT CALL `req.SetResult` or `req.SetError` AGAIN! USE `doRequestWithResult` INSTEAD.
 	return req, nil
 }
 
@@ -76,9 +79,6 @@ func (c *Client) doRequest(req *resty.Request) (*resty.Response, error) {
 	if req == nil {
 		return nil, fmt.Errorf("sdkerr: nil request")
 	}
-
-	// WARN:
-	//   PLEASE DO NOT USE `req.SetResult` or `req.SetError` HERE! USE `doRequestWithResult` INSTEAD.
 
 	resp, err := req.Send()
 	if err != nil {

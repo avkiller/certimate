@@ -3,8 +3,8 @@ package tencentcloudgaap_test
 import (
 	"testing"
 
-	"github.com/certimate-go/certimate/pkg/core/certmgr/internal/tester"
 	impl "github.com/certimate-go/certimate/pkg/core/certmgr/providers/tencentcloud-gaap"
+	tester "github.com/certimate-go/certimate/pkg/core/certmgr/testing"
 )
 
 var (
@@ -36,8 +36,8 @@ func TestProvider(t *testing.T) {
 
 	t.Run("Upload", func(t *testing.T) {
 		provider, err := impl.NewCertmgr(&impl.CertmgrConfig{
-			SecretId:    fSecretId,
-			SecretKey:   fSecretKey,
+			SecretId:  fSecretId,
+			SecretKey: fSecretKey,
 		})
 		if err != nil {
 			t.Errorf("err: %+v", err)

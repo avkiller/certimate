@@ -3,8 +3,8 @@ package byteplusmedialive_test
 import (
 	"testing"
 
-	"github.com/certimate-go/certimate/pkg/core/certmgr/internal/tester"
 	impl "github.com/certimate-go/certimate/pkg/core/certmgr/providers/byteplus-medialive"
+	tester "github.com/certimate-go/certimate/pkg/core/certmgr/testing"
 )
 
 var (

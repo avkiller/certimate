@@ -108,7 +108,7 @@ func (c *Client) buildServerlessClientInfo(appId string) (_clientInfo map[string
 	}, nil
 }
 
-func (c *Client) buildServerlessPayloadInfo(appId, spaceId, target, method, action string, params, data interface{}) (map[string]any, error) {
+func (c *Client) buildServerlessPayloadInfo(appId, spaceId, target, method, action string, params, data any) (map[string]any, error) {
 	clientInfo, err := c.buildServerlessClientInfo(appId)
 	if err != nil {
 		return nil, err
@@ -157,7 +157,7 @@ func (c *Client) buildServerlessPayloadInfo(appId, spaceId, target, method, acti
 	return payload, nil
 }
 
-func (c *Client) invokeServerless(ctx context.Context, endpoint, clientSecret, appId, spaceId, target, method, action string, params, data interface{}) (*resty.Response, error) {
+func (c *Client) invokeServerless(ctx context.Context, endpoint, clientSecret, appId, spaceId, target, method, action string, params, data any) (*resty.Response, error) {
 	if endpoint == "" {
 		return nil, fmt.Errorf("sdkerr: bad request: endpoint cannot be empty")
 	}
@@ -191,7 +191,7 @@ func (c *Client) invokeServerless(ctx context.Context, endpoint, clientSecret, a
 	return resp, nil
 }
 
-func (c *Client) invokeServerlessWithResult(ctx context.Context, endpoint, clientSecret, appId, spaceId, target, method, action string, params, data interface{}, result sdkResponse) error {
+func (c *Client) invokeServerlessWithResult(ctx context.Context, endpoint, clientSecret, appId, spaceId, target, method, action string, params, data any, result sdkResponse) error {
 	resp, err := c.invokeServerless(ctx, endpoint, clientSecret, appId, spaceId, target, method, action, params, data)
 	if err != nil {
 		if resp != nil {
@@ -209,7 +209,7 @@ func (c *Client) invokeServerlessWithResult(ctx context.Context, endpoint, clien
 	return nil
 }
 
-func (c *Client) sendRequest(ctx context.Context, method string, path string, params interface{}) (*resty.Response, error) {
+func (c *Client) sendRequest(ctx context.Context, method string, path string, params any) (*resty.Response, error) {
 	req := c.rcForApiUser.R().
 		SetContext(ctx)
 	if strings.EqualFold(method, http.MethodGet) {
@@ -240,7 +240,7 @@ func (c *Client) sendRequest(ctx context.Context, method string, path string, pa
 	return resp, nil
 }
 
-func (c *Client) sendRequestWithResult(ctx context.Context, method string, path string, params interface{}, result sdkResponse) error {
+func (c *Client) sendRequestWithResult(ctx context.Context, method string, path string, params any, result sdkResponse) error {
 	resp, err := c.sendRequest(ctx, method, path, params)
 	if err != nil {
 		if resp != nil {

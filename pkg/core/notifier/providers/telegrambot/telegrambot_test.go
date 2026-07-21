@@ -3,8 +3,8 @@ package telegrambot_test
 import (
 	"testing"
 
-	"github.com/certimate-go/certimate/pkg/core/notifier/internal/tester"
 	impl "github.com/certimate-go/certimate/pkg/core/notifier/providers/telegrambot"
+	tester "github.com/certimate-go/certimate/pkg/core/notifier/testing"
 )
 
 var (

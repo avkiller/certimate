@@ -3,8 +3,8 @@ package ucloudulb_test
 import (
 	"testing"
 
-	"github.com/certimate-go/certimate/pkg/core/certmgr/internal/tester"
 	impl "github.com/certimate-go/certimate/pkg/core/certmgr/providers/ucloud-ulb"
+	tester "github.com/certimate-go/certimate/pkg/core/certmgr/testing"
 )
 
 var (

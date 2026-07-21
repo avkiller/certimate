@@ -133,14 +133,14 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*Dep
 }
 
 func createSDKClient(accessKeyId, secretAccessKey, region string) (*elasticloadbalancing.Client, error) {
-	cfg, err := awscfg.LoadDefaultConfig(context.Background())
+	cfg, err := awscfg.LoadDefaultConfig(context.Background(),
+		awscfg.WithCredentialsProvider(awscred.NewStaticCredentialsProvider(accessKeyId, secretAccessKey, "")),
+		awscfg.WithRegion(region),
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	client := elasticloadbalancing.NewFromConfig(cfg, func(o *elasticloadbalancing.Options) {
-		o.Region = region
-		o.Credentials = aws.NewCredentialsCache(awscred.NewStaticCredentialsProvider(accessKeyId, secretAccessKey, ""))
-	})
+	client := elasticloadbalancing.NewFromConfig(cfg)
 	return client, nil
 }

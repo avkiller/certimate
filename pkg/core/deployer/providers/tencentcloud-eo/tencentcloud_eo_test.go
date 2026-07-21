@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/certimate-go/certimate/pkg/core/deployer/internal/tester"
 	impl "github.com/certimate-go/certimate/pkg/core/deployer/providers/tencentcloud-eo"
+	tester "github.com/certimate-go/certimate/pkg/core/deployer/testing"
 )
 
 var (

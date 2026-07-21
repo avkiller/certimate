@@ -1,19 +1,5 @@
 package teomakers
 
-type sdkRequest interface {
-	SetAction(action string)
-}
-
-type sdkRequestBase struct {
-	Action *string `json:"Action,omitempty"`
-}
-
-func (r *sdkRequestBase) SetAction(action string) {
-	r.Action = &action
-}
-
-var _ sdkRequest = (*sdkRequestBase)(nil)
-
 type sdkResponse interface {
 	GetCode() int
 	GetMessage() string

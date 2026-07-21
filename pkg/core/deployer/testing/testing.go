@@ -1,4 +1,4 @@
-package tester
+package testing
 
 import (
 	"context"
@@ -7,15 +7,15 @@ import (
 	"os"
 	"testing"
 
-	"github.com/certimate-go/certimate/pkg/core/certmgr"
+	"github.com/certimate-go/certimate/pkg/core/deployer"
 )
 
-type TestUploadArgs struct {
+type TestDeployArgs struct {
 	CertPath string
 	KeyPath  string
 }
 
-func TestUpload(t *testing.T, testProvider certmgr.Provider, testArgs TestUploadArgs) {
+func TestDeploy(t *testing.T, testProvider deployer.Provider, testArgs TestDeployArgs) {
 	if _, err := os.Stat(testArgs.CertPath); os.IsNotExist(err) {
 		t.Errorf("err: test cert file not exist")
 		return
@@ -34,7 +34,7 @@ func TestUpload(t *testing.T, testProvider certmgr.Provider, testArgs TestUpload
 	logger.Enabled(ctx, slog.LevelDebug)
 	testProvider.SetLogger(logger)
 
-	res, err := testProvider.Upload(ctx, string(certData), string(privkeyData))
+	res, err := testProvider.Deploy(ctx, string(certData), string(privkeyData))
 	if err != nil {
 		t.Errorf("err: %+v", err)
 		return

@@ -1,7 +1,7 @@
-package tester
+package testing
 
 import (
-	"github.com/certimate-go/certimate/pkg/core/internal/tester"
+	tester "github.com/certimate-go/certimate/pkg/core/internal/testing"
 )
 
 func Args(prefix string) tester.ArgsParser {

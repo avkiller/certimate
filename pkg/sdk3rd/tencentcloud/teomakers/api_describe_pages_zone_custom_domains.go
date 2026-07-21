@@ -2,12 +2,9 @@ package teomakers
 
 import (
 	"context"
-	"net/http"
 )
 
 type DescribePagesZoneCustomDomainsRequest struct {
-	sdkRequestBase
-
 	ProjectId *string `json:"ProjectId,omitempty"`
 }
 
@@ -28,11 +25,10 @@ func (c *Client) DescribePagesZoneCustomDomains(req *DescribePagesZoneCustomDoma
 }
 
 func (c *Client) DescribePagesZoneCustomDomainsWithContext(ctx context.Context, req *DescribePagesZoneCustomDomainsRequest) (*DescribePagesZoneCustomDomainsResponse, error) {
-	httpreq, err := c.newRequest(http.MethodPost, "/", "DescribePagesZoneCustomDomains", req)
+	httpreq, err := c.newRequest(req, "DescribePagesZoneCustomDomains")
 	if err != nil {
 		return nil, err
 	} else {
-		httpreq.SetBody(req)
 		httpreq.SetContext(ctx)
 	}
 

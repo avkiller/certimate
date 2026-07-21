@@ -120,14 +120,14 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*Dep
 }
 
 func createSDKClient(accessKeyId, secretAccessKey, region string) (*apigatewayv2.Client, error) {
-	cfg, err := awscfg.LoadDefaultConfig(context.Background())
+	cfg, err := awscfg.LoadDefaultConfig(context.Background(),
+		awscfg.WithCredentialsProvider(awscred.NewStaticCredentialsProvider(accessKeyId, secretAccessKey, "")),
+		awscfg.WithRegion(region),
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	client := apigatewayv2.NewFromConfig(cfg, func(o *apigatewayv2.Options) {
-		o.Region = region
-		o.Credentials = aws.NewCredentialsCache(awscred.NewStaticCredentialsProvider(accessKeyId, secretAccessKey, ""))
-	})
+	client := apigatewayv2.NewFromConfig(cfg)
 	return client, nil
 }

@@ -3,8 +3,8 @@ package aliyundcdn_test
 import (
 	"testing"
 
-	"github.com/certimate-go/certimate/pkg/core/deployer/internal/tester"
 	impl "github.com/certimate-go/certimate/pkg/core/deployer/providers/aliyun-dcdn"
+	tester "github.com/certimate-go/certimate/pkg/core/deployer/testing"
 )
 
 var (

@@ -3,8 +3,8 @@ package samwafconsole_test
 import (
 	"testing"
 
-	"github.com/certimate-go/certimate/pkg/core/deployer/internal/tester"
 	impl "github.com/certimate-go/certimate/pkg/core/deployer/providers/samwaf-console"
+	tester "github.com/certimate-go/certimate/pkg/core/deployer/testing"
 )
 
 var (

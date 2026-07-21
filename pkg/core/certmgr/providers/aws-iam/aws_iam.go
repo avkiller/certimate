@@ -11,7 +11,7 @@ import (
 	aws "github.com/aws/aws-sdk-go-v2/aws"
 	awscfg "github.com/aws/aws-sdk-go-v2/config"
 	awscred "github.com/aws/aws-sdk-go-v2/credentials"
-	awsiam "github.com/aws/aws-sdk-go-v2/service/iam"
+	"github.com/aws/aws-sdk-go-v2/service/iam"
 	"github.com/aws/smithy-go"
 	"github.com/samber/lo"
 
@@ -40,7 +40,7 @@ type CertmgrConfig struct {
 type Certmgr struct {
 	config    *CertmgrConfig
 	logger    *slog.Logger
-	sdkClient *awsiam.Client
+	sdkClient *iam.Client
 }
 
 var _ Provider = (*Certmgr)(nil)
@@ -94,7 +94,7 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*Uplo
 		default:
 		}
 
-		listServerCertificatesReq := &awsiam.ListServerCertificatesInput{
+		listServerCertificatesReq := &iam.ListServerCertificatesInput{
 			PathPrefix: lo.EmptyableToPtr(c.config.CertificatePath),
 			Marker:     listServerCertificatesMarker,
 			MaxItems:   aws.Int32(1000),
@@ -117,14 +117,14 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*Uplo
 			}
 
 			// 对比证书内容
-			getServerCertificateReq := &awsiam.GetServerCertificateInput{
+			getServerCertificateReq := &iam.GetServerCertificateInput{
 				ServerCertificateName: certItem.ServerCertificateName,
 			}
 			getServerCertificateResp, err := c.sdkClient.GetServerCertificate(ctx, getServerCertificateReq)
 			if err != nil {
 				var sdkErr smithy.APIError
 				if errors.As(err, &sdkErr) {
-					if sdkErrCode := sdkErr.ErrorCode(); sdkErrCode == "InvalidArnException" || sdkErrCode == "ResourceNotFoundException" {
+					if sdkErrCode := sdkErr.ErrorCode(); sdkErrCode == "NoSuchEntity" {
 						continue
 					}
 				}
@@ -160,7 +160,7 @@ func (c *Certmgr) Upload(ctx context.Context, certPEM, privkeyPEM string) (*Uplo
 
 	// 导入证书
 	// REF: https://docs.aws.amazon.com/IAM/latest/APIReference/API_UploadServerCertificate.html
-	uploadServerCertificateReq := &awsiam.UploadServerCertificateInput{
+	uploadServerCertificateReq := &iam.UploadServerCertificateInput{
 		ServerCertificateName: aws.String(certName),
 		Path:                  aws.String(cmp.Or(c.config.CertificatePath, "/")),
 		CertificateBody:       aws.String(serverCertPEM),
@@ -187,15 +187,15 @@ func (c *Certmgr) Replace(ctx context.Context, certIdOrName string, certPEM, pri
 	return nil, core.ErrUnsupported
 }
 
-func createSDKClient(accessKeyId, secretAccessKey, region string) (*awsiam.Client, error) {
-	cfg, err := awscfg.LoadDefaultConfig(context.Background())
+func createSDKClient(accessKeyId, secretAccessKey, region string) (*iam.Client, error) {
+	cfg, err := awscfg.LoadDefaultConfig(context.Background(),
+		awscfg.WithCredentialsProvider(awscred.NewStaticCredentialsProvider(accessKeyId, secretAccessKey, "")),
+		awscfg.WithRegion(region),
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	client := awsiam.NewFromConfig(cfg, func(o *awsiam.Options) {
-		o.Region = region
-		o.Credentials = aws.NewCredentialsCache(awscred.NewStaticCredentialsProvider(accessKeyId, secretAccessKey, ""))
-	})
+	client := iam.NewFromConfig(cfg)
 	return client, nil
 }

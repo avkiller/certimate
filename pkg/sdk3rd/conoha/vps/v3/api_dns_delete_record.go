@@ -27,7 +27,8 @@ func (c *Client) DnsDeleteRecordWithContext(ctx context.Context, domainId string
 		return nil, err
 	}
 
-	httpreq, err := c.newRequest(http.MethodDelete, fmt.Sprintf("%s/v1/domains/%s/records/%s", dnsBaseURL, url.PathEscape(domainId), url.PathEscape(recordId)))
+	path := dnsBaseURL + fmt.Sprintf("/v1/domains/%s/records/%s", url.PathEscape(domainId), url.PathEscape(recordId))
+	httpreq, err := c.newRequest(http.MethodDelete, path)
 	if err != nil {
 		return nil, err
 	} else {

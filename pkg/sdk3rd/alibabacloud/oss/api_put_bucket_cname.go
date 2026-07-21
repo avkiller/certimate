@@ -35,7 +35,7 @@ func (c *Client) PutBucketCname(req *PutCnameRequest) (*PutCnameResponse, error)
 }
 
 func (c *Client) PutBucketCnameWithContext(ctx context.Context, req *PutCnameRequest) (*PutCnameResponse, error) {
-	httpreq, err := c.newRequest(http.MethodPost, "/?cname&comp=add", fmt.Sprintf("/%s/", c.bucket), req)
+	httpreq, err := c.newRequest(http.MethodPost, "/?cname&comp=add", req, fmt.Sprintf("/%s/", c.bucket))
 	if err != nil {
 		return nil, err
 	} else {

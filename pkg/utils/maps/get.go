@@ -64,16 +64,9 @@ func GetStringsBySplit(dict map[string]any, key string, sep string) []string {
 // 出参：
 //   - 字典中键对应的值。如果指定键不存在、值的类型不是字符串、或者值为零值，则返回默认值。
 func GetOrDefaultStringsBySplit(dict map[string]any, key string, sep string, defaultValue []string) []string {
-	if dict == nil {
-		return defaultValue
-	}
-
-	if value, ok := dict[key]; ok {
-		if str, ok := value.(string); ok {
-			if str != "" {
-				return strings.Split(str, sep)
-			}
-		}
+	str := GetString(dict, key)
+	if str != "" {
+		return strings.Split(str, sep)
 	}
 
 	return defaultValue

@@ -159,14 +159,14 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*Dep
 }
 
 func createSDKClient(accessKeyId, secretAccessKey, region string) (*cloudfront.Client, error) {
-	cfg, err := awscfg.LoadDefaultConfig(context.Background())
+	cfg, err := awscfg.LoadDefaultConfig(context.Background(),
+		awscfg.WithCredentialsProvider(awscred.NewStaticCredentialsProvider(accessKeyId, secretAccessKey, "")),
+		awscfg.WithRegion(region),
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	client := cloudfront.NewFromConfig(cfg, func(o *cloudfront.Options) {
-		o.Region = region
-		o.Credentials = aws.NewCredentialsCache(awscred.NewStaticCredentialsProvider(accessKeyId, secretAccessKey, ""))
-	})
+	client := cloudfront.NewFromConfig(cfg)
 	return client, nil
 }

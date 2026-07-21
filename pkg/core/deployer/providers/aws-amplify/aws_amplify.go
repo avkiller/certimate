@@ -125,14 +125,14 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*Dep
 }
 
 func createSDKClient(accessKeyId, secretAccessKey, region string) (*amplify.Client, error) {
-	cfg, err := awscfg.LoadDefaultConfig(context.Background())
+	cfg, err := awscfg.LoadDefaultConfig(context.Background(),
+		awscfg.WithCredentialsProvider(awscred.NewStaticCredentialsProvider(accessKeyId, secretAccessKey, "")),
+		awscfg.WithRegion(region),
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	client := amplify.NewFromConfig(cfg, func(o *amplify.Options) {
-		o.Region = region
-		o.Credentials = aws.NewCredentialsCache(awscred.NewStaticCredentialsProvider(accessKeyId, secretAccessKey, ""))
-	})
+	client := amplify.NewFromConfig(cfg)
 	return client, nil
 }

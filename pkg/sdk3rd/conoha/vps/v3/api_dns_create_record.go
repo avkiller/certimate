@@ -40,7 +40,8 @@ func (c *Client) DnsCreateRecordWithContext(ctx context.Context, domainId string
 		return nil, err
 	}
 
-	httpreq, err := c.newRequest(http.MethodPost, fmt.Sprintf("%s/v1/domains/%s/records", dnsBaseURL, url.PathEscape(domainId)))
+	path := dnsBaseURL + fmt.Sprintf("/v1/domains/%s/records", url.PathEscape(domainId))
+	httpreq, err := c.newRequest(http.MethodPost, path)
 	if err != nil {
 		return nil, err
 	} else {
