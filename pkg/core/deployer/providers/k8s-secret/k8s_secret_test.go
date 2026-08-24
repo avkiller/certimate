@@ -1,57 +1,41 @@
-package k8ssecret_test
+package k8ssecret
 
 import (
+	"strings"
 	"testing"
-
-	impl "github.com/certimate-go/certimate/pkg/core/deployer/providers/k8s-secret"
-	tester "github.com/certimate-go/certimate/pkg/core/deployer/testing"
 )
 
-var (
-	fp                   = tester.Args("K8SSECRET_")
-	fTestCertPath        string
-	fTestKeyPath         string
-	fNamespace           string
-	fSecretName          string
-	fSecretDataKeyForCrt string
-	fSecretDataKeyForKey string
-)
+const testKubeConfig = `apiVersion: v1
+kind: Config
+clusters:
+  - name: test
+    cluster:
+      server: https://127.0.0.1:6443
+      insecure-skip-tls-verify: true
+contexts:
+  - name: test
+    context:
+      cluster: test
+      user: test
+current-context: test
+users:
+  - name: test
+    user:
+      token: test-token
+`
 
-func init() {
-	fp.DefineString(&fTestCertPath, "TESTCERTPATH")
-	fp.DefineString(&fTestKeyPath, "TESTKEYPATH")
-	fp.DefineString(&fNamespace, "NAMESPACE", "default")
-	fp.DefineString(&fSecretName, "SECRETNAME")
-	fp.DefineString(&fSecretDataKeyForCrt, "SECRETDATAKEYFORCRT", "tls.crt")
-	fp.DefineString(&fSecretDataKeyForKey, "SECRETDATAKEYFORKEY", "tls.key")
-}
+// Secrets live in the core API group, which is served under "/api".
+// If APIPath is left empty, rest.RESTClientFor builds requests against
+// "/v1/namespaces/..." and the API server answers 404
+// ("the server could not find the requested resource").
+func TestCreateK8sClientSetsCoreAPIPath(t *testing.T) {
+	client, err := createK8sClient(testKubeConfig)
+	if err != nil {
+		t.Fatalf("createK8sClient() returned an unexpected error: %v", err)
+	}
 
-/*
-Shell command to run this test:
-
-	go test -v ./k8s_secret_test.go -args \
-	--K8SSECRET_TESTCERTPATH="/path/to/your-test-cert.pem" \
-	--K8SSECRET_TESTKEYPATH="/path/to/your-test-key.pem" \
-	--K8SSECRET_NAMESPACE="default" \
-	--K8SSECRET_SECRETNAME="secret" \
-	--K8SSECRET_SECRETDATAKEYFORCRT="tls.crt" \
-	--K8SSECRET_SECRETDATAKEYFORKEY="tls.key"
-*/
-func TestProvider(t *testing.T) {
-	fp.Parse()
-
-	t.Run("Deploy", func(t *testing.T) {
-		provider, err := impl.NewDeployer(&impl.DeployerConfig{
-			Namespace:           fNamespace,
-			SecretName:          fSecretName,
-			SecretDataKeyForCrt: fSecretDataKeyForCrt,
-			SecretDataKeyForKey: fSecretDataKeyForKey,
-		})
-		if err != nil {
-			t.Errorf("err: %+v", err)
-			return
-		}
-
-		tester.TestDeploy(t, provider, tester.TestDeployArgs{CertPath: fTestCertPath, KeyPath: fTestKeyPath})
-	})
+	const want = "/api/v1"
+	if got := client.Get().URL().Path; !strings.HasPrefix(got, want) {
+		t.Errorf("request path = %q, want it to start with %q", got, want)
+	}
 }

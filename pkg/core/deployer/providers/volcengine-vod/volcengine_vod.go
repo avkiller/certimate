@@ -30,6 +30,8 @@ type DeployerConfig struct {
 	SecretAccessKey string `json:"secretAccessKey"`
 	// 火山引擎项目名称。
 	ProjectName string `json:"projectName,omitempty"`
+	// 火山引擎地域。
+	Region string `json:"region"`
 	// 点播空间名称。
 	SpaceName string `json:"spaceName"`
 	// 域名匹配模式。
@@ -55,7 +57,7 @@ func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 		return nil, fmt.Errorf("the configuration of the deployer provider is nil")
 	}
 
-	client, err := createSDKClient(config.AccessKeyId, config.SecretAccessKey)
+	client, err := createSDKClient(config.AccessKeyId, config.SecretAccessKey, config.Region)
 	if err != nil {
 		return nil, fmt.Errorf("could not create client: %w", err)
 	}
@@ -194,11 +196,15 @@ func (d *Deployer) getAllDomains(ctx context.Context) ([]string, error) {
 			return nil, fmt.Errorf("failed to execute sdk request 'vod.ListVodDomain': %w", err)
 		}
 
-		for _, domainItem := range listVodDomainResp.Domains {
+		if listVodDomainResp.VodInfo == nil {
+			break
+		}
+
+		for _, domainItem := range listVodDomainResp.VodInfo.Domains {
 			domains = append(domains, ve.StringValue(domainItem.Domain))
 		}
 
-		if len(listVodDomainResp.Domains) < listVodDomainPageSize {
+		if len(listVodDomainResp.VodInfo.Domains) < listVodDomainPageSize {
 			break
 		}
 
@@ -209,6 +215,31 @@ func (d *Deployer) getAllDomains(ctx context.Context) ([]string, error) {
 }
 
 func (d *Deployer) updateDomainCertificate(ctx context.Context, domain string, cloudCertId string) error {
+	// 获取域名配置
+	// REF: https://www.volcengine.com/docs/4/2392644
+	describeVodDomainConfigReq := &vevod.DescribeVodDomainConfigInput{
+		SpaceName:  ve.String(d.config.SpaceName),
+		DomainType: ve.String(convertDomainType2CloudDomainType(d.config.DomainType)),
+		DescribeCdnDomainParam: &vevod.DescribeCdnDomainParamForDescribeVodDomainConfigInput{
+			Domain: ve.String(domain),
+		},
+	}
+	describeVodDomainConfigResp, err := d.sdkClient.DescribeVodDomainConfigWithContext(ctx, describeVodDomainConfigReq)
+	d.logger.Debug("sdk request 'vod.DescribeVodDomainConfig'", slog.Any("request", describeVodDomainConfigReq), slog.Any("response", describeVodDomainConfigResp))
+	if err != nil {
+		return err
+	} else {
+		// 已部署过，直接返回
+		if describeVodDomainConfigResp.DomainInfo != nil &&
+			describeVodDomainConfigResp.DomainInfo.DomainConfig != nil &&
+			describeVodDomainConfigResp.DomainInfo.DomainConfig.HTTPS != nil &&
+			describeVodDomainConfigResp.DomainInfo.DomainConfig.HTTPS.CertInfo != nil &&
+			ve.BoolValue(describeVodDomainConfigResp.DomainInfo.DomainConfig.HTTPS.Switch) &&
+			ve.StringValue(describeVodDomainConfigResp.DomainInfo.DomainConfig.HTTPS.CertInfo.CertId) == cloudCertId {
+			return nil
+		}
+	}
+
 	// 更新域名配置
 	// REF: https://www.volcengine.com/docs/4/2389907
 	updateVodDomainConfigReq := &vevod.UpdateVodDomainConfigInput{
@@ -233,9 +264,14 @@ func (d *Deployer) updateDomainCertificate(ctx context.Context, domain string, c
 	return nil
 }
 
-func createSDKClient(accessKeyId, secretAccessKey string) (*vevod.VOD20260101, error) {
+func createSDKClient(accessKeyId, secretAccessKey, region string) (*vevod.VOD20260101, error) {
+	if region == "" {
+		region = "cn-north-1" // VOD 服务默认区域：华北
+	}
+
 	config := ve.NewConfig().
-		WithAkSk(accessKeyId, secretAccessKey)
+		WithAkSk(accessKeyId, secretAccessKey).
+		WithRegion(region)
 
 	session, err := vesession.NewSession(config)
 	if err != nil {
