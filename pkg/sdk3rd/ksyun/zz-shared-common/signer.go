@@ -1,4 +1,4 @@
-﻿package common
+package common
 
 import (
 	"bytes"
@@ -20,6 +20,14 @@ type signer struct {
 	accessKeyId     string
 	secretAccessKey string
 	service         string
+}
+
+func NewSigner(ak, sk, service string) *signer {
+	return &signer{
+		accessKeyId:     ak,
+		secretAccessKey: sk,
+		service:         service,
+	}
 }
 
 func (s *signer) Sign(req *http.Request) error {

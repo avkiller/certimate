@@ -82,8 +82,13 @@ type AccessConfigForArvanCloud struct {
 }
 
 type AccessConfigForAWS struct {
+	AuthMethod      string `json:"authMethod"`
 	AccessKeyId     string `json:"accessKeyId"`
 	SecretAccessKey string `json:"secretAccessKey"`
+}
+
+type AccessConfigForAxisNow struct {
+	ApiToken string `json:"apiToken"`
 }
 
 type AccessConfigForAzure struct {
@@ -348,6 +353,13 @@ type AccessConfigForHuaweiCloud struct {
 	EnterpriseProjectId string `json:"enterpriseProjectId,omitempty"`
 }
 
+type AccessConfigForHuaweiIBMC struct {
+	Host                     string `json:"host"`
+	Username                 string `json:"username"`
+	Password                 string `json:"password"`
+	AllowInsecureConnections bool   `json:"allowInsecureConnections,omitempty"`
+}
+
 type AccessConfigForInfomaniak struct {
 	AccessToken string `json:"accessToken"`
 }
@@ -486,10 +498,17 @@ type AccessConfigForPowerDNS struct {
 	AllowInsecureConnections bool   `json:"allowInsecureConnections,omitempty"`
 }
 
+type AccessConfigForProxmoxBS struct {
+	ServerUrl                string `json:"serverUrl"`
+	ApiToken                 string `json:"apiToken"`
+	ApiTokenSecret           string `json:"apiTokenSecret"`
+	AllowInsecureConnections bool   `json:"allowInsecureConnections,omitempty"`
+}
+
 type AccessConfigForProxmoxVE struct {
 	ServerUrl                string `json:"serverUrl"`
 	ApiToken                 string `json:"apiToken"`
-	ApiTokenSecret           string `json:"apiTokenSecret,omitempty"`
+	ApiTokenSecret           string `json:"apiTokenSecret"`
 	AllowInsecureConnections bool   `json:"allowInsecureConnections,omitempty"`
 }
 
@@ -686,6 +705,11 @@ type AccessConfigForWestcn struct {
 type AccessConfigForXinnet struct {
 	AgentId     string `json:"agentId"`
 	ApiPassword string `json:"apiPassword"`
+}
+
+type AccessConfigForYandexCloud struct {
+	FolderId          string `json:"folderId"`
+	ServiceAccountKey string `json:"serviceAccountKey"`
 }
 
 type AccessConfigForZenlayer struct {

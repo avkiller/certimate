@@ -1,3 +1,5 @@
+import { withBasePath } from "@/utils/url";
+
 interface BaseProvider<P> {
   type: P;
   name: string;
@@ -27,6 +29,7 @@ export const ACCESS_PROVIDERS = Object.freeze({
   APISIX: "apisix",
   ARVANCLOUD: "arvancloud",
   AWS: "aws",
+  AXISNOW: "axisnow",
   AZURE: "azure",
   BAIDUCLOUD: "baiducloud",
   BAISHAN: "baishan",
@@ -76,6 +79,7 @@ export const ACCESS_PROVIDERS = Object.freeze({
   HOSTINGDE: "hostingde",
   HOSTINGER: "hostinger",
   HUAWEICLOUD: "huaweicloud",
+  HUAWEIIBMC: "huaweiibmc",
   INFOMANIAK: "infomaniak",
   IONOS: "ionos",
   JDCLOUD: "jdcloud",
@@ -103,6 +107,7 @@ export const ACCESS_PROVIDERS = Object.freeze({
   OVHCLOUD: "ovhcloud",
   PORKBUN: "porkbun",
   POWERDNS: "powerdns",
+  PROXMOXBS: "proxmoxbs",
   PROXMOXVE: "proxmoxve",
   QINGCLOUD: "qingcloud",
   QINIU: "qiniu",
@@ -136,6 +141,7 @@ export const ACCESS_PROVIDERS = Object.freeze({
   WECOMBOT: "wecombot",
   WESTCN: "westcn",
   XINNET: "xinnet",
+  YANDEXCLOUD: "yandexcloud",
   ZENLAYER: "zenlayer",
   ZEROSSL: "zerossl",
 } as const);
@@ -183,6 +189,7 @@ export const accessProvidersMap: Map<AccessProvider["type"] | string, AccessProv
       [ACCESS_PROVIDERS.DIGITALOCEAN, "provider.digitalocean", "/imgs/providers/digitalocean.svg", [ACCESS_USAGES.DNS, ACCESS_USAGES.HOSTING]],
       [ACCESS_PROVIDERS.GCORE, "provider.gcore", "/imgs/providers/gcore.svg", [ACCESS_USAGES.DNS, ACCESS_USAGES.HOSTING]],
       [ACCESS_PROVIDERS.LINODE, "provider.linode", "/imgs/providers/linode.svg", [ACCESS_USAGES.DNS, ACCESS_USAGES.HOSTING]],
+      [ACCESS_PROVIDERS.YANDEXCLOUD, "provider.yandexcloud", "/imgs/providers/yandexcloud.svg", [ACCESS_USAGES.DNS, ACCESS_USAGES.HOSTING]],
       [ACCESS_PROVIDERS.BAIDUCLOUD, "provider.baiducloud", "/imgs/providers/baiducloud.svg", [ACCESS_USAGES.DNS, ACCESS_USAGES.HOSTING]],
       [ACCESS_PROVIDERS.CMCCCLOUD, "provider.cmcccloud", "/imgs/providers/cmcccloud.svg", [ACCESS_USAGES.DNS, ACCESS_USAGES.HOSTING]],
       [ACCESS_PROVIDERS.CTCCCLOUD, "provider.ctcccloud", "/imgs/providers/ctcccloud.svg", [ACCESS_USAGES.DNS, ACCESS_USAGES.HOSTING]],
@@ -212,16 +219,19 @@ export const accessProvidersMap: Map<AccessProvider["type"] | string, AccessProv
       [ACCESS_PROVIDERS.BAOTAPANELGO, "provider.baotapanelgo", "/imgs/providers/baota.svg", [ACCESS_USAGES.HOSTING]],
       [ACCESS_PROVIDERS.BAOTAWAF, "provider.baotawaf", "/imgs/providers/baota.svg", [ACCESS_USAGES.HOSTING]],
       [ACCESS_PROVIDERS.DOKPLOY, "provider.dokploy", "/imgs/providers/dokploy.svg", [ACCESS_USAGES.HOSTING]],
+      [ACCESS_PROVIDERS.AXISNOW, "provider.axisnow", "/imgs/providers/axisnow.png", [ACCESS_USAGES.HOSTING]],
       [ACCESS_PROVIDERS.CDNFLY, "provider.cdnfly", "/imgs/providers/cdnfly.svg", [ACCESS_USAGES.HOSTING]],
       [ACCESS_PROVIDERS.GOEDGE, "provider.goedge", "/imgs/providers/goedge.png", [ACCESS_USAGES.HOSTING]],
       [ACCESS_PROVIDERS.KONG, "provider.kong", "/imgs/providers/kong.svg", [ACCESS_USAGES.HOSTING]],
       [ACCESS_PROVIDERS.LECDN, "provider.lecdn", "/imgs/providers/lecdn.svg", [ACCESS_USAGES.HOSTING]],
       [ACCESS_PROVIDERS.NGINXPROXYMANAGER, "provider.nginxproxymanager", "/imgs/providers/nginxproxymanager.svg", [ACCESS_USAGES.HOSTING]],
+      [ACCESS_PROVIDERS.PROXMOXBS, "provider.proxmoxbs", "/imgs/providers/proxmoxbs.svg", [ACCESS_USAGES.HOSTING]],
       [ACCESS_PROVIDERS.PROXMOXVE, "provider.proxmoxve", "/imgs/providers/proxmoxve.svg", [ACCESS_USAGES.HOSTING]],
       [ACCESS_PROVIDERS.RATPANEL, "provider.ratpanel", "/imgs/providers/ratpanel.png", [ACCESS_USAGES.HOSTING]],
       [ACCESS_PROVIDERS.SAFELINE, "provider.safeline", "/imgs/providers/safeline.svg", [ACCESS_USAGES.HOSTING]],
       [ACCESS_PROVIDERS.SAMWAF, "provider.samwaf", "/imgs/providers/samwaf.png", [ACCESS_USAGES.HOSTING]],
       [ACCESS_PROVIDERS.SYNOLOGYDSM, "provider.synologydsm", "/imgs/providers/synologydsm.svg", [ACCESS_USAGES.HOSTING]],
+      [ACCESS_PROVIDERS.HUAWEIIBMC, "provider.huaweiibmc", "/imgs/providers/huawei.svg", [ACCESS_USAGES.HOSTING]],
 
       [ACCESS_PROVIDERS.AKAMAI, "provider.akamai", "/imgs/providers/akamai.svg", [ACCESS_USAGES.DNS]],
       [ACCESS_PROVIDERS.ARVANCLOUD, "provider.arvancloud", "/imgs/providers/arvancloud.svg", [ACCESS_USAGES.DNS]],
@@ -296,7 +306,7 @@ export const accessProvidersMap: Map<AccessProvider["type"] | string, AccessProv
     {
       type: type,
       name: name,
-      icon: icon,
+      icon: withBasePath(icon),
       usages: usages,
       builtin: builtin === "builtin",
     },
@@ -456,6 +466,8 @@ export const ACME_DNS01_PROVIDERS = Object.freeze({
   VULTR: `${ACCESS_PROVIDERS.VULTR}`,
   WESTCN: `${ACCESS_PROVIDERS.WESTCN}`,
   XINNET: `${ACCESS_PROVIDERS.XINNET}`,
+  YANDEXCLOUD: `${ACCESS_PROVIDERS.YANDEXCLOUD}`, // 兼容旧值，等同于 `YANDEXCLOUD_DNS`
+  YANDEXCLOUD_DNS: `${ACCESS_PROVIDERS.YANDEXCLOUD}-dns`,
 } as const);
 
 export type ACMEDns01ProviderType = (typeof ACME_DNS01_PROVIDERS)[keyof typeof ACME_DNS01_PROVIDERS];
@@ -521,6 +533,7 @@ export const acmeDns01ProvidersMap: Map<ACMEDns01Provider["type"] | string, ACME
       [ACME_DNS01_PROVIDERS.SPACESHIP, "provider.spaceship"],
       [ACME_DNS01_PROVIDERS.VERCEL, "provider.vercel"],
       [ACME_DNS01_PROVIDERS.VULTR, "provider.vultr"],
+      [ACME_DNS01_PROVIDERS.YANDEXCLOUD_DNS, "provider.yandexcloud_dns"],
       [ACME_DNS01_PROVIDERS.BAIDUCLOUD_DNS, "provider.baiducloud_dns"],
       [ACME_DNS01_PROVIDERS.CMCCCLOUD_DNS, "provider.cmcccloud_dns"],
       [ACME_DNS01_PROVIDERS.CTCCCLOUD_SMARTDNS, "provider.ctcccloud_smartdns"],
@@ -629,6 +642,7 @@ export const DEPLOYMENT_PROVIDERS = Object.freeze({
   AWS_CLOUDFRONT: `${ACCESS_PROVIDERS.AWS}-cloudfront`,
   AWS_IAM: `${ACCESS_PROVIDERS.AWS}-iam`,
   AWS_NLB: `${ACCESS_PROVIDERS.AWS}-nlb`,
+  AXISNOW: `${ACCESS_PROVIDERS.AXISNOW}`,
   AZURE_KEYVAULT: `${ACCESS_PROVIDERS.AZURE}-keyvault`,
   BAIDUCLOUD_APPBLB: `${ACCESS_PROVIDERS.BAIDUCLOUD}-appblb`,
   BAIDUCLOUD_BLB: `${ACCESS_PROVIDERS.BAIDUCLOUD}-blb`,
@@ -680,6 +694,7 @@ export const DEPLOYMENT_PROVIDERS = Object.freeze({
   HUAWEICLOUD_SCM: `${ACCESS_PROVIDERS.HUAWEICLOUD}-scm`,
   HUAWEICLOUD_VOD: `${ACCESS_PROVIDERS.HUAWEICLOUD}-vod`,
   HUAWEICLOUD_WAF: `${ACCESS_PROVIDERS.HUAWEICLOUD}-waf`,
+  HUAWEIIBMC: `${ACCESS_PROVIDERS.HUAWEIIBMC}`,
   JDCLOUD_ALB: `${ACCESS_PROVIDERS.JDCLOUD}-alb`,
   JDCLOUD_CDN: `${ACCESS_PROVIDERS.JDCLOUD}-cdn`,
   JDCLOUD_LIVE: `${ACCESS_PROVIDERS.JDCLOUD}-live`,
@@ -698,6 +713,7 @@ export const DEPLOYMENT_PROVIDERS = Object.freeze({
   NETLIFY: `${ACCESS_PROVIDERS.NETLIFY}`,
   NGINXPROXYMANAGER: `${ACCESS_PROVIDERS.NGINXPROXYMANAGER}`,
   ORACLECLOUD_CERTIFICATESMGMT: `${ACCESS_PROVIDERS.ORACLECLOUD}-certificatesmgmt`,
+  PROXMOXBS: `${ACCESS_PROVIDERS.PROXMOXBS}`,
   PROXMOXVE: `${ACCESS_PROVIDERS.PROXMOXVE}`,
   QINGCLOUD_LB: `${ACCESS_PROVIDERS.QINGCLOUD}-lb`,
   QINIU_CDN: `${ACCESS_PROVIDERS.QINIU}-cdn`,
@@ -754,6 +770,7 @@ export const DEPLOYMENT_PROVIDERS = Object.freeze({
   WANGSU_CDNPRO: `${ACCESS_PROVIDERS.WANGSU}-cdnpro`,
   WANGSU_CERTIFICATE: `${ACCESS_PROVIDERS.WANGSU}-certificate`,
   WEBHOOK: `${ACCESS_PROVIDERS.WEBHOOK}`,
+  YANDEXCLOUD_CERTIFICATEMANAGER: `${ACCESS_PROVIDERS.YANDEXCLOUD}-certificatemanager`,
   ZENLAYER_CDN: `${ACCESS_PROVIDERS.ZENLAYER}-cdn`,
   ZENLAYER_GA: `${ACCESS_PROVIDERS.ZENLAYER}-ga`,
 } as const);
@@ -874,6 +891,7 @@ export const deploymentProvidersMap: Map<DeploymentProvider["type"] | string, De
       [DEPLOYMENT_PROVIDERS.FLYIO, "provider.flyio", DEPLOYMENT_CATEGORIES.WEBSITE],
       [DEPLOYMENT_PROVIDERS.NETLIFY, "provider.netlify", DEPLOYMENT_CATEGORIES.WEBSITE],
       [DEPLOYMENT_PROVIDERS.VERCEL, "provider.vercel", DEPLOYMENT_CATEGORIES.WEBSITE],
+      [DEPLOYMENT_PROVIDERS.YANDEXCLOUD_CERTIFICATEMANAGER, "provider.yandexcloud_certificatemanager", DEPLOYMENT_CATEGORIES.SSL],
       [DEPLOYMENT_PROVIDERS.ZENLAYER_CDN, "provider.zenlayer_cdn", DEPLOYMENT_CATEGORIES.CDN],
       [DEPLOYMENT_PROVIDERS.ZENLAYER_GA, "provider.zenlayer_ga", DEPLOYMENT_CATEGORIES.ACCELERATOR],
       [DEPLOYMENT_PROVIDERS.BAIDUCLOUD_CDN, "provider.baiducloud_cdn", DEPLOYMENT_CATEGORIES.CDN],
@@ -919,6 +937,7 @@ export const deploymentProvidersMap: Map<DeploymentProvider["type"] | string, De
       [DEPLOYMENT_PROVIDERS.RAINYUN_SSLCENTER, "provider.rainyun_sslcenter_upload", DEPLOYMENT_CATEGORIES.SSL],
       [DEPLOYMENT_PROVIDERS.UNICLOUD_WEBHOST, "provider.unicloud_webhost", DEPLOYMENT_CATEGORIES.WEBSITE],
       [DEPLOYMENT_PROVIDERS.MOHUA_MVH, "provider.mohua_mvh", DEPLOYMENT_CATEGORIES.WEBSITE],
+      [DEPLOYMENT_PROVIDERS.AXISNOW, "provider.axisnow", DEPLOYMENT_CATEGORIES.CDN],
       [DEPLOYMENT_PROVIDERS.CDNFLY, "provider.cdnfly", DEPLOYMENT_CATEGORIES.CDN],
       [DEPLOYMENT_PROVIDERS.FLEXCDN, "provider.flexcdn", DEPLOYMENT_CATEGORIES.CDN],
       [DEPLOYMENT_PROVIDERS.GOEDGE, "provider.goedge", DEPLOYMENT_CATEGORIES.CDN],
@@ -941,8 +960,10 @@ export const deploymentProvidersMap: Map<DeploymentProvider["type"] | string, De
       [DEPLOYMENT_PROVIDERS.CPANEL, "provider.cpanel", DEPLOYMENT_CATEGORIES.WEBSITE],
       [DEPLOYMENT_PROVIDERS.DOKPLOY, "provider.dokploy", DEPLOYMENT_CATEGORIES.WEBSITE],
       [DEPLOYMENT_PROVIDERS.NGINXPROXYMANAGER, "provider.nginxproxymanager", DEPLOYMENT_CATEGORIES.WEBSITE],
+      [DEPLOYMENT_PROVIDERS.PROXMOXBS, "provider.proxmoxbs", DEPLOYMENT_CATEGORIES.OTHER],
       [DEPLOYMENT_PROVIDERS.PROXMOXVE, "provider.proxmoxve", DEPLOYMENT_CATEGORIES.OTHER],
       [DEPLOYMENT_PROVIDERS.SYNOLOGYDSM, "provider.synologydsm", DEPLOYMENT_CATEGORIES.OTHER],
+      [DEPLOYMENT_PROVIDERS.HUAWEIIBMC, "provider.huaweiibmc", DEPLOYMENT_CATEGORIES.OTHER],
     ] satisfies Array<[DeploymentProviderType, string, DeploymentCategoryType, "builtin"] | [DeploymentProviderType, string, DeploymentCategoryType]>
   ).map(([type, name, category, builtin]) => [
     type,

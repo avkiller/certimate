@@ -25,6 +25,7 @@ import { APP_DOCUMENT_URL, APP_REPO_URL } from "@/domain/app";
 import { useTriggerElement } from "@/hooks";
 import { getAuthStore } from "@/repository/admin";
 import { isBrowserHappy } from "@/utils/browser";
+import { withBasePath } from "@/utils/url";
 
 const ConsoleLayout = () => {
   const navigate = useNavigate();
@@ -231,7 +232,7 @@ const SiderMenu = memo(({ collapsed, onSelect }: { collapsed?: boolean; onSelect
     <>
       <div className="h-[64px] w-full overflow-hidden px-4 py-2 max-md:py-0">
         <div className="flex size-full items-center justify-around gap-2">
-          <img src="/logo.svg" className="size-[36px]" />
+          <img src={withBasePath("/logo.svg")} className="size-[36px]" />
           <Show when={!collapsed}>
             <span className="w-[81px] truncate text-base leading-[64px] font-semibold">Certimate</span>
             <AppVersion.LinkButton className="text-xs" />

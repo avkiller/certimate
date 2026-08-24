@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log/slog"
 	"strconv"
+	"strings"
 
+	"github.com/samber/lo"
 	"github.com/ucloud/ucloud-sdk-go/ucloud"
 	"github.com/ucloud/ucloud-sdk-go/ucloud/auth"
 
@@ -26,6 +28,8 @@ type DeployerConfig struct {
 	PublicKey string `json:"publicKey"`
 	// 优刻得项目 ID。
 	ProjectId string `json:"projectId,omitempty"`
+	// 优刻得接口端点。
+	Endpoint string `json:"endpoint,omitempty"`
 	// 加速域名 ID。
 	DomainId string `json:"domainId"`
 }
@@ -44,7 +48,7 @@ func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 		return nil, fmt.Errorf("the configuration of the deployer provider is nil")
 	}
 
-	client, err := createSDKClient(config.PrivateKey, config.PublicKey, config.ProjectId)
+	client, err := createSDKClient(config.PrivateKey, config.PublicKey, config.ProjectId, config.Endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("could not create client: %w", err)
 	}
@@ -53,6 +57,7 @@ func NewDeployer(config *DeployerConfig) (*Deployer, error) {
 		PrivateKey: config.PrivateKey,
 		PublicKey:  config.PublicKey,
 		ProjectId:  config.ProjectId,
+		Endpoint:   config.Endpoint,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("could not create certmgr: %w", err)
@@ -91,14 +96,19 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*Dep
 
 	// 获取加速域名配置
 	// REF: https://docs.ucloud.cn/api/ucdn-api/get_ucdn_domain_config
+	var domainConfigInfo ucloudsdk.DomainConfigInfo
 	getUcdnDomainConfigReq := d.sdkClient.NewGetUcdnDomainConfigRequest()
 	getUcdnDomainConfigReq.DomainId = []string{d.config.DomainId}
 	getUcdnDomainConfigResp, err := d.sdkClient.GetUcdnDomainConfig(getUcdnDomainConfigReq)
 	d.logger.Debug("sdk request 'ucdn.GetUcdnDomainConfig'", slog.Any("request", getUcdnDomainConfigReq), slog.Any("response", getUcdnDomainConfigResp))
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute sdk request 'ucdn.GetUcdnDomainConfig': %w", err)
-	} else if len(getUcdnDomainConfigResp.DomainList) == 0 {
-		return nil, fmt.Errorf("could not find domain '%s'", d.config.DomainId)
+	} else {
+		if len(getUcdnDomainConfigResp.DomainList) == 0 {
+			return nil, fmt.Errorf("could not find domain '%s'", d.config.DomainId)
+		}
+
+		domainConfigInfo = getUcdnDomainConfigResp.DomainList[0]
 	}
 
 	// 更新 HTTPS 加速配置
@@ -106,9 +116,12 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*Dep
 	certId, _ := strconv.Atoi(upres.CertId)
 	updateUcdnDomainHttpsConfigV2Req := d.sdkClient.NewUpdateUcdnDomainHttpsConfigV2Request()
 	updateUcdnDomainHttpsConfigV2Req.DomainId = ucloud.String(d.config.DomainId)
-	updateUcdnDomainHttpsConfigV2Req.HttpsStatusCn = ucloud.String(getUcdnDomainConfigResp.DomainList[0].HttpsStatusCn)
-	updateUcdnDomainHttpsConfigV2Req.HttpsStatusAbroad = ucloud.String(getUcdnDomainConfigResp.DomainList[0].HttpsStatusAbroad)
-	updateUcdnDomainHttpsConfigV2Req.HttpsStatusAbroad = ucloud.String(getUcdnDomainConfigResp.DomainList[0].HttpsStatusAbroad)
+	updateUcdnDomainHttpsConfigV2Req.HttpsStatusCn = lo.
+		IfF(domainConfigInfo.AreaCode == "all" || domainConfigInfo.AreaCode == "cn", func() *string { return ucloud.String(domainConfigInfo.HttpsStatusCn) }).
+		Else(nil)
+	updateUcdnDomainHttpsConfigV2Req.HttpsStatusAbroad = lo.
+		IfF(domainConfigInfo.AreaCode == "all" || domainConfigInfo.AreaCode == "abroad", func() *string { return ucloud.String(domainConfigInfo.HttpsStatusAbroad) }).
+		Else(nil)
 	updateUcdnDomainHttpsConfigV2Req.CertId = ucloud.Int(certId)
 	updateUcdnDomainHttpsConfigV2Req.CertName = ucloud.String(upres.CertName)
 	updateUcdnDomainHttpsConfigV2Req.CertType = ucloud.String("ussl")
@@ -121,7 +134,7 @@ func (d *Deployer) Deploy(ctx context.Context, certPEM, privkeyPEM string) (*Dep
 	return &DeployResult{}, nil
 }
 
-func createSDKClient(privateKey, publicKey, projectId string) (*ucloudsdk.UCDNClient, error) {
+func createSDKClient(privateKey, publicKey, projectId, endpoint string) (*ucloudsdk.UCDNClient, error) {
 	if privateKey == "" {
 		return nil, fmt.Errorf("ucloud: invalid private key")
 	}
@@ -130,7 +143,16 @@ func createSDKClient(privateKey, publicKey, projectId string) (*ucloudsdk.UCDNCl
 	}
 
 	cfg := ucloud.NewConfig()
-	cfg.ProjectId = projectId
+	if projectId != "" {
+		cfg.ProjectId = projectId
+	}
+	if endpoint != "" {
+		if strings.Contains(endpoint, "://") {
+			cfg.BaseUrl = endpoint
+		} else {
+			cfg.BaseUrl = "https://" + endpoint
+		}
+	}
 
 	credential := auth.NewCredential()
 	credential.PrivateKey = privateKey
