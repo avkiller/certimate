@@ -253,6 +253,7 @@ const Shortcuts = ({ className, style }: { className?: string; style?: React.CSS
         >
           <span className="text-sm">{t("dashboard.shortcut.configure_ca")}</span>
         </Button>
+        {/*
         {hasUpdate && (
           <Button
             className="shadow-sm"
@@ -264,6 +265,7 @@ const Shortcuts = ({ className, style }: { className?: string; style?: React.CSS
             <span className="text-sm">{t("dashboard.shortcut.upgrade")}</span>
           </Button>
         )}
+        */}
       </div>
     </div>
   );
