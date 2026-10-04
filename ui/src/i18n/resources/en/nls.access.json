@@ -87,8 +87,14 @@
       "label": "ACME EAB HMAC key",
       "placeholder": "Please enter ACME EAB HMAC key"
     },
+    "shared_acme_eab_pair": {
+      "errmsg": "Please fill in both the ACME EAB KID and the ACME EAB HMAC key, or leave both empty to use automatic issuance."
+    },
     "shared_allow_insecure_conns": {
       "label": "Allow insecure SSL/TLS connections"
+    },
+    "shared_ca_access_optional": {
+      "help": "Leave it empty to automatically obtain the EAB credentials from {{provider}} with the certificate contact email above. Note: the contact email will be sent to {{provider}}. You can still select an existing credential to use manual EAB credentials."
     },
 
     "1panel_server_url": {
@@ -219,6 +225,14 @@
       "label": "ArvanCloud API key",
       "placeholder": "Please enter ArvanCloud API key",
       "tooltip": "For more information, see <a href=\"https://docs.arvancloud.ir/en/developer-tools/api/api-key\" target=\"_blank\">https://docs.arvancloud.ir/en/developer-tools/api/api-key</a>"
+    },
+    "asiaispcdn_access_key_id": {
+      "label": "Asia-ISP CDN AccessKeyID",
+      "placeholder": "Please enter Asia-ISP CDN AccessKeyID"
+    },
+    "asiaispcdn_access_key_secret": {
+      "label": "Asia-ISP CDN AccessKeySecret",
+      "placeholder": "Please enter Asia-ISP CDN AccessKeySecret"
     },
     "aws_auth_method": {
       "label": "AWS API authentication method",
@@ -893,6 +907,18 @@
         }
       }
     },
+    "lecdn_auth_method": {
+      "label": "LeCDN API authentication method",
+      "placeholder": "Please select LeCDN API authentication method",
+      "option": {
+        "password": {
+          "label": "Username & Password"
+        },
+        "apikey": {
+          "label": "API key"
+        }
+      }
+    },
     "lecdn_username": {
       "label": "LeCDN username",
       "placeholder": "Please enter LeCDN username"
@@ -900,6 +926,10 @@
     "lecdn_password": {
       "label": "LeCDN password",
       "placeholder": "Please enter LeCDN password"
+    },
+    "lecdn_api_key": {
+      "label": "LeCDN API key",
+      "placeholder": "Please enter LeCDN API key"
     },
     "linode_access_token": {
       "label": "Linode access token",
@@ -1657,6 +1687,12 @@
     },
     "zerossl_eab": {
       "guide": "Learn more about using EAB key in ZeroSSL: <br><a href=\"https://zerossl.com/documentation/acme/\" target=\"_blank\">https://zerossl.com/documentation/acme/</a>"
+    },
+    "zerossl_eab_auto": {
+      "guide": "Leave both fields empty and each workflow using the global settings will automatically obtain the EAB credentials from ZeroSSL with its certificate contact email. Note: the contact email will be sent to ZeroSSL. You can also fill in both fields to use your own EAB credentials."
+    },
+    "zerossl_eab_auto_access": {
+      "guide": "Leave both fields empty and each workflow using this authorization will automatically obtain the EAB credentials from ZeroSSL with its certificate contact email. Note: the contact email will be sent to ZeroSSL. You can also fill in both fields to use your own EAB credentials."
     }
   }
 }
