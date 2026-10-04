@@ -87,8 +87,14 @@
       "label": "ACME EAB HMAC Key",
       "placeholder": "请输入 ACME EAB HMAC Key"
     },
+    "shared_acme_eab_pair": {
+      "errmsg": "请同时填写 ACME EAB KID 与 ACME EAB HMAC Key，或同时留空以使用自动方式。"
+    },
     "shared_allow_insecure_conns": {
       "label": "忽略 SSL/TLS 证书验证"
+    },
+    "shared_ca_access_optional": {
+      "help": "留空时，将使用上方填写的证书联系邮箱自动向 {{provider}} 获取 EAB 凭据（该邮箱会被发送给 {{provider}}）；也可以选择已有的授权，使用手动 EAB 凭据。"
     },
 
     "1panel_server_url": {
@@ -219,6 +225,14 @@
       "label": "ArvanCloud API 密钥",
       "placeholder": "请输入 ArvanCloud API 密钥",
       "tooltip": "这是什么？请参阅 <a href=\"https://docs.arvancloud.ir/en/developer-tools/api/api-key\" target=\"_blank\">https://docs.arvancloud.ir/en/developer-tools/api/api-key</a>"
+    },
+    "asiaispcdn_access_key_id": {
+      "label": "橙域网络网迹 CDN AccessKeyID",
+      "placeholder": "请输入橙域网络网迹 CDN AccessKeyID"
+    },
+    "asiaispcdn_access_key_secret": {
+      "label": "橙域网络网迹 CDN AccessKeySecret",
+      "placeholder": "请输入橙域网络网迹 CDN AccessKeySecret"
     },
     "aws_auth_method": {
       "label": "AWS API 认证方式",
@@ -893,6 +907,18 @@
         }
       }
     },
+    "lecdn_auth_method": {
+      "label": "LeCDN API 认证方式",
+      "placeholder": "请选择 LeCDN API 认证方式",
+      "option": {
+        "password": {
+          "label": "账号密码"
+        },
+        "apikey": {
+          "label": "API Key"
+        }
+      }
+    },
     "lecdn_username": {
       "label": "LeCDN 用户名",
       "placeholder": "请输入 LeCDN 用户名"
@@ -900,6 +926,10 @@
     "lecdn_password": {
       "label": "LeCDN 用户密码",
       "placeholder": "请输入 LeCDN 用户密码"
+    },
+    "lecdn_api_key": {
+      "label": "LeCDN API Key",
+      "placeholder": "请输入 LeCDN API Key"
     },
     "linode_access_token": {
       "label": "Linode AccessToken",
@@ -1010,7 +1040,7 @@
       "placeholder": "请选择 NPM API 认证方式",
       "option": {
         "password": {
-          "label": "密码"
+          "label": "账号密码"
         },
         "token": {
           "label": "API Token"
@@ -1656,6 +1686,12 @@
     },
     "zerossl_eab": {
       "guide": "点击下方链接了解如何获取 ZeroSSL EAB：<br><a href=\"https://zerossl.com/documentation/acme/\" target=\"_blank\">https://zerossl.com/documentation/acme/</a>"
+    },
+    "zerossl_eab_auto": {
+      "guide": "两项均留空时，使用全局设置的工作流将以其证书联系邮箱自动向 ZeroSSL 获取 EAB 凭据，该邮箱会被发送给 ZeroSSL。也可以两项都填写，使用你手动获取的 EAB 凭据。"
+    },
+    "zerossl_eab_auto_access": {
+      "guide": "两项均留空时，选用此授权的工作流将以其证书联系邮箱自动向 ZeroSSL 获取 EAB 凭据，该邮箱会被发送给 ZeroSSL。也可以两项都填写，使用你手动获取的 EAB 凭据。"
     }
   }
 }
